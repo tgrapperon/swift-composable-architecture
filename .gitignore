@@ -4,4 +4,7 @@
 /*.xcodeproj
 xcuserdata/
 Package.resolved
-BuildProducts/
+/Benchmarks/Internal/tmp
+/Benchmarks/Internal/Frameworks/*
+/Benchmarks/Internal/LocalTCA/Sources/*
+/Benchmarks/Internal/ReferenceTCA/Sources/*

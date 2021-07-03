@@ -11,11 +11,12 @@ BUILD_PRODUCTS_PATH="$DERIVED_DATA/Build/Intermediates.noindex/ArchiveIntermedia
 
 mkdir -p Internal/tmp
 
-xcodebuild archive -workspace Internal/$1 -scheme $1 \
-    -configuration Release \
+xcodebuild clean archive -workspace Internal/$1 -scheme $1 \
+  -configuration Release \
 	-destination "generic/platform=macOS" \
 	-archivePath "Internal/tmp/macOS$1" \
-	SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+	SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+  SWIFT_OPTIMIZATION_LEVEL=-Owholemodule
 
 echo "Update $1.swiftmodule…"
 MODULES_PATH="Internal/tmp/macOS$1.xcarchive/Products/usr/local/lib/$1.framework/Modules"

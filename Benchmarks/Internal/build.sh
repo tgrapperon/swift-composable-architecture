@@ -1,6 +1,7 @@
 #!/bin/sh
 
 echo "Copy benchmarks to $1 implementation…"
+rm -rf Internal/$1/Sources/$1
 cp -r Sources/Benchmarks Internal/$1/Sources/$1
 
 echo "Build benchmark suite for $1 implementation…"

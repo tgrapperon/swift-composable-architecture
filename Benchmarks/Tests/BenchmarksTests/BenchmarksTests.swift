@@ -1,24 +1,24 @@
+import Benchmarks
 import LocalTCA
 import ReferenceTCA
 import XCTest
-import Benchmarks
 
 class BenchmarksTests: XCTestCase {
+  func testLocalReductionInDebugMode() {
+    measure(metrics: [XCTCPUMetric(limitingToCurrentThread: true), XCTMemoryMetric(), XCTClockMetric()]) {
+      Benchmarks.benchmarkLargePullbacks()
+    }
+  }
+
   func testReferenceReduction() {
-    measure(metrics: [XCTCPUMetric(limitingToCurrentThread: true), XCTClockMetric()]) {
-      ReferenceTCA.performReduction()
+    measure(metrics: [XCTCPUMetric(limitingToCurrentThread: true), XCTMemoryMetric(), XCTClockMetric()]) {
+      ReferenceTCA.benchmarkLargePullbacks()
     }
   }
 
   func testLocalReduction() {
-    measure(metrics: [XCTCPUMetric(limitingToCurrentThread: true), XCTClockMetric()]) {
-      LocalTCA.performReduction()
-    }
-  }
-  
-  func testLocalReductionInDebugMode() {
-    measure(metrics: [XCTCPUMetric(limitingToCurrentThread: true), XCTClockMetric()]) {
-      Benchmarks.performReduction()
+    measure(metrics: [XCTCPUMetric(limitingToCurrentThread: true), XCTMemoryMetric(), XCTClockMetric()]) {
+      LocalTCA.benchmarkLargePullbacks()
     }
   }
 }

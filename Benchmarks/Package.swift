@@ -15,9 +15,15 @@ let package = Package(
     .library(
       name: "Benchmarks",
       targets: ["Benchmarks"]),
+
+    .executable(
+      name: "benchmarks",
+      targets: ["swift-composable-architecture-benchmarks"]),
+    
   ],
   dependencies: [
-    .package(path: "../")
+    .package(path: "../"),
+    .package(name: "Benchmark", url: "https://github.com/google/swift-benchmark", from: "0.1.0"),
   ],
   targets: [
     .target(
@@ -25,11 +31,23 @@ let package = Package(
       dependencies: [
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]),
-    .binaryTarget(name: "LocalTCA", path: "Internal/Frameworks/LocalTCA.xcframework"),
-    .binaryTarget(name: "ReferenceTCA", path: "Internal/Frameworks/ReferenceTCA.xcframework"),
+        
     .testTarget(
       name: "BenchmarksTests",
       dependencies: [
+        "Benchmarks",
+        "LocalTCA",
+        "ReferenceTCA",
+      ]),
+    
+    .binaryTarget(name: "LocalTCA", path: "Internal/Frameworks/LocalTCA.xcframework"),
+    .binaryTarget(name: "ReferenceTCA", path: "Internal/Frameworks/ReferenceTCA.xcframework"),
+    
+    .target(
+      name: "swift-composable-architecture-benchmarks",
+      dependencies: [
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+        .product(name: "Benchmark", package: "Benchmark"),
         "Benchmarks",
         "LocalTCA",
         "ReferenceTCA",

@@ -20,13 +20,15 @@ import SwiftUI
 ///     [here](https://gist.github.com/mbrandonw/dee2ceac2c316a1619cfdf1dc7945f66)).
 public struct WithViewStore<State, Action, Content> {
   private let content: (ViewStore<State, Action>) -> Content
+  private let isDuplicate: (State, State) -> Bool
+  private let store: Store<State, Action>
   #if DEBUG
     private let file: StaticString
     private let line: UInt
     private var prefix: String?
     private var previousState: (State) -> State?
   #endif
-  @ObservedObject private var viewStore: ViewStore<State, Action>
+  @StateObject private var viewStore = ViewStore<State, Action>()
 
   fileprivate init(
     store: Store<State, Action>,
@@ -36,6 +38,8 @@ public struct WithViewStore<State, Action, Content> {
     content: @escaping (ViewStore<State, Action>) -> Content
   ) {
     self.content = content
+    self.store = store
+    self.isDuplicate = isDuplicate
     #if DEBUG
       self.file = file
       self.line = line
@@ -45,7 +49,6 @@ public struct WithViewStore<State, Action, Content> {
         return previousState
       }
     #endif
-    self.viewStore = ViewStore(store, removeDuplicates: isDuplicate)
   }
 
   /// Prints debug information to the console whenever the view is computed.
@@ -61,6 +64,7 @@ public struct WithViewStore<State, Action, Content> {
   }
 
   fileprivate var _body: Content {
+    viewStore.updateIfNeeded(store: store, removeDuplicates: isDuplicate)
     #if DEBUG
       if let prefix = self.prefix {
         var stateDump = ""

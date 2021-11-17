@@ -57,8 +57,9 @@ public final class ViewStore<State, Action>: ObservableObject {
   // won't be synthesized automatically. To work around issues on iOS 13 we explicitly declare it.
   public private(set) lazy var objectWillChange = ObservableObjectPublisher()
 
-  private let _send: (Action) -> Void
-  fileprivate let _state: CurrentValueRelay<State>
+  private var _send: (Action) -> Void
+  fileprivate var _state: CurrentValueRelay<State>!
+  private weak var store: Store<State, Action>?
   private var viewCancellable: AnyCancellable?
 
   /// Initializes a view store from a store.
@@ -71,11 +72,43 @@ public final class ViewStore<State, Action>: ObservableObject {
     _ store: Store<State, Action>,
     removeDuplicates isDuplicate: @escaping (State, State) -> Bool
   ) {
+    self.store = store
     self._send = { store.send($0) }
     self._state = CurrentValueRelay(store.state.value)
 
     self.viewCancellable = store.state
       .removeDuplicates(by: isDuplicate)
+      .sink { [weak self] in
+        guard let self = self else { return }
+        self.objectWillChange.send()
+        self._state.value = $0
+      }
+  }
+
+  internal init() {
+    self._send = { _ in () }
+  }
+
+  internal func updateIfNeeded(
+    store: Store<State, Action>,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
+  ) {
+    guard self.store !== store else { return }
+    self.store = store
+    self._send = { store.send($0) }
+    // We track if the state is the same to avoid firing one unecessary
+    // `objectWillChange` when we re-subscribe to `store.state`
+    let stateIsDuplicate: Bool
+    if _state == nil {
+      stateIsDuplicate = false
+      _state = CurrentValueRelay(store.state.value)
+    } else {
+      stateIsDuplicate = isDuplicate(_state.value, store.state.value)
+      _state.value = store.state.value
+    }
+    self.viewCancellable = store.state
+      .removeDuplicates(by: isDuplicate)
+      .dropFirst(stateIsDuplicate ? 1 : 0)
       .sink { [weak self] in
         guard let self = self else { return }
         self.objectWillChange.send()

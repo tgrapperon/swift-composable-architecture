@@ -1,12 +1,16 @@
 @resultBuilder
 public enum ReducerBuilder<State, Action> {
   @inlinable
-  public static func buildExpression<R: ReducerProtocol<State, Action>>(_ expression: R) -> R where R.Body == R {
+  public static func buildExpression<R: ReducerProtocol<State, Action>>(
+    _ expression: R
+  ) -> R where R.Body == R {
     expression
   }
 
   @inlinable
-  public static func buildExpression<R: ReducerProtocol<State, Action>>(_ expression: R) -> R {
+  public static func buildExpression<R: ReducerProtocol<State, Action>>(
+    _ expression: R
+  ) -> R {
     expression
   }
 
@@ -15,8 +19,16 @@ public enum ReducerBuilder<State, Action> {
     .init()
   }
 
+  public static func buildBlock<R: ReducerProtocol<State, Action>>(_ component: R)
+    -> R
+  {
+    component
+  }
+
   @inlinable
-  public static func buildPartialBlock<R: ReducerProtocol<State, Action>>(first: R) -> R {
+  public static func buildPartialBlock<R: ReducerProtocol<State, Action>>(first: R)
+    -> R
+  {
     first
   }
 
@@ -25,6 +37,28 @@ public enum ReducerBuilder<State, Action> {
     R0: ReducerProtocol<State, Action>, R1: ReducerProtocol<State, Action>
   >(accumulated: R0, next: R1) -> Sequence<R0, R1> {
     .init(r0: accumulated, r1: next)
+  }
+
+  // These overloads should bypass EmptyReducer's if overloading is respeced with buildPartialBlock.
+  @inlinable
+  public static func buildPartialBlock<
+    R1: ReducerProtocol<State, Action>
+  >(accumulated: EmptyReducer<State, Action>, next: R1) -> R1 {
+    next
+  }
+
+  @inlinable
+  public static func buildPartialBlock<
+    R0: ReducerProtocol<State, Action>
+  >(accumulated: R0, next: EmptyReducer<State, Action>) -> R0 {
+    accumulated
+  }
+
+  @inlinable
+  public static func buildPartialBlock(
+    accumulated: EmptyReducer<State, Action>, next: EmptyReducer<State, Action>
+  ) -> EmptyReducer<State, Action> {
+    EmptyReducer<State, Action>()
   }
 
   public struct Sequence<R0: ReducerProtocol, R1: ReducerProtocol>: ReducerProtocol
@@ -49,4 +83,34 @@ public enum ReducerBuilder<State, Action> {
       )
     }
   }
+
+  public static func buildOptional<R: ReducerProtocol<State, Action>>(
+    _ component: R?
+  ) -> _Either<R, EmptyReducer<State, Action>> {
+    if let component = component {
+      return .first(component)
+    } else {
+      return .second(.init())
+    }
+  }
+
+  public static func buildEither<
+    R1: ReducerProtocol<State, Action>, R2: ReducerProtocol<State, Action>
+  >(first component: R1) -> _Either<R1, R2> {
+    .first(component)
+  }
+
+  public static func buildEither<
+    R1: ReducerProtocol<State, Action>, R2: ReducerProtocol<State, Action>
+  >(second component: R2) -> _Either<R1, R2> {
+    .second(component)
+  }
+
+  public static func buildLimitedAvailability<R: ReducerProtocol<State, Action>>(
+    _ component: R
+  ) -> R {
+    component
+  }
 }
+
+

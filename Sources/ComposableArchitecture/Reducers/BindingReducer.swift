@@ -9,7 +9,7 @@ extension ReducerProtocol where Action: BindableAction, State == Action.State {
 //  }
   // Use `ReducerModifier`:
   @inlinable
-  public func binding() -> some ReducerProtocol<State, Action> {
+  public func binding() -> ModifiedContent<Self, BindingModifier<State, Action>> {
     modifier(BindingModifier())
   }
 }

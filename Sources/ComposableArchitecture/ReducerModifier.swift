@@ -1,4 +1,4 @@
-public protocol ReducerModifier {
+public protocol ReducerModifier<State, Action> {
   associatedtype State
   associatedtype Action
   
@@ -32,29 +32,30 @@ public struct _ReducerModifier_Content<Modifier: ReducerModifier>: ReducerProtoc
   }
 }
 
-public struct ModifiedContent<Content, Modifier: ReducerModifier> {
-  public init(content: Content, modifier: Modifier) {
-    self.content = content
+public struct ModifiedContent<Base, Modifier: ReducerModifier> {
+  public init(content: Base, modifier: Modifier) {
+    self.base = content
     self.modifier = modifier
   }
   
-  public var content: Content
+  public var base: Base
   public var modifier: Modifier
 }
 
 extension ModifiedContent: ReducerProtocol
-where Content: ReducerProtocol,
-      Content.State == Modifier.State,
-      Content.Action == Modifier.Action
+where Base: ReducerProtocol,
+      Base.State == Modifier.State,
+      Base.Action == Modifier.Action
 {
   public typealias Body = Self
 
   public func reduce(into state: inout Modifier.State, action: Modifier.Action) -> Effect<Modifier.Action, Never> {
-    let content = _ReducerModifier_Content<Modifier>(content: self.content)
+    let content = _ReducerModifier_Content<Modifier>(content: self.base)
     let modified = modifier.body(content: content)
     return modified.reduce(into: &state, action: action)
   }
 }
+
 
 extension ReducerProtocol {
   public func modifier<Modifier: ReducerModifier>(_ modifier: Modifier) -> ModifiedContent<Self, Modifier> where State == Modifier.State, Action == Modifier.Action {
@@ -63,10 +64,22 @@ extension ReducerProtocol {
 }
 
 // I can't make modifier concatenation to build yet
-//extension ModifiedContent: ReducerModifier
-//where Content: ReducerModifier, Content.State == Modifier.State, Content.Action == Modifier.Action {
-//
-//  public func body(content: Content) -> some ReducerProtocol {
-//    self.modifier.body(content: self.content.body(content: .init(content: content)))
-//  }
-//}
+extension ModifiedContent: ReducerModifier
+where Base: ReducerModifier, Base.State == Modifier.State, Base.Action == Modifier.Action {
+  public typealias State = Modifier.State
+  public typealias Action = Modifier.Action
+  
+  // Implementation is inefficient and only their to provide some API.
+  public typealias Body = ModifiedContent<ModifiedContent<Content, Base>, Modifier>
+  public func body(content: Content) -> ModifiedContent<ModifiedContent<Content, Base>, Modifier> {
+    content
+      .modifier(base)
+      .modifier(modifier)
+  }
+}
+
+extension ReducerModifier {
+  public func concat<Modifier: ReducerModifier>(_ modifier: Modifier) -> ModifiedContent<Self, Modifier> where State == Modifier.State, Action == Modifier.Action {
+    ModifiedContent(content: self, modifier: modifier)
+  }
+}

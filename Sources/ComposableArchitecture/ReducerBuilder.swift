@@ -84,6 +84,7 @@ public enum ReducerBuilder<State, Action> {
     }
   }
 
+  @inlinable
   public static func buildOptional<R: ReducerProtocol<State, Action>>(
     _ component: R?
   ) -> _Either<R, EmptyReducer<State, Action>> {
@@ -94,18 +95,21 @@ public enum ReducerBuilder<State, Action> {
     }
   }
 
+  @inlinable
   public static func buildEither<
     R1: ReducerProtocol<State, Action>, R2: ReducerProtocol<State, Action>
   >(first component: R1) -> _Either<R1, R2> {
     .first(component)
   }
 
+  @inlinable
   public static func buildEither<
     R1: ReducerProtocol<State, Action>, R2: ReducerProtocol<State, Action>
   >(second component: R2) -> _Either<R1, R2> {
     .second(component)
   }
 
+  @inlinable
   public static func buildLimitedAvailability<R: ReducerProtocol<State, Action>>(
     _ component: R
   ) -> R {

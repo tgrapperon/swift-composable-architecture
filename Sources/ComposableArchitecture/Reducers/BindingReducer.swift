@@ -3,10 +3,16 @@ import SwiftUI
 
 #if compiler(>=5.4)
 extension ReducerProtocol where Action: BindableAction, State == Action.State {
-//  @inlinable
-//  public func binding() -> BindingReducer<Self> {
-//    .init(upstream: self)
-//  }
+  @inlinable
+  public func bindingWrapper() -> BindingReducer<Self> {
+    .init(upstream: self)
+  }
+  
+  @inlinable
+  public func bindingWrapperWithBody() -> BindingReducerWithBody<Self> {
+    .init(upstream: self)
+  }
+  
   // Use `ReducerModifier`:
   @inlinable
   public func binding() -> ModifiedContent<Self, BindingModifier<State, Action>> {
@@ -38,9 +44,35 @@ where Upstream.Action: BindableAction, Upstream.State == Upstream.Action.State {
   }
 }
 
+public struct BindingReducerWithBody<Upstream: ReducerProtocol>: ReducerProtocol
+where Upstream.Action: BindableAction, Upstream.State == Upstream.Action.State {  
+  @usableFromInline
+  let upstream: Upstream
+
+  @usableFromInline
+  init(upstream: Upstream) {
+    self.upstream = upstream
+  }
+  
+  @inlinable
+  public var body: some ReducerProtocol<Upstream.State, Upstream.Action> {
+    IfLet {
+      (/Action.binding).extract(from: $1)
+    } then: { bindingAction in
+      Reduce { state, _ in
+        bindingAction.set(&state)
+        return .none
+      }
+    }
+    upstream
+  }
+}
+
 public struct BindingModifier<State, Action>: ReducerModifier
 where Action: BindableAction, State == Action.State {
-  public init() {}
+  @usableFromInline
+  init() {}
+  @inlinable
   public func body(content: Content) -> some ReducerProtocol<State, Action> {
     IfLet {
       (/Action.binding).extract(from: $1)

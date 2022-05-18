@@ -42,7 +42,6 @@ public struct IfLet<
   State,
   Action
 >: ReducerProtocol {
-
   public init(
     condition: @escaping (State, Action) -> Value?,
     @ReducerBuilder<State, Action> then someReducer: @escaping (Value) -> Some,
@@ -52,15 +51,19 @@ public struct IfLet<
     self.someReducer = someReducer
     self.noneReducer = noneReducer()
   }
+  @usableFromInline
   let condition: (State, Action) -> Value?
+  @usableFromInline
   let someReducer: (Value) -> Some
-  let noneReducer: None
+  @usableFromInline
+  let noneReducer: None?
 
+  @inlinable
   public func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
     if let value = condition(state, action) {
       return someReducer(value).reduce(into: &state, action: action)
     } else {
-      return noneReducer.reduce(into: &state, action: action)
+      return noneReducer?.reduce(into: &state, action: action) ?? .none
     }
   }
 }
@@ -71,7 +74,7 @@ extension IfLet where None == EmptyReducer<State, Action> {
     @ReducerBuilder<State, Action> then someReducer: @escaping (Value) -> Some ) {
     self.condition = condition
     self.someReducer = someReducer
-    self.noneReducer = EmptyReducer<State, Action>()
+    self.noneReducer = nil
   }
 }
 

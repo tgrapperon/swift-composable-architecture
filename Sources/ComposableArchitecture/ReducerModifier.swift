@@ -22,11 +22,13 @@ public struct _ReducerModifier_Content<Modifier: ReducerModifier>: ReducerProtoc
     NeverReducer<Modifier.State, Modifier.Action>()
   }
   
+  @usableFromInline
   init<Content: ReducerProtocol<Modifier.State, Modifier.Action>>(content: Content) {
     self._reduce = content.reduce(into:action:)
   }
-  
+  @usableFromInline
   let _reduce: (inout Modifier.Content.State, Modifier.Content.Action) -> Effect<Modifier.Content.Action, Never>
+  @inlinable
   public func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
     _reduce(&state, action)
   }

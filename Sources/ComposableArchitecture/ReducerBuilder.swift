@@ -50,4 +50,47 @@ public enum ReducerBuilder<State, Action> {
       )
     }
   }
+
+//  public static func buildFinalResult<S: ReducerSequence>(_ component: S)
+//    -> FlattenedReducerSequence<S>
+//  {
+//    FlattenedReducerSequence(sequence: component)
+//  }
+//
+//  @_disfavoredOverload
+//  public static func buildFinalResult<R: ReducerProtocol>(_ component: R) -> R {
+//    component
+//  }
+}
+
+public protocol ReducerSequence {
+  associatedtype State
+  associatedtype Action
+  func reducers() -> [(inout State, Action) -> Effect<Action, Never>]
+}
+
+public struct FlattenedReducerSequence<S: ReducerSequence>: ReducerProtocol {
+  @usableFromInline
+  let sequence: S
+  @inlinable
+  public func reduce(into state: inout S.State, action: S.Action) -> Effect<S.Action, Never> {
+    .merge(sequence.reducers().map { $0(&state, action) })
+  }
+}
+
+extension ReducerBuilder.Sequence: ReducerSequence {
+  @inlinable
+  public func reducers() -> [(inout R0.State, R0.Action) -> Effect<R0.Action, Never>] {
+    var r0Reducers = r0.reducers()
+    r0Reducers.append(contentsOf: r1.reducers())
+    return r0Reducers
+  }
+}
+
+extension ReducerProtocol {
+  @_disfavoredOverload
+  @inlinable
+  func reducers() -> [(inout State, Action) -> Effect<Action, Never>] {
+    [self.reduce(into:action:)]
+  }
 }

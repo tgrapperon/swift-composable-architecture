@@ -32,4 +32,43 @@ where Upstream.Action: BindableAction, Upstream.State == Upstream.Action.State {
     return self.upstream.reduce(into: &state, action: action)
   }
 }
+
+extension ReducerProtocol where Action: BindableAction, State == Action.State {
+  @inlinable
+  public func bindingWithBody() -> BindingReducerWithBody<Self> {
+    .init(upstream: self)
+  }
+}
+
+@usableFromInline
+struct BindingActionReducer<State, Action>: ReducerProtocol
+  where Action: BindableAction, Action.State == State {
+  @usableFromInline
+  init() {}
+
+  @inlinable
+  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+    (/Action.binding).extract(from: action)?.set(&state)
+    return .none
+  }
+}
+
+public struct BindingReducerWithBody<Upstream: ReducerProtocol>: ReducerProtocol
+where Upstream.Action: BindableAction, Upstream.State == Upstream.Action.State {
+  public typealias State = Upstream.State
+  public typealias Action = Upstream.Action
+  @usableFromInline
+  let upstream: Upstream
+
+  @usableFromInline
+  init(upstream: Upstream) {
+    self.upstream = upstream
+  }
+
+  @inlinable
+  public var body: some ReducerProtocol<State, Action> {
+    BindingActionReducer<State, Action>()
+    upstream
+  }
+}
 #endif

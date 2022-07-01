@@ -108,47 +108,73 @@ struct AnimationsView: View {
   let store: Store<AnimationsState, AnimationsAction>
 
   var body: some View {
-    WithViewStore(self.store) { viewStore in
-      GeometryReader { proxy in
-        VStack(alignment: .leading) {
-          ZStack(alignment: .center) {
-            Text(template: readMe, .body)
-              .padding()
+GeometryReader { proxy in
+  WithControlledStore(store) {
+    Start()
+    Wait(seconds: 3)
+    Send(.tapped(.init(x: proxy.size.width, y: 200)))
+    Wait(seconds: 2)
+    let radius: CGFloat = 100
+    for i in 0...100 {
+      let progress = 3 * CGFloat(i) / 100.0
+      Send(
+        .tapped(
+          CGPoint(
+            x: radius * sin(progress) * cos(2 * .pi * progress) + proxy.size.width / 2,
+            y: radius * cos(progress) * sin(2 * .pi * progress) + proxy.size.height / 2
+          )
+        ),
+        after: 0.05, animation: .interactiveSpring()
+      )
+      if i.isMultiple(of: 50) {
+        Send(.rainbowButtonTapped, animation: .default)
+      }
+    }
+    Loop()
+  } content: { store in
+    WithViewStore(store) { viewStore in
+          GeometryReader { proxy in
+            VStack(alignment: .leading) {
+              ZStack(alignment: .center) {
+                Text(template: readMe, .body)
+                  .padding()
 
-            Circle()
-              .fill(viewStore.circleColor)
-              .blendMode(.difference)
-              .frame(width: 50, height: 50)
-              .scaleEffect(viewStore.isCircleScaled ? 2 : 1)
-              .offset(
-                x: viewStore.circleCenter.x - proxy.size.width / 2,
-                y: viewStore.circleCenter.y - proxy.size.height / 2
+                Circle()
+                  .fill(viewStore.circleColor)
+                  .blendMode(.difference)
+                  .frame(width: 50, height: 50)
+                  .scaleEffect(viewStore.isCircleScaled ? 2 : 1)
+                  .offset(
+                    x: viewStore.circleCenter.x - proxy.size.width / 2,
+                    y: viewStore.circleCenter.y - proxy.size.height / 2
+                  )
+              }
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+              .background(self.colorScheme == .dark ? Color.black : .white)
+              .simultaneousGesture(
+                DragGesture(minimumDistance: 0).onChanged { gesture in
+                  viewStore.send(
+                    .tapped(gesture.location),
+                    animation: .interactiveSpring(response: 0.25, dampingFraction: 0.1)
+                  )
+                }
               )
-          }
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(self.colorScheme == .dark ? Color.black : .white)
-          .simultaneousGesture(
-            DragGesture(minimumDistance: 0).onChanged { gesture in
-              viewStore.send(
-                .tapped(gesture.location),
-                animation: .interactiveSpring(response: 0.25, dampingFraction: 0.1)
+              Toggle(
+                "Big mode",
+                isOn:
+                  viewStore
+                  .binding(get: \.isCircleScaled, send: AnimationsAction.circleScaleToggleChanged)
+                  .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.1))
               )
+              .padding()
+              Button("Rainbow") { viewStore.send(.rainbowButtonTapped, animation: .linear) }
+                .padding([.horizontal, .bottom])
+              Button("Reset") { viewStore.send(.resetButtonTapped) }
+                .padding([.horizontal, .bottom])
             }
-          )
-          Toggle(
-            "Big mode",
-            isOn:
-              viewStore
-              .binding(get: \.isCircleScaled, send: AnimationsAction.circleScaleToggleChanged)
-              .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.1))
-          )
-          .padding()
-          Button("Rainbow") { viewStore.send(.rainbowButtonTapped, animation: .linear) }
-            .padding([.horizontal, .bottom])
-          Button("Reset") { viewStore.send(.resetButtonTapped) }
-            .padding([.horizontal, .bottom])
+            .alert(self.store.scope(state: \.alert), dismiss: .dismissAlert)
+          }
         }
-        .alert(self.store.scope(state: \.alert), dismiss: .dismissAlert)
       }
     }
   }

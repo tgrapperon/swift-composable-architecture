@@ -130,7 +130,7 @@ GeometryReader { proxy in
         Send(.rainbowButtonTapped, animation: .default)
       }
     }
-    Loop()
+    Restart()
   } content: { store in
     WithViewStore(store) { viewStore in
           GeometryReader { proxy in

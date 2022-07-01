@@ -12,7 +12,7 @@ extension ControlledStore {
 
 public struct Start { public init() {} }
 public struct Stop { public init() {} }
-public struct Loop { public init() {} }
+public struct Restart { public init() {} }
 
 public struct Send<Action> {
   var action: Action
@@ -66,9 +66,27 @@ public struct WithControlledStore<State, Action, Content: View>: View {
   }
 }
 
+extension ControlledStore {
+  struct State {
+    init(actions: [Action]) {
+      self.actions = actions
+    }
+    var actions: [Action]
+    var nextActions: [Action] = []
+    var inFlight: Action?
+    mutating func extractNextAction() -> Action? {
+      guard !nextActions.isEmpty else { return nil }
+      nextActions.removeFirst()
+      inFlight = nextActions.first
+      return inFlight
+    }
+  }
+}
+
 extension WithControlledStore {
   final class StoreController: ObservableObject {
-    var controllerStore: Store<Void, ControlledStore.Action>?
+    
+    var controllerStore: Store<ControlledStore.State, ControlledStore.Action>?
     var controllerViewStore: ViewStore<Void, ControlledStore.Action>?
     var store: Any?
     init() {}
@@ -76,50 +94,49 @@ extension WithControlledStore {
       guard controllerStore == nil else { return }
       self.store = store
       let viewStore = ViewStore(store.stateless)
-      var actionIndex = actions.startIndex
+      
       let id = ObjectIdentifier(self)
-      func nextAction() -> ControlledStore.Action? {
-        actionIndex < actions.count ? actions[actionIndex] : nil
-      }
-      var actionIsInFlight: Bool = false
-      let reducer = Reducer<Void, ControlledStore.Action, Void> { _, action, _ in
-
+      let reducer = Reducer<ControlledStore.State, ControlledStore.Action, Void> { state, action, _ in
         switch action {
         case let .send(action, delay, animation):
-          actionIndex += 1
-          actionIsInFlight = true
+          let nextAction = state.extractNextAction()
           return .merge(
             .fireAndForget { viewStore.send(action as! Action, animation: animation) },
-            Effect(value: nextAction() ?? .end)
+            Effect(value: nextAction ?? .end)
           ).deferred(
             for: .seconds(delay ?? 0),
             scheduler: DispatchQueue.main.eraseToAnyScheduler()
           )
           .cancellable(id: id, cancelInFlight: true)
         case .command(.run):
-          var action = nextAction()
-          while case .command(.run) = action, action != nil {
-            actionIndex += 1
-            action = nextAction()
+          // Prime if needed
+          if state.nextActions.isEmpty, state.inFlight == nil {
+            state.nextActions = actions
           }
-          return Effect(value: action ?? .end)
+          
+          var nextAction = state.extractNextAction()
+          while case .command(.run) = nextAction, nextAction != nil {
+            nextAction = state.extractNextAction()
+          }
+          return Effect(value: nextAction ?? .end)
+          
         case .command(.pause):
-          if actionIsInFlight, actionIndex > 0 {
-            actionIndex -= 1
+          if let inFlight = state.inFlight {
+            state.nextActions.insert(inFlight, at: 0)
           }
-          actionIsInFlight = false
+          state.inFlight = nil
           return .cancel(id: id)
         case .end:
-          actionIsInFlight = false
+          state.inFlight = nil
+          state.nextActions = []
           return .cancel(id: id)
-        case .loop:
-          actionIndex = 0
-          actionIsInFlight = false
-          return Effect(value: nextAction() ?? .end)
+        case .restart:
+          state.nextActions = state.actions
+          let nextAction = state.extractNextAction()
+          return Effect(value: nextAction ?? .end)
         case let .next(delay):
-          actionIndex += 1
-          actionIsInFlight = true
-          return Effect(value: .command(.run))
+          let nextAction = state.extractNextAction()
+          return Effect(value: nextAction ?? .end)
             .deferred(
               for: .seconds(delay ?? 0),
               scheduler: DispatchQueue.main.eraseToAnyScheduler()
@@ -127,8 +144,8 @@ extension WithControlledStore {
             .cancellable(id: id, cancelInFlight: true)
         }
       }
-      self.controllerStore = Store(initialState: (), reducer: reducer, environment: ())
-      self.controllerViewStore = ViewStore(controllerStore!)
+      self.controllerStore = Store(initialState: .init(actions: actions), reducer: reducer, environment: ())
+      self.controllerViewStore = ViewStore(controllerStore!.stateless)
     }
 
     func send(_ command: ControlledStore.Command?) {
@@ -143,7 +160,7 @@ extension ControlledStore {
     case send(Any, after: TimeInterval? = 0, animation: Animation? = nil)
     case command(Command)
     case end
-    case loop
+    case restart
     case next(after: TimeInterval? = 0)
   }
 }
@@ -170,8 +187,8 @@ extension ControlledStore {
       [.command(.pause)]
     }
 
-    public static func buildExpression(_ expression: Loop) -> [ControlledStore.Action] {
-      [.loop]
+    public static func buildExpression(_ expression: Restart) -> [ControlledStore.Action] {
+      [.restart]
     }
 
     public static func buildExpression(_ expression: Send<Action>) -> [ControlledStore.Action] {

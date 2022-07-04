@@ -1221,7 +1221,7 @@ public struct _ExhaustivityCheckView<State, Action>: View {
   }
 }
 
-private class StoreObservableObject<State, Action>: ObservableObject {
+class StoreObservableObject<State, Action>: ObservableObject {
   let wrappedValue: Store<State, Action>
 
   init(store: Store<State, Action>) {
@@ -1229,7 +1229,7 @@ private class StoreObservableObject<State, Action>: ObservableObject {
   }
 }
 
-private func enumTag<Case>(_ `case`: Case) -> UInt32? {
+func enumTag<Case>(_ `case`: Case) -> UInt32? {
   let metadataPtr = unsafeBitCast(type(of: `case`), to: UnsafeRawPointer.self)
   let kind = metadataPtr.load(as: Int.self)
   let isEnumOrOptional = kind == 0x201 || kind == 0x202

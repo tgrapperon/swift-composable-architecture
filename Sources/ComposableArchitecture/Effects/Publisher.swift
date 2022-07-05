@@ -44,7 +44,7 @@ extension Effect {
     message: "Iterate over 'Publisher.values' in an 'Effect.run', instead"
   )
   public init<P: Publisher>(_ publisher: P) where P.Output == Output, P.Failure == Failure {
-    self.publisher = publisher.eraseToAnyPublisher()
+    self = .publisher(publisher.eraseToAnyPublisher())
   }
 
   /// Initializes an effect that immediately emits the value passed in.
@@ -55,7 +55,7 @@ extension Effect {
   @available(tvOS, deprecated: 9999.0, message: "Wrap the value in 'Effect.task', instead")
   @available(watchOS, deprecated: 9999.0, message: "Wrap the value in 'Effect.task', instead")
   public init(value: Output) {
-    self.init(Just(value).setFailureType(to: Failure.self))
+    self = .value(value)
   }
 
   /// Initializes an effect that immediately fails with the error passed in.

@@ -12,13 +12,22 @@ import Foundation
 ///
 /// An effect simply wraps a `Publisher` value and provides some convenience initializers for
 /// constructing some common types of effects.
-public struct Effect<Output, Failure: Error> {
-  let publisher: AnyPublisher<Output, Failure>
-
+public enum Effect<Output, Failure: Error> {
   /// An effect that does nothing and completes immediately. Useful for situations where you must
   /// return an effect, but you don't need to do anything.
-  public static var none: Self {
-    Empty(completeImmediately: true).eraseToEffect()
+  case none
+  case value(Output)
+  case publisher(AnyPublisher<Output, Failure>)
+  
+  var publisher: AnyPublisher<Output, Failure> {
+    switch self {
+    case .none:
+      return Empty(completeImmediately: true).eraseToAnyPublisher()
+    case .value(let value):
+      return Just(value).setFailureType(to: Failure.self).eraseToAnyPublisher()
+    case .publisher(let publisher):
+      return publisher
+    }
   }
 
   /// Merges a variadic list of effects together into a single effect, which runs the effects at the

@@ -262,3 +262,13 @@ private func _isEqual(_ a: Any, _ b: Any) -> Bool? {
   }
   return _openExistential(type(of: a), do: `do`)
 }
+
+import SwiftUI
+@_transparent
+@discardableResult
+public func withAnimation(
+  _ animation: Animation? = .default,
+  _ body: () throws -> ViewStoreTask
+) rethrows -> ViewStoreTask {
+  try SwiftUI.withAnimation(animation, body)
+}

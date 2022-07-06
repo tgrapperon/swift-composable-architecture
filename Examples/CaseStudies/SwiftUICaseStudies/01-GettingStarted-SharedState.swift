@@ -193,7 +193,11 @@ struct SharedStateCounterView: View {
 
         VStack(spacing: 16) {
           HStack {
-            Button("−") { viewStore.send(.decrementButtonTapped) }
+            Button("−") {
+              withAnimation {
+                viewStore.send(.decrementButtonTapped)
+              }
+            }
 
             Text("\(viewStore.count)")
               .font(.body.monospacedDigit())

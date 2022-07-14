@@ -3,9 +3,9 @@ import GameCore
 import SwiftUI
 
 public struct GameView: View {
-  let store: Store<GameState, GameAction>
+  @ViewScope<ViewState>.ObservedStore var store: Store<GameState, GameAction>
 
-  struct ViewState: Equatable {
+  struct ViewState: ViewStateProtocol {
     var board: [[String]]
     var isGameDisabled: Bool
     var isPlayAgainButtonVisible: Bool
@@ -29,34 +29,32 @@ public struct GameView: View {
   }
 
   public var body: some View {
-    WithViewStore(self.store.scope(state: ViewState.init)) { viewStore in
-      GeometryReader { proxy in
-        VStack(spacing: 0.0) {
-          VStack {
-            Text(viewStore.title)
-              .font(.title)
+    GeometryReader { proxy in
+      VStack(spacing: 0.0) {
+        VStack {
+          Text($store.title)
+            .font(.title)
 
-            if viewStore.isPlayAgainButtonVisible {
-              Button("Play again?") {
-                viewStore.send(.playAgainButtonTapped)
-              }
-              .padding(.top, 12)
-              .font(.title)
+          if $store.isPlayAgainButtonVisible {
+            Button("Play again?") {
+              $store.send(.playAgainButtonTapped)
             }
+            .padding(.top, 12)
+            .font(.title)
           }
-          .padding(.bottom, 48)
-
-          VStack {
-            self.rowView(row: 0, proxy: proxy, viewStore: viewStore)
-            self.rowView(row: 1, proxy: proxy, viewStore: viewStore)
-            self.rowView(row: 2, proxy: proxy, viewStore: viewStore)
-          }
-          .disabled(viewStore.isGameDisabled)
         }
-        .navigationTitle("Tic-tac-toe")
-        .navigationBarItems(leading: Button("Quit") { viewStore.send(.quitButtonTapped) })
-        .navigationBarBackButtonHidden(true)
+        .padding(.bottom, 48)
+
+        VStack {
+          self.rowView(row: 0, proxy: proxy, viewStore: $store)
+          self.rowView(row: 1, proxy: proxy, viewStore: $store)
+          self.rowView(row: 2, proxy: proxy, viewStore: $store)
+        }
+        .disabled($store.isGameDisabled)
       }
+      .navigationTitle("Tic-tac-toe")
+      .navigationBarItems(leading: Button("Quit") { $store.send(.quitButtonTapped) })
+      .navigationBarBackButtonHidden(true)
     }
   }
 

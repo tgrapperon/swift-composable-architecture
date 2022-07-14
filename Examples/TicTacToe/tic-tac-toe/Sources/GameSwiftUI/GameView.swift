@@ -3,8 +3,8 @@ import GameCore
 import SwiftUI
 
 public struct GameView: View {
-  @ViewScope<ViewState>.ObservedStore var store: Store<GameState, GameAction>
-
+  @ObservedStore.Of<ViewState> var store: Store<GameState, GameAction>
+  
   struct ViewState: ViewStateProtocol {
     var board: [[String]]
     var isGameDisabled: Bool

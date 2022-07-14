@@ -4,9 +4,10 @@ import SwiftUI
 import TwoFactorCore
 
 public struct TwoFactorView: View {
-  let store: Store<TwoFactorState, TwoFactorAction>
+  @ObservedStore.Of<ViewState>.And<ViewAction>
+  var store: Store<TwoFactorState, TwoFactorAction>
 
-  struct ViewState: Equatable {
+  struct ViewState: ViewStateProtocol {
     var alert: AlertState<TwoFactorAction>?
     var code: String
     var isActivityIndicatorVisible: Bool
@@ -22,10 +23,11 @@ public struct TwoFactorView: View {
     }
   }
 
-  enum ViewAction: Equatable {
+  enum ViewAction: Equatable, ViewActionProtocol {
     case alertDismissed
     case codeChanged(String)
     case submitButtonTapped
+    static var embed: (Self) -> TwoFactorAction { TwoFactorAction.init(action:) }
   }
 
   public init(store: Store<TwoFactorState, TwoFactorAction>) {
@@ -33,43 +35,39 @@ public struct TwoFactorView: View {
   }
 
   public var body: some View {
-    WithViewStore(
-      self.store.scope(state: ViewState.init, action: TwoFactorAction.init)
-    ) { viewStore in
-      Form {
-        Text(#"To confirm the second factor enter "1234" into the form."#)
+    Form {
+      Text(#"To confirm the second factor enter "1234" into the form."#)
 
-        Section {
-          TextField(
-            "1234",
-            text: viewStore.binding(get: \.code, send: ViewAction.codeChanged)
+      Section {
+        TextField(
+          "1234",
+          text: $store.binding(get: \.code, send: ViewAction.codeChanged)
+        )
+        .keyboardType(.numberPad)
+      }
+
+      HStack {
+        Button("Submit") {
+          // NB: SwiftUI will print errors to the console about "AttributeGraph: cycle detected"
+          //     if you disable a text field while it is focused. This hack will force all
+          //     fields to unfocus before we send the action to the view store.
+          // CF: https://stackoverflow.com/a/69653555
+          UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
           )
-          .keyboardType(.numberPad)
+          $store.send(.submitButtonTapped)
         }
+        .disabled($store.isSubmitButtonDisabled)
 
-        HStack {
-          Button("Submit") {
-            // NB: SwiftUI will print errors to the console about "AttributeGraph: cycle detected"
-            //     if you disable a text field while it is focused. This hack will force all
-            //     fields to unfocus before we send the action to the view store.
-            // CF: https://stackoverflow.com/a/69653555
-            UIApplication.shared.sendAction(
-              #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
-            )
-            viewStore.send(.submitButtonTapped)
-          }
-          .disabled(viewStore.isSubmitButtonDisabled)
-
-          if viewStore.isActivityIndicatorVisible {
-            Spacer()
-            ProgressView()
-          }
+        if $store.isActivityIndicatorVisible {
+          Spacer()
+          ProgressView()
         }
       }
-      .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
-      .disabled(viewStore.isFormDisabled)
-      .navigationTitle("Confirmation Code")
     }
+    .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
+    .disabled($store.isFormDisabled)
+    .navigationTitle("Confirmation Code")
   }
 }
 

@@ -6,9 +6,10 @@ import TwoFactorCore
 import TwoFactorSwiftUI
 
 public struct LoginView: View {
-  let store: Store<LoginState, LoginAction>
+  @ObservedStore.Of<ViewState>.And<ViewAction>
+  var store: Store<LoginState, LoginAction>
 
-  struct ViewState: Equatable {
+  struct ViewState: ViewStateProtocol {
     var alert: AlertState<LoginAction>?
     var email: String
     var isActivityIndicatorVisible: Bool
@@ -28,7 +29,10 @@ public struct LoginView: View {
     }
   }
 
-  enum ViewAction {
+  enum ViewAction: ViewActionProtocol {
+    static var embed: (Self) -> LoginAction {
+      LoginAction.init
+    }
     case alertDismissed
     case emailChanged(String)
     case loginButtonTapped
@@ -41,62 +45,60 @@ public struct LoginView: View {
   }
 
   public var body: some View {
-    WithViewStore(self.store.scope(state: ViewState.init, action: LoginAction.init)) { viewStore in
-      Form {
-        Text(
-          """
-          To login use any email and "password" for the password. If your email contains the \
-          characters "2fa" you will be taken to a two-factor flow, and on that screen you can \
-          use "1234" for the code.
-          """
+    Form {
+      Text(
+        """
+        To login use any email and "password" for the password. If your email contains the \
+        characters "2fa" you will be taken to a two-factor flow, and on that screen you can \
+        use "1234" for the code.
+        """
+      )
+
+      Section {
+        TextField(
+          "blob@pointfree.co",
+          text: $store.binding(get: \.email, send: ViewAction.emailChanged)
         )
+        .autocapitalization(.none)
+        .keyboardType(.emailAddress)
+        .textContentType(.emailAddress)
 
-        Section {
-          TextField(
-            "blob@pointfree.co",
-            text: viewStore.binding(get: \.email, send: ViewAction.emailChanged)
-          )
-          .autocapitalization(.none)
-          .keyboardType(.emailAddress)
-          .textContentType(.emailAddress)
-
-          SecureField(
-            "••••••••",
-            text: viewStore.binding(get: \.password, send: ViewAction.passwordChanged)
-          )
-        }
-
-        NavigationLink(
-          destination: IfLetStore(
-            self.store.scope(state: \.twoFactor, action: LoginAction.twoFactor)
-          ) {
-            TwoFactorView(store: $0)
-          },
-          isActive: viewStore.binding(
-            get: \.isTwoFactorActive,
-            send: {
-              // NB: SwiftUI will print errors to the console about "AttributeGraph: cycle detected"
-              //     if you disable a text field while it is focused. This hack will force all
-              //     fields to unfocus before we send the action to the view store.
-              // CF: https://stackoverflow.com/a/69653555
-              UIApplication.shared.sendAction(
-                #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
-              )
-              return $0 ? .loginButtonTapped : .twoFactorDismissed
-            }
-          )
-        ) {
-          Text("Log in")
-          if viewStore.isActivityIndicatorVisible {
-            Spacer()
-            ProgressView()
-          }
-        }
-        .disabled(viewStore.isLoginButtonDisabled)
+        SecureField(
+          "••••••••",
+          text: $store.binding(get: \.password, send: ViewAction.passwordChanged)
+        )
       }
-      .disabled(viewStore.isFormDisabled)
-      .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
+
+      NavigationLink(
+        destination: IfLetStore(
+          self.store.scope(state: \.twoFactor, action: LoginAction.twoFactor)
+        ) {
+          TwoFactorView(store: $0)
+        },
+        isActive: $store.binding(
+          get: \.isTwoFactorActive,
+          send: {
+            // NB: SwiftUI will print errors to the console about "AttributeGraph: cycle detected"
+            //     if you disable a text field while it is focused. This hack will force all
+            //     fields to unfocus before we send the action to the view store.
+            // CF: https://stackoverflow.com/a/69653555
+            UIApplication.shared.sendAction(
+              #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+            )
+            return $0 ? .loginButtonTapped : .twoFactorDismissed
+          }
+        )
+      ) {
+        Text("Log in")
+        if $store.isActivityIndicatorVisible {
+          Spacer()
+          ProgressView()
+        }
+      }
+      .disabled($store.isLoginButtonDisabled)
     }
+    .disabled($store.isFormDisabled)
+    .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
     .navigationTitle("Login")
   }
 }

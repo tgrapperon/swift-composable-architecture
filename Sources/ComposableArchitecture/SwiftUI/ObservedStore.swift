@@ -38,7 +38,7 @@ extension ObservedStore {
 
 extension ObservedStore {
   @propertyWrapper
-  public struct ViewAction<ViewAction: ViewActionProtocol>: DynamicProperty
+  public struct Sending<ViewAction: ViewActionProtocol>: DynamicProperty
   where ViewAction.Action == StoreAction, StoreState: Equatable {
     @ObservedObject var viewStore: ViewStore<StoreState, ViewAction>
 
@@ -53,7 +53,7 @@ extension ObservedStore {
 
 extension ObservedStore.Of {
   @propertyWrapper
-  public struct And<ViewAction: ViewActionProtocol>: DynamicProperty
+  public struct Sending<ViewAction: ViewActionProtocol>: DynamicProperty
   where ViewAction.Action == StoreAction {
     @ObservedObject var viewStore: ViewStore<ViewState, ViewAction>
 

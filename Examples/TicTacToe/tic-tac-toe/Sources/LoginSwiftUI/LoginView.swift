@@ -6,7 +6,7 @@ import TwoFactorCore
 import TwoFactorSwiftUI
 
 public struct LoginView: View {
-  @ObservedStore.Of<ViewState>.And<ViewAction>
+  @ObservedStore.Of<ViewState>.Sending<ViewAction>
   var store: Store<LoginState, LoginAction>
 
   struct ViewState: ViewStateProtocol {

@@ -4,7 +4,7 @@ import SwiftUI
 import TwoFactorCore
 
 public struct TwoFactorView: View {
-  @ObservedStore.Of<ViewState>.And<ViewAction>
+  @ObservedStore.Of<ViewState>.Sending<ViewAction>
   var store: Store<TwoFactorState, TwoFactorAction>
 
   struct ViewState: ViewStateProtocol {

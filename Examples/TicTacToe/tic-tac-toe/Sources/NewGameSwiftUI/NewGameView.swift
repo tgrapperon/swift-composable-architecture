@@ -5,7 +5,7 @@ import NewGameCore
 import SwiftUI
 
 public struct NewGameView: View {
-  @ObservedStore.Of<ViewState>.And<ViewAction>
+  @ObservedStore.Of<ViewState>.Sending<ViewAction>
   var store: Store<NewGameState, NewGameAction>
 
   struct ViewState: ViewStateProtocol {

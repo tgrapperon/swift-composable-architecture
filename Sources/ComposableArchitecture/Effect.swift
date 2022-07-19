@@ -14,7 +14,13 @@ import XCTestDynamicOverlay
 /// > thread. This is typically the main thread,  **and** if the store is being used to drive UI
 /// > then it must receive values on the main thread.
 public struct Effect<Output, Failure: Error> {
-  let publisher: AnyPublisher<Output, Failure>
+  let operation: Operation
+
+  enum Operation {
+    case none
+    case publisher(AnyPublisher<Output, Failure>)
+    case run(@Sendable (Send<Output>) async -> Void)
+  }
 }
 
 // MARK: - Creating Effects
@@ -23,7 +29,7 @@ extension Effect {
   /// An effect that does nothing and completes immediately. Useful for situations where you must
   /// return an effect, but you don't need to do anything.
   public static var none: Self {
-    Empty(completeImmediately: true).eraseToEffect()
+    Self(operation: .none)
   }
 }
 
@@ -87,48 +93,35 @@ extension Effect where Failure == Never {
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) -> Self {
-    Deferred<Publishers.HandleEvents<PassthroughSubject<Output, Failure>>> {
-      let subject = PassthroughSubject<Output, Failure>()
-      let task = Task(priority: priority) { @MainActor in
-        defer { subject.send(completion: .finished) }
-        do {
-          try Task.checkCancellation()
-          let output = try await operation()
-          try Task.checkCancellation()
-          subject.send(output)
-        } catch is CancellationError {
-          return
-        } catch {
-          guard let handler = handler else {
-            #if DEBUG
-              var errorDump = ""
-              customDump(error, to: &errorDump, indent: 4)
-              runtimeWarning(
-                """
-                An 'Effect.task' returned from "%@:%d" threw an unhandled error:
+    .run(priority: priority) { send in
+      try await send(operation())
+    } catch: { error, send in
+      guard let handler = handler else {
+        #if DEBUG
+          var errorDump = ""
+          customDump(error, to: &errorDump, indent: 4)
+          runtimeWarning(
+            """
+            An 'Effect.task' returned from "%@:%d" threw an unhandled error:
 
-                %@
+            %@
 
-                All non-cancellation errors must be explicitly handled via the 'catch' parameter \
-                on 'Effect.task', or via a 'do' block.
-                """,
-                [
-                  "\(fileID)",
-                  line,
-                  errorDump
-                ],
-                file: file,
-                line: line
-              )
-            #endif
-            return
-          }
-          await subject.send(handler(error))
-        }
+            All non-cancellation errors must be explicitly handled via the 'catch' parameter on \
+            'Effect.task', or via a 'do' block.
+            """,
+            [
+              "\(fileID)",
+              line,
+              errorDump
+            ],
+            file: file,
+            line: line
+          )
+        #endif
+        return
       }
-      return subject.handleEvents(receiveCancel: task.cancel)
+      await send(handler(error))
     }
-    .eraseToEffect()
   }
 
   /// Wraps an asynchronous unit of work that can emit any number of times in an effect.
@@ -177,46 +170,44 @@ extension Effect where Failure == Never {
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) -> Self {
-    .run { subscriber in
-      let task = Task(priority: priority) { @MainActor in
-        defer { subscriber.send(completion: .finished) }
-        let send = Send(send: { subscriber.send($0) })
-        do {
-          try await operation(send)
-        } catch is CancellationError {
-          return
-        } catch {
-          guard let handler = handler else {
-            #if DEBUG
-              var errorDump = ""
-              customDump(error, to: &errorDump, indent: 4)
-              runtimeWarning(
-                """
-                An 'Effect.run' returned from "%@:%d" threw an unhandled error:
-
-                %@
-
-                All non-cancellation errors must be explicitly handled via the 'catch' parameter \
-                on 'Effect.run', or via a 'do' block.
-                """,
-                [
-                  "\(fileID)",
-                  line,
-                  errorDump
-                ],
-                file: file,
-                line: line
-              )
-            #endif
+    return Self(
+      operation: .run { send in
+        await Task(priority: priority) {
+          do {
+            try await operation(send)
+          } catch is CancellationError {
             return
+          } catch {
+            guard let handler = handler else {
+              #if DEBUG
+                var errorDump = ""
+                customDump(error, to: &errorDump, indent: 4)
+                runtimeWarning(
+                  """
+                  An 'Effect.run' returned from "%@:%d" threw an unhandled error:
+
+                  %@
+
+                  All non-cancellation errors must be explicitly handled via the 'catch' parameter \
+                  on 'Effect.run', or via a 'do' block.
+                  """,
+                  [
+                    "\(fileID)",
+                    line,
+                    errorDump
+                  ],
+                  file: file,
+                  line: line
+                )
+              #endif
+              return
+            }
+            await handler(error, send)
           }
-          await handler(error, send)
         }
+        .cancellableValue
       }
-      return AnyCancellable {
-        task.cancel()
-      }
-    }
+    )
   }
 
   /// Creates an effect that executes some work in the real world that doesn't need to feed data
@@ -245,8 +236,7 @@ extension Effect where Failure == Never {
     priority: TaskPriority? = nil,
     _ work: @escaping @Sendable () async throws -> Void
   ) -> Self {
-    Effect<Void, Never>.task(priority: priority) { try? await work() }
-      .fireAndForget()
+    .run(priority: priority) { _ in try? await work() }
   }
 }
 

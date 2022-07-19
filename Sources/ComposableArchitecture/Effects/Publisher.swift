@@ -5,6 +5,29 @@ import Combine
 @available(tvOS, deprecated: 9999.0)
 @available(watchOS, deprecated: 9999.0)
 extension Effect: Publisher {
+  var publisher: AnyPublisher<Output, Failure> {
+    switch self.operation {
+    case .none:
+      return Empty(completeImmediately: true).eraseToAnyPublisher()
+
+    case let .publisher(publisher):
+      return publisher
+
+    case let .run(operation):
+      return Effect.run { subscriber in
+        let task = Task { @MainActor in
+          defer { subscriber.send(completion: .finished) }
+          let send = Send(send: { subscriber.send($0) })
+          await operation(send)
+        }
+        return AnyCancellable {
+          task.cancel()
+        }
+      }
+      .eraseToAnyPublisher()
+    }
+  }
+
   public func receive<S: Combine.Subscriber>(
     subscriber: S
   ) where S.Input == Output, S.Failure == Failure {
@@ -44,7 +67,7 @@ extension Effect {
     message: "Iterate over 'Publisher.values' in an 'Effect.run', instead"
   )
   public init<P: Publisher>(_ publisher: P) where P.Output == Output, P.Failure == Failure {
-    self.publisher = publisher.eraseToAnyPublisher()
+    self.operation = .publisher(publisher.eraseToAnyPublisher())
   }
 
   /// Initializes an effect that immediately emits the value passed in.

@@ -81,6 +81,7 @@
 		DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD442C5286CA91F008B4EA7 /* AboutView.swift */; };
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
+		E96536F028879FF600509537 /* 05-AdvancedTopics-UnstructuredEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96536EF28879FF600509537 /* 05-AdvancedTopics-UnstructuredEmbedding.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -234,6 +235,7 @@
 		DCD442C5286CA91F008B4EA7 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-Recursion.swift"; sourceTree = "<group>"; };
 		DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaseStudiesApp.swift; sourceTree = "<group>"; };
+		E96536EF28879FF600509537 /* 05-AdvancedTopics-UnstructuredEmbedding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "05-AdvancedTopics-UnstructuredEmbedding.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -421,6 +423,7 @@
 				CA3E4C5A24B4FA0E00447C0B /* 04-HigherOrderReducers-Lifecycle.swift */,
 				DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */,
 				DCC68EE22447C8540037F998 /* 04-HigherOrderReducers-ReusableFavoriting.swift */,
+				E96536EF28879FF600509537 /* 05-AdvancedTopics-UnstructuredEmbedding.swift */,
 				DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */,
 				CA5ECF91267A79F0002067FF /* FactClient.swift */,
 				DC89C41C24460F96006900B9 /* Assets.xcassets */,
@@ -755,6 +758,7 @@
 				CA5ECF92267A79F0002067FF /* FactClient.swift in Sources */,
 				DC9EB4172450CBD2005F413B /* UIViewRepresented.swift in Sources */,
 				CA6AC2652451135C00C71CB3 /* CircularProgressView.swift in Sources */,
+				E96536F028879FF600509537 /* 05-AdvancedTopics-UnstructuredEmbedding.swift in Sources */,
 				CA6AC2642451135C00C71CB3 /* ReusableComponents-Download.swift in Sources */,
 				DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */,
 				DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */,

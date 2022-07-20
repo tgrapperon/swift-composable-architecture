@@ -874,6 +874,80 @@ public struct Reducer<State, Action, Environment> {
       .map { toLocalAction.embed((key, $0)) }
     }
   }
+  
+  /// A version of ``pullback(state:action:environment:)`` that transforms a reducer that works on
+  /// an element into one that works on a unstructured collection of of identified element values.
+  ///
+  /// Take care when combining ``forEachUnstructured(extract:embed:action:environment:file:line:)``
+  /// reducers into parent domains, as order matters. Always combine
+  /// ``forEachUnstructured(extract:embed:action:environment:file:line:)`` reducers _before_ parent
+  /// reducers that can modify the unstructured collection.
+  ///
+  /// - Parameters:
+  ///   - extract: A function of `ID` that can extract a `State` from `GlobalState`.
+  ///   - embed: A function of `ID` and `State` that can embed this value back into `GlobalState`.
+  ///   - toLocalAction: A case path that can extract/embed `(ID, Action)` from `GlobalAction`.
+  ///   - toLocalEnvironment: A function that transforms `GlobalEnvironment` into `Environment`.
+  /// - Returns: A reducer that works on `GlobalState`, `GlobalAction`, `GlobalEnvironment`.
+  public func forEachUnstructured<GlobalState, GlobalAction, GlobalEnvironment, ID>(
+    extract: @escaping (GlobalState, ID) -> State?,
+    embed: @escaping (inout GlobalState, ID, State) -> Void,
+    action toLocalAction: CasePath<GlobalAction, (ID, Action)>,
+    environment toLocalEnvironment: @escaping (GlobalEnvironment) -> Environment,
+    file: StaticString = #fileID,
+    line: UInt = #line
+  ) -> Reducer<GlobalState, GlobalAction, GlobalEnvironment>{
+    .init { globalState, globalAction, globalEnvironment in
+      guard let (id, localAction) = toLocalAction.extract(from: globalAction) else { return .none }
+      guard var extracted = extract(globalState, id) else {
+        runtimeWarning(
+          """
+          A "forEachUnstructured" reducer at "%@:%d" received an action when state contained no \
+          value for that id. …
+
+            Action:
+              %@
+            ID:
+              %@
+
+          This is generally considered an application logic error, and can happen for a few \
+          reasons:
+
+          • This "forEachUnstructured" reducer was combined with or run from another reducer that \
+          removed the element at this id when it handled this action. To fix this make sure that \
+          this "forEachUnstructured" reducer is run before any other reducers that can move or \
+          remove elements from state. This ensures that "forEachUnstructured" reducers can handle \
+          their actions for the element at the intended id.
+
+          • An in-flight effect emitted this action while state contained no element at this \
+          key. It may be perfectly reasonable to ignore this action, but you also may want to \
+          cancel the effect it originated from when removing a value from the dictionary, \
+          especially if it is a long-living effect.
+
+          • This action was sent to the store while its state contained no element at this \
+          key. To fix this make sure that actions for this reducer can only be sent to a view \
+          store when its state contains an element at this key.
+          """,
+          [
+            "\(file)",
+            line,
+            debugCaseOutput(localAction),
+            "\(id)",
+          ]
+        )
+        return .none
+      }
+      
+      let effects = self.reducer(
+        &extracted,
+        localAction,
+        toLocalEnvironment(globalEnvironment)
+      )
+      .map { toLocalAction.embed((id, $0)) }
+      embed(&globalState, id, extracted)
+      return effects
+    }
+  }
 
   /// Runs the reducer.
   ///

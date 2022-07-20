@@ -114,8 +114,54 @@ public struct ForEachStore<
       }
     }
   }
+  
+  /// Initializes a structure that computes views on demand from a store on a collection of data and
+  /// an identified action.
+  ///
+  /// - Parameters:
+  ///   - store: A store on an identified array of data and an identified action.
+  ///   - content: A function that can generate content given a store of an element.
+  public init<State, Action, EachState, EachAction, EachContent, IDs>(
+    _ store: Store<State, Action>,
+    identifiers: @escaping (State) -> IDs,
+    extract: @escaping (State, ID) -> EachState?,
+    action: @escaping ((ID, EachAction)) -> Action,
+    @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
+  )
+  where
+    IDs: Collection, IDs: Equatable, IDs.Element == ID,
+    Data == LazyMapSequence<LazySequence<IDs>.Elements, EachState>,
+    Content == WithViewStore<
+      IDs, (ID, EachAction), ForEach<IDs, ID, EachContent>
+    >
+  {
+    let state = store.state.value
+    self.data = identifiers(state).lazy.map { extract(state, $0)! }
+    self.content = {
+      WithViewStore(store.scope(state: identifiers, action: action)) { viewStore in
+        ForEach(viewStore.state, id: \.self) { id -> EachContent in
+          // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
+          //     views for elements no longer in the collection.
+          //
+          // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
+          var element = extract(store.state.value, id)!
+          return content(
+            store.scope(
+              state: {
+                element = extract($0, id) ?? element
+                return element
+              },
+              action: { action((id, $0)) }
+            )
+          )
+        }
+      }
+    }
+  }
 
   public var body: some View {
     self.content()
   }
 }
+
+

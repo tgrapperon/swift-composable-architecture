@@ -218,6 +218,7 @@ struct UnstructuredStudyView: View {
           state: \.structuredState,
           action: UnstructuredStudyAction.structured
         ))
+        .navigationTitle("Structured")
       } label: {
         Text("Structured")
       }
@@ -226,6 +227,7 @@ struct UnstructuredStudyView: View {
           state: \.unstructuredState,
           action: UnstructuredStudyAction.unstructured
         ))
+        .navigationTitle("Unstructured")
       } label: {
         Text("Unstructured")
       }

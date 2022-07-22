@@ -31,6 +31,7 @@ struct RootState {
   var shared = SharedState()
   var timers = TimersState()
   var twoCounters = TwoCountersState()
+  var unstructured = UnstructuredStudy()
   var webSocket = WebSocketState()
 }
 
@@ -62,6 +63,7 @@ enum RootAction {
   case shared(SharedStateAction)
   case timers(TimersAction)
   case twoCounters(TwoCountersAction)
+  case unstructured(UnstructuredStudyAction)
   case webSocket(WebSocketAction)
 }
 
@@ -265,6 +267,11 @@ let rootReducer = Reducer<RootState, RootAction, RootEnvironment>.combine(
       action: /RootAction.twoCounters,
       environment: { _ in .init() }
     ),
+  unstructuredStudyReducer
+    .pullback(
+      state: \.unstructured,
+      action: /RootAction.unstructured,
+      environment: { _ in () }),
   webSocketReducer
     .pullback(
       state: \.webSocket,

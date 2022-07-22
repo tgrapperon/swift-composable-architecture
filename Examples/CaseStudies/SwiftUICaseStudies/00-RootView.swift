@@ -9,6 +9,20 @@ struct RootView: View {
     WithViewStore(self.store.stateless) { viewStore in
       NavigationView {
         Form {
+          Section {
+            NavigationLink(
+              "Unstructured embedding",
+              destination: UnstructuredStudyView(
+                store: self.store.scope(
+                  state: \.unstructured,
+                  action: RootAction.unstructured
+                )
+              )
+            )
+          } header: {
+            Text("Advanced topics")
+          }
+          
           Section(header: Text("Getting started")) {
             NavigationLink(
               "Basics",
@@ -285,6 +299,7 @@ struct RootView: View {
               )
             )
           }
+
         }
         .navigationTitle("Case Studies")
         .onAppear { viewStore.send(.onAppear) }

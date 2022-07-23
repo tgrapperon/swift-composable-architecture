@@ -71,8 +71,8 @@ struct LongLivingEffectsView: View {
         }
       }
       .navigationTitle("Long-living effects")
-      .task { await viewStore.send(.task).finish() }
     }
+    .task(.task)
   }
 
   var detailView: some View {

@@ -72,7 +72,7 @@ struct LongLivingEffectsView: View {
       }
       .navigationTitle("Long-living effects")
     }
-    .task(.task)
+    .task(action: .task)
   }
 
   var detailView: some View {

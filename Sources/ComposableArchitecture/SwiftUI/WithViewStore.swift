@@ -11,6 +11,9 @@ public struct WithViewStore<State, Action, Content> {
     private let line: UInt
     private var prefix: String?
     private var previousState: (State) -> State?
+  
+    @SwiftUI.State var localID = UUID()
+    private var shouldLookForViewStateOpportunities: Bool = false
   #endif
   @ObservedObject private var viewStore: ViewStore<State, Action>
 
@@ -45,6 +48,19 @@ public struct WithViewStore<State, Action, Content> {
     #endif
     return view
   }
+  
+  public func lookForViewStateOpportunities() -> some View where Content: View {
+    var view = self
+    #if DEBUG
+      view.shouldLookForViewStateOpportunities = true
+      let localID = self.localID
+    #endif
+    return view.onAppear {
+      #if DEBUG
+      view.compareReachedWithAvailableKeyPaths(localID)
+      #endif
+    }
+  }
 
   fileprivate var _body: Content {
     #if DEBUG
@@ -73,10 +89,80 @@ public struct WithViewStore<State, Action, Content> {
           """
         )
       }
+      if shouldLookForViewStateOpportunities {
+        viewStore.onReachedKeyPath = {
+          reachedKeyPathsForID[localID, default: []].insert($0)
+        }
+      }
     #endif
+    
     return self.content(ViewStore(self.viewStore))
   }
 }
+
+#if DEBUG
+extension WithViewStore {
+  func compareReachedWithAvailableKeyPaths(_ localID: UUID) {
+    let mirror = Mirror(reflecting: self.viewStore.state)
+    var keyPathsDescriptionsForType = Set<String>()
+    for (label, _) in mirror.children {
+      if let label = label {
+        let description = "\\\(State.self).\(label)"
+        keyPathsDescriptionsForType.insert(description)
+      }
+    }
+    let reached = reachedKeyPathsForID[localID, default: []]
+
+    let apparentlyUnreachedProperties = keyPathsDescriptionsForType.subtracting(reached.map(\.description))
+    
+    if !apparentlyUnreachedProperties.isEmpty {
+      let indent = "  "
+      var lines = ["struct ViewState: Equatable {"]
+      let prefix = "\\\(State.self)."
+      for reached in reached.sorted(by: { $0.description < $1.description }) {
+        lines.append(
+          "\(indent)let \(reached.description[prefix.endIndex...]): \(reached.valueTypeName)"
+        )
+      }
+      
+      lines.append("\(indent)init(_ state: \(State.self)) {")
+      for reached in reached.sorted(by: { $0.description < $1.description }) {
+        let propertyName = "\(reached.description[prefix.endIndex...])"
+        lines.append("\(indent)\(indent)self.\(propertyName) = state.\(propertyName)")
+      }
+      
+      lines.append("\(indent)}")
+      lines.append("}")
+      let viewStateDeclaration = lines
+        .map {"\(indent)\(indent)\($0)"}
+        .joined(separator: "\n")
+      
+      let unreachedProperties = apparentlyUnreachedProperties
+        .sorted()
+        .map{"\(indent)\(indent)- \($0)"}
+        .joined(separator: "\n")
+      
+      runtimeWarning(
+      """
+      There is possibly a `ViewState` opportunity for the %@ state in %@:%d:
+        Properties apparently unaccessed:
+      %@
+      
+        Suggered ViewState declaration:
+      %@
+      """,
+      [
+      "\(State.self)",
+      "\(file)",
+      line,
+      unreachedProperties,
+      viewStateDeclaration
+      ]
+      )
+    }
+  }
+}
+#endif
 
 // MARK: - View
 extension WithViewStore: View where Content: View {

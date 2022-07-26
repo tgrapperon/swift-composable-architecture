@@ -56,11 +56,13 @@ public final class ViewStore<State, Action>: ObservableObject {
   // N.B. `ViewStore` does not use a `@Published` property, so `objectWillChange`
   // won't be synthesized automatically. To work around issues on iOS 13 we explicitly declare it.
   public private(set) lazy var objectWillChange = ObservableObjectPublisher()
-
+  
   private let _send: (Action) -> Void
   fileprivate let _state: CurrentValueRelay<State>
   private var viewCancellable: AnyCancellable?
-
+  #if DEBUG
+    internal var onReachedKeyPath: ((ReachedKeyPath) -> Void)?
+  #endif
   /// Initializes a view store from a store.
   ///
   /// - Parameters:
@@ -88,6 +90,9 @@ public final class ViewStore<State, Action>: ObservableObject {
     self._state = viewStore._state
     self.objectWillChange = viewStore.objectWillChange
     self.viewCancellable = viewStore.viewCancellable
+    #if DEBUG
+      self.onReachedKeyPath = viewStore.onReachedKeyPath
+    #endif
   }
 
   /// A publisher that emits when state changes.
@@ -126,7 +131,10 @@ public final class ViewStore<State, Action>: ObservableObject {
 
   /// Returns the resulting value of a given key path.
   public subscript<LocalState>(dynamicMember keyPath: KeyPath<State, LocalState>) -> LocalState {
-    self._state.value[keyPath: keyPath]
+    #if DEBUG
+      self.onReachedKeyPath?(.init(keyPath))
+    #endif
+    return self._state.value[keyPath: keyPath]
   }
 
   /// Sends an action to the store.
@@ -190,6 +198,17 @@ public final class ViewStore<State, Action>: ObservableObject {
     ObservedObject(wrappedValue: self)
       .projectedValue[get: .init(rawValue: get), send: .init(rawValue: localStateToViewAction)]
   }
+  
+  public func binding<LocalState>(
+    get keyPath: KeyPath<State, LocalState>,
+    send localStateToViewAction: @escaping (LocalState) -> Action
+  ) -> Binding<LocalState> {
+    #if DEBUG
+      self.onReachedKeyPath?(.init(keyPath))
+    #endif
+    return ObservedObject(wrappedValue: self)
+      .projectedValue[get: .init(rawValue: { $0[keyPath: keyPath]}), send: .init(rawValue: localStateToViewAction)]
+  }
 
   /// Derives a binding from the store that prevents direct writes to state and instead sends
   /// actions to the store.
@@ -223,6 +242,16 @@ public final class ViewStore<State, Action>: ObservableObject {
     self.binding(get: get, send: { _ in action })
   }
 
+  public func binding<LocalState>(
+    get keyPath: KeyPath<State, LocalState>,
+    send action: Action
+  ) -> Binding<LocalState> {
+    #if DEBUG
+      self.onReachedKeyPath?(.init(keyPath))
+    #endif
+    return self.binding(get: { $0[keyPath: keyPath] }, send: { _ in action })
+  }
+  
   /// Derives a binding from the store that prevents direct writes to state and instead sends
   /// actions to the store.
   ///
@@ -251,7 +280,10 @@ public final class ViewStore<State, Action>: ObservableObject {
   public func binding(
     send localStateToViewAction: @escaping (State) -> Action
   ) -> Binding<State> {
-    self.binding(get: { $0 }, send: localStateToViewAction)
+    #if DEBUG
+      self.onReachedKeyPath?(.init(\State.self))
+    #endif
+    return self.binding(get: { $0 }, send: localStateToViewAction)
   }
 
   /// Derives a binding from the store that prevents direct writes to state and instead sends
@@ -310,10 +342,16 @@ public struct StorePublisher<State>: Publisher {
 
   public let upstream: AnyPublisher<State, Never>
   public let viewStore: Any
+  #if DEBUG
+    internal var onReachedKeyPath: ((ReachedKeyPath) -> Void)?
+  #endif
 
   fileprivate init<Action>(viewStore: ViewStore<State, Action>) {
     self.viewStore = viewStore
     self.upstream = viewStore._state.eraseToAnyPublisher()
+    #if DEBUG
+      self.onReachedKeyPath = viewStore.onReachedKeyPath
+    #endif
   }
 
   public func receive<S: Subscriber>(subscriber: S) where S.Input == Output, S.Failure == Failure {
@@ -341,7 +379,10 @@ public struct StorePublisher<State>: Publisher {
   public subscript<LocalState: Equatable>(
     dynamicMember keyPath: KeyPath<State, LocalState>
   ) -> StorePublisher<LocalState> {
-    .init(upstream: self.upstream.map(keyPath).removeDuplicates(), viewStore: self.viewStore)
+    #if DEBUG
+      self.onReachedKeyPath?(.init(keyPath))
+    #endif
+    return .init(upstream: self.upstream.map(keyPath).removeDuplicates(), viewStore: self.viewStore)
   }
 }
 
@@ -507,3 +548,19 @@ private struct HashableWrapper<Value>: Hashable {
     }
   }
 #endif
+
+
+#if DEBUG
+  struct ReachedKeyPath: Hashable {
+    let anyKeyPath: AnyKeyPath
+    let description: String
+    let valueTypeName: String
+    init<State, Value>(_ keyPath: KeyPath<State, Value>) {
+      self.anyKeyPath = keyPath
+      self.description = keyPath.customDumpDescription
+      self.valueTypeName = "\(Value.self)"
+    }
+  }
+  var reachedKeyPathsForID = [UUID: Set<ReachedKeyPath>]()
+#endif
+

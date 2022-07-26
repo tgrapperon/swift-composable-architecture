@@ -53,6 +53,7 @@ struct CounterView: View {
         }
       }
     }
+    .lookForViewStateOpportunities()
   }
 }
 

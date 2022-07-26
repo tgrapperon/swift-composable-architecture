@@ -67,6 +67,7 @@ struct FocusDemoView: View {
       }
       .synchronize(viewStore.binding(\.$focusedField), self.$focusedField)
     }
+    .lookForViewStateOpportunities()
     .navigationTitle("Focus demo")
   }
 }

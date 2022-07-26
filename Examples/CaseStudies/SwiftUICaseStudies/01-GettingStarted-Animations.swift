@@ -153,6 +153,7 @@ struct AnimationsView: View {
       .alert(self.store.scope(state: \.alert), dismiss: .dismissAlert)
       .navigationBarTitleDisplayMode(.inline)
     }
+    .lookForViewStateOpportunities()
   }
 }
 

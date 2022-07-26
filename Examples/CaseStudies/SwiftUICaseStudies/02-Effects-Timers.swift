@@ -110,6 +110,7 @@ struct TimersView: View {
       }
       .navigationTitle("Timers")
     }
+    .lookForViewStateOpportunities()
   }
 }
 

@@ -278,7 +278,10 @@ extension ViewStore where Action: BindableAction, Action.State == State {
     file: StaticString = #fileID,
     line: UInt = #line
   ) -> Binding<Value> {
-    self.binding(
+    #if DEBUG
+    self.onReachedKeyPath?(.init(keyPath))
+    #endif
+    return self.binding(
       get: { $0[keyPath: keyPath].wrappedValue },
       send: { value in
         #if DEBUG

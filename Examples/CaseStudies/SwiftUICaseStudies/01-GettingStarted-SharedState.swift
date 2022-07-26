@@ -179,6 +179,7 @@ struct SharedStateView: View {
         Spacer()
       }
     }
+    .lookForViewStateOpportunities()
     .padding()
   }
 }

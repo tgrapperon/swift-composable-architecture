@@ -114,6 +114,7 @@ struct RefreshableView: View {
         await viewStore.send(.refresh, while: \.isLoading)
       }
     }
+    .lookForViewStateOpportunities()
   }
 }
 

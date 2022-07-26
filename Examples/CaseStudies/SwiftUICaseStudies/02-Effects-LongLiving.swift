@@ -81,6 +81,7 @@ struct LongLivingEffectsView: View {
       .onAppear { viewStore.send(.onAppear) }
       .onDisappear { viewStore.send(.onDisappear) }
     }
+    .lookForViewStateOpportunities()
   }
 
   var detailView: some View {

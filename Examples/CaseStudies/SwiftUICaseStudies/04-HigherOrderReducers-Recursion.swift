@@ -107,6 +107,7 @@ struct NestedView: View {
         }
       }
     }
+    .lookForViewStateOpportunities()
   }
 }
 

@@ -92,6 +92,7 @@ struct BindingFormView: View {
         .tint(.red)
       }
     }
+    .lookForViewStateOpportunities()
     .monospacedDigit()
     .navigationTitle("Bindings form")
   }

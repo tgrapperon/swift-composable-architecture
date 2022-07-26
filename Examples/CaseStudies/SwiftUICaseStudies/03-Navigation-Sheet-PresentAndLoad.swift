@@ -93,6 +93,7 @@ struct PresentAndLoadView: View {
       }
       .navigationTitle("Present and load")
     }
+    .lookForViewStateOpportunities()
   }
 }
 

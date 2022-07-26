@@ -108,6 +108,7 @@ struct NavigateAndLoadListView: View {
         }
       }
     }
+    .lookForViewStateOpportunities()
     .navigationTitle("Navigate and load")
   }
 }

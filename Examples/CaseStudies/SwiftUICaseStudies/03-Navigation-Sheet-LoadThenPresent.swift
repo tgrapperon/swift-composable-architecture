@@ -105,6 +105,7 @@ struct LoadThenPresentView: View {
       .navigationTitle("Load and present")
       .onDisappear { viewStore.send(.onDisappear) }
     }
+    .lookForViewStateOpportunities()
   }
 }
 

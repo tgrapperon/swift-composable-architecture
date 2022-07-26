@@ -179,6 +179,7 @@ struct WebSocketView: View {
       .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
       .navigationTitle("Web Socket")
     }
+    .lookForViewStateOpportunities()
   }
 }
 

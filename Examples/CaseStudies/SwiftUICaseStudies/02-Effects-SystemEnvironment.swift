@@ -140,6 +140,7 @@ struct MultipleDependenciesView: View {
       }
       .buttonStyle(.borderless)
     }
+    .lookForViewStateOpportunities()
     .navigationTitle("System Environment")
   }
 }

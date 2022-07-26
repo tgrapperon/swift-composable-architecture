@@ -119,6 +119,7 @@ struct EffectsCancellationView: View {
       }
       .buttonStyle(.borderless)
     }
+    .lookForViewStateOpportunities()
     .navigationTitle("Effect cancellation")
   }
 }

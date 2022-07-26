@@ -148,6 +148,7 @@ private struct TimerView: View {
         Button("Increment") { viewStore.send(.action(.incrementButtonTapped)) }
       }
     }
+    .lookForViewStateOpportunities()
   }
 }
 

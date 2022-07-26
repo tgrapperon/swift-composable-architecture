@@ -135,6 +135,7 @@ struct EffectsBasicsView: View {
       }
       .buttonStyle(.borderless)
     }
+    .lookForViewStateOpportunities()
     .navigationTitle("Effects")
   }
 }

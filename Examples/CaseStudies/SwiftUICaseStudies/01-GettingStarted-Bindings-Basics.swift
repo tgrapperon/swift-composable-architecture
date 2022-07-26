@@ -107,6 +107,7 @@ struct BindingBasicsView: View {
         .disabled(viewStore.toggleIsOn)
       }
     }
+    .lookForViewStateOpportunities()
     .monospacedDigit()
     .navigationTitle("Bindings basics")
   }

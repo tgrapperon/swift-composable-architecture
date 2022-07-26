@@ -140,6 +140,7 @@ struct SpeechRecognitionView: View {
       .padding()
       .alert(self.store.scope(state: \.alert), dismiss: .dismissAuthorizationStateAlert)
     }
+    .lookForViewStateOpportunities()
   }
 }
 

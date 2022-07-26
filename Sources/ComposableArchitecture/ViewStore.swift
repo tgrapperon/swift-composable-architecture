@@ -561,6 +561,9 @@ private struct HashableWrapper<Value>: Hashable {
       self.valueTypeName = "\(Value.self)"
     }
   }
-  var reachedKeyPathsForID = [UUID: Set<ReachedKeyPath>]()
+final class ReachedKeyPaths {
+  static let shared: ReachedKeyPaths = .init()
+  @Published var reachedKeyPathsForID = [UUID: Set<ReachedKeyPath>]()
+}
 #endif
 

@@ -134,6 +134,7 @@ struct ClockView: View {
       }
       .navigationTitle("Elm-like subscriptions")
     }
+    .lookForViewStateOpportunities()
   }
 }
 

@@ -54,12 +54,24 @@ public struct WithViewStore<State, Action, Content> {
     #if DEBUG
       view.shouldLookForViewStateOpportunities = true
       let localID = self.localID
+      return view
+//      .onReceive(
+//        ReachedKeyPaths.shared.$reachedKeyPathsForID
+//          .compactMap{ $0[localID] }
+//          .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
+//        ) { _ in
+//          compareReachedWithAvailableKeyPaths(localID)
+//        }
+        .onAppear {
+          // This should give the time for escaped ViewStore to be used in their destination's
+          // bodies
+          DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
+            compareReachedWithAvailableKeyPaths(localID)
+          }
+        }
+    #else
+      return view
     #endif
-    return view.onAppear {
-      #if DEBUG
-      view.compareReachedWithAvailableKeyPaths(localID)
-      #endif
-    }
   }
 
   fileprivate var _body: Content {
@@ -91,7 +103,7 @@ public struct WithViewStore<State, Action, Content> {
       }
       if shouldLookForViewStateOpportunities {
         viewStore.onReachedKeyPath = {
-          reachedKeyPathsForID[localID, default: []].insert($0)
+          ReachedKeyPaths.shared.reachedKeyPathsForID[localID, default: []].insert($0)
         }
       }
     #endif
@@ -111,8 +123,8 @@ extension WithViewStore {
         keyPathsDescriptionsForType.insert(description)
       }
     }
-    let reached = reachedKeyPathsForID[localID, default: []]
-
+    let reached = ReachedKeyPaths.shared.reachedKeyPathsForID[localID, default: []]
+    customDump(reached)
     let apparentlyUnreachedProperties = keyPathsDescriptionsForType.subtracting(reached.map(\.description))
     
     if !apparentlyUnreachedProperties.isEmpty {

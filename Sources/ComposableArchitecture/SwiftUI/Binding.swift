@@ -279,7 +279,7 @@ extension ViewStore where Action: BindableAction, Action.State == State {
     line: UInt = #line
   ) -> Binding<Value> {
     #if DEBUG
-    self.onReachedKeyPath?(.init(keyPath.appending(path: \BindableState<Value>.wrappedValue)))
+    self.onReachedKeyPath?(.init(keyPath))
     #endif
     return self.binding(
       get: { $0[keyPath: keyPath].wrappedValue },

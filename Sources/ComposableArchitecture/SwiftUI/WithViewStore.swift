@@ -160,7 +160,7 @@ extension WithViewStore {
         Properties apparently unaccessed:
       %@
       
-        Suggered ViewState declaration:
+        Suggested ViewState declaration:
       %@
       """,
       [

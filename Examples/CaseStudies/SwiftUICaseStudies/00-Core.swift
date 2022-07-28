@@ -31,7 +31,7 @@ struct RootState {
   var shared = SharedState()
   var timers = TimersState()
   var twoCounters = TwoCountersState()
-  var unstructured = UnstructuredStudy()
+  var lazyCollectionDerivation = LazyCollectionDerivationStudy.StudyState()
   var webSocket = WebSocketState()
 }
 
@@ -63,7 +63,7 @@ enum RootAction {
   case shared(SharedStateAction)
   case timers(TimersAction)
   case twoCounters(TwoCountersAction)
-  case unstructured(UnstructuredStudyAction)
+  case lazyCollectionDerivation(LazyCollectionDerivationStudy.StudyAction)
   case webSocket(WebSocketAction)
 }
 
@@ -267,10 +267,10 @@ let rootReducer = Reducer<RootState, RootAction, RootEnvironment>.combine(
       action: /RootAction.twoCounters,
       environment: { _ in .init() }
     ),
-  unstructuredStudyReducer
+  lazyCollectionDerivationStudyReducer
     .pullback(
-      state: \.unstructured,
-      action: /RootAction.unstructured,
+      state: \.lazyCollectionDerivation,
+      action: /RootAction.lazyCollectionDerivation,
       environment: { _ in () }),
   webSocketReducer
     .pullback(
@@ -279,7 +279,7 @@ let rootReducer = Reducer<RootState, RootAction, RootEnvironment>.combine(
       environment: { .init(mainQueue: $0.mainQueue, webSocket: $0.webSocket) }
     )
 )
-.debug()
+//.debug() // Removed for the `lazy` study
 .signpost()
 
 private func liveFetchNumber() -> Effect<Int, Never> {

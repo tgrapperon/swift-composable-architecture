@@ -11,11 +11,11 @@ struct RootView: View {
         Form {
           Section {
             NavigationLink(
-              "Unstructured embedding",
-              destination: UnstructuredStudyView(
+              "Lazy collection derivation",
+              destination: LazyCollectionDerivationStudyView(
                 store: self.store.scope(
-                  state: \.unstructured,
-                  action: RootAction.unstructured
+                  state: \.lazyCollectionDerivation,
+                  action: RootAction.lazyCollectionDerivation
                 )
               )
             )

@@ -8,10 +8,7 @@ private let readMe = """
   ineluctable impact of diffing 50k identifiers which is not the topic of this study.\
   
   One can check how changing the color is relatively fast in the lazy case,\
-  whereas it is much more laggy/glitchy in the eager one. The lazy conversion \
-  furthermore allows to automatically update the parent from any child \
-  modification, which is only possible to achieve manually from within a reducer \
-  in the eager case.
+  whereas it is much more laggy/glitchy in the eager one.
   """
 
 private let numberOfItems: Int = 50_000
@@ -26,15 +23,11 @@ enum LazyCollectionDerivationStudy {
   
   enum ItemAction {
     case incr
-    case color(Color)
   }
   
   static let itemReducer = Reducer<ItemState, ItemAction, Void> {
     state, action, _ in
     switch action {
-    case let .color(color):
-      state.color = color
-      return .none
     case .incr:
       state.value += 1
       return .none
@@ -52,11 +45,6 @@ enum LazyCollectionDerivationStudy {
     static let itemsConversion = LazyIdentifiedArrayConversion(\Self.items)
     { `self`, id, item in
       item.color = self.color
-    } updateSource: { `self`, id, item in
-      // This is not a good idea, and this should be performed in a reducer,
-      // otherwise an action not changing the color could overwrite the parent's
-      // color.
-      self.color = item.color
     }
   }
   
@@ -110,12 +98,6 @@ enum LazyCollectionDerivationStudy {
       case let .color(color):
         state.color = color
         return .none
-      case let .item(_, .color(color)):
-        // We need to manually update the parent's color.
-        // In the `lazy` case, this is performed automatically
-        // during the conversion.
-        state.color = color
-        return .none
       case .item:
         return .none
       }
@@ -127,14 +109,19 @@ enum LazyCollectionDerivationStudy {
     var body: some View {
       WithViewStore(store) { viewStore in
         HStack {
-          ColorPicker(selection: viewStore.binding(get: \.color, send: ItemAction.color)) {
-            Text("Shared color")
-          }.labelsHidden()
+          Text("Shared")
+            .bold()
+            .padding(8)
+            .colorInvert()
+            .blendMode(.difference)
+            .background(viewStore.color)
+            .cornerRadius(9)
           Text("__Item #\(viewStore.id)__ Value: \(viewStore.value.formatted())")
           Spacer()
           Button("Incr") {
             viewStore.send(.incr)
           }
+          .buttonStyle(.bordered)
         }
         .monospacedDigit()
       }

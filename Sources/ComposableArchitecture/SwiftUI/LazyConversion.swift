@@ -1,6 +1,8 @@
 import IdentifiedCollections
 import OrderedCollections
+import SwiftUI
 
+/// A type from which we can extract or embed a value keyed by some Index/Id/Key
 public protocol LazyIdentifiedConversion {
   associatedtype ID: Hashable
   associatedtype Source
@@ -10,90 +12,90 @@ public protocol LazyIdentifiedConversion {
   func embed(source: inout Source, id: ID, destination: Destination?)
 }
 
+/// Same as LazyIdentifiedConversion, but is able to provide a list of `ID`s
 public protocol LazyIdentifiedCollectionConversion: LazyIdentifiedConversion {
   associatedtype IDs: Collection & Equatable where IDs.Element == ID
   func ids(source: Source) -> IDs
 }
 
 /// Describe a lazy conversion/derivation from a source to an `IdentifiedArray`'s `Element`
-public struct LazyIdentifiedArrayConversion<Source, ID: Hashable, Element>: LazyIdentifiedCollectionConversion {
+public struct LazyIdentifiedArrayConversion<Source, ID: Hashable, Element>:
+  LazyIdentifiedCollectionConversion
+{
   let keyPath: WritableKeyPath<Source, IdentifiedArray<ID, Element>>
   let updateElement: (Source, ID, inout Element) -> Void
-  let updateSource: (inout Source, ID, Element) -> Void
-  
+
   /// - Parameters:
   ///   - keyPath: A `KeyPath` from `Source` to the `IdentifiedArray`
   ///   - updateElement: A closure where one can update the `element` at `id` using `source`.
-  ///   - updateSource: A closure where one can reinject `element` at `id` into `source`.
   public init(
     _ keyPath: WritableKeyPath<Source, IdentifiedArray<ID, Element>>,
-    updateElement: @escaping (Source, ID, inout Element) -> Void = { _, _, _ in () },
-    updateSource: @escaping (inout Source, ID, Element) -> Void = { _, _, _ in () }
+    updateElement: @escaping (Source, ID, inout Element) -> Void = { _, _, _ in () }
   ) {
     self.keyPath = keyPath
     self.updateElement = updateElement
-    self.updateSource = updateSource
   }
-  
+
   public func ids(source: Source) -> OrderedSet<ID> {
     source[keyPath: keyPath].ids
   }
-  
+
   public func extract(source: Source, id: ID) -> Element? {
     guard var element = source[keyPath: keyPath][id: id] else { return nil }
     self.updateElement(source, id, &element)
     return element
   }
-  
+
   public func embed(source: inout Source, id: ID, destination: Element?) {
     guard let element = destination else { return }
     source[keyPath: keyPath][id: id] = element
-    updateSource(&source, id, element)
   }
 }
 
-public struct LazyDictionaryConversion<Source, Key: Hashable, Value>: LazyIdentifiedCollectionConversion {
-  let keyPath: WritableKeyPath<Source, Dictionary<Key, Value>>
+/// Describe a lazy conversion/derivation from a source to an `Dictionary`'s `Value`
+public struct LazyDictionaryConversion<Source, Key: Hashable, Value>:
+  LazyIdentifiedCollectionConversion
+{
+  let keyPath: WritableKeyPath<Source, [Key: Value]>
   let updateValue: (Source, ID, inout Value) -> Void
-  let updateSource: (inout Source, ID, Value) -> Void
-  
+
   public init(
-    _ keyPath: WritableKeyPath<Source, Dictionary<Key, Value>>,
-    updateValue: @escaping (Source, Key, inout Value) -> Void = { _, _, _ in () },
-    updateSource: @escaping (inout Source, Key, Value) -> Void = { _, _, _ in () }
+    _ keyPath: WritableKeyPath<Source, [Key: Value]>,
+    updateValue: @escaping (Source, Key, inout Value) -> Void = { _, _, _ in () }
   ) {
     self.keyPath = keyPath
     self.updateValue = updateValue
-    self.updateSource = updateSource
   }
-  
+
   public func ids(source: Source) -> Dictionary<Key, Value>.Keys {
     source[keyPath: keyPath].keys
   }
-  
+
   public func extract(source: Source, id: Key) -> Value? {
     guard var element = source[keyPath: keyPath][id] else { return nil }
     self.updateValue(source, id, &element)
     return element
   }
-  
+
   public func embed(source: inout Source, id: Key, destination: Value?) {
     guard let element = destination else { return }
     source[keyPath: keyPath][id] = element
-    updateSource(&source, id, element)
   }
 }
 
 extension Reducer {
   /// This generalize `forEach` pullbacks, using a `LazyIdentifiedConversion` to extract and
   /// reinsert elements in a lazy way.
-  public func forEachLazy<LazyConversion: LazyIdentifiedConversion, GlobalAction, GlobalEnvironment>(
+  public func forEachLazy<
+    LazyConversion: LazyIdentifiedConversion, GlobalAction, GlobalEnvironment
+  >(
     conversion: LazyConversion,
     action toLocalAction: CasePath<GlobalAction, (LazyConversion.ID, Action)>,
     environment toLocalEnvironment: @escaping (GlobalEnvironment) -> Environment,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) -> Reducer<LazyConversion.Source, GlobalAction, GlobalEnvironment> where LazyConversion.Destination == State {
+  ) -> Reducer<LazyConversion.Source, GlobalAction, GlobalEnvironment>
+  where LazyConversion.Destination == State {
     .init { globalState, globalAction, globalEnvironment in
       guard let (id, localAction) = toLocalAction.extract(from: globalAction) else { return .none }
       guard var localState = conversion.extract(source: globalState, id: id) else {
@@ -135,7 +137,8 @@ extension Reducer {
         )
         return .none
       }
-      let effects = self
+      let effects =
+        self
         .run(
           &localState,
           localAction,
@@ -148,7 +151,6 @@ extension Reducer {
   }
 }
 
-import SwiftUI
 /// Same as `ForEach` store, but using a lazy conversion. For this reason, the source is a `store`
 /// that is not already scoped.
 public struct ForEachLazyStore<
@@ -172,7 +174,7 @@ public struct ForEachLazyStore<
     Data == LazyMapSequence<LazySequence<IDs>.Elements, EachState?>,
     Content == WithViewStore<IDs, Action, ForEach<IDs, ID, EachContent>>
   {
-    let source = ViewStore(store, removeDuplicates: {_, _ in true}).state
+    let source = ViewStore(store, removeDuplicates: { _, _ in true }).state
     self.data = conversion.ids(source: source).lazy.map {
       conversion.extract(source: source, id: $0)
     }
@@ -183,7 +185,7 @@ public struct ForEachLazyStore<
           //     views for elements no longer in the collection.
           //
           // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          let source = ViewStore(store, removeDuplicates: {_, _ in true}).state
+          let source = ViewStore(store, removeDuplicates: { _, _ in true }).state
           var element = conversion.extract(source: source, id: id)!
           return content(
             store.scope(

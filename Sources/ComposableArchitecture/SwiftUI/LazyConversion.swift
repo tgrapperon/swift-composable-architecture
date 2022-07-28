@@ -172,7 +172,7 @@ public struct ForEachLazyStore<
     Data == LazyMapSequence<LazySequence<IDs>.Elements, EachState?>,
     Content == WithViewStore<IDs, Action, ForEach<IDs, ID, EachContent>>
   {
-    let source = store.state.value
+    let source = ViewStore(store, removeDuplicates: {_, _ in true}).state
     self.data = conversion.ids(source: source).lazy.map {
       conversion.extract(source: source, id: $0)
     }
@@ -183,7 +183,7 @@ public struct ForEachLazyStore<
           //     views for elements no longer in the collection.
           //
           // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          let source = store.state.value
+          let source = ViewStore(store, removeDuplicates: {_, _ in true}).state
           var element = conversion.extract(source: source, id: id)!
           return content(
             store.scope(

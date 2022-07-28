@@ -164,7 +164,7 @@ enum LazyCollectionDerivationStudy {
           )
         ) {
           viewStore in
-          ColorPicker("Color", selection: viewStore.binding(get: { $0 }, send: { $0 }))
+          ColorPicker("Color", selection: viewStore.binding(send: { $0 }))
         }
         ForEachStore(
           store.scope(

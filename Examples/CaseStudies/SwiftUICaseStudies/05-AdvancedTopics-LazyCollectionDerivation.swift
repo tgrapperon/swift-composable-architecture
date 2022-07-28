@@ -53,6 +53,9 @@ enum LazyCollectionDerivationStudy {
     { `self`, id, item in
       item.color = self.color
     } updateSource: { `self`, id, item in
+      // This is not a good idea an this should be performed in a reducer,
+      // otherwise an action not changing the color could overwrite the parent's
+      // color.
       self.color = item.color
     }
   }

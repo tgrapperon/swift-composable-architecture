@@ -100,42 +100,42 @@ extension Reducer {
       guard let (id, localAction) = toLocalAction.extract(from: globalAction) else { return .none }
       let conversion = state(globalState)
       guard var localState = conversion.extract(source: globalState, id: id) else {
-//        runtimeWarning(
-//          """
-//          A "forEachLazy" reducer at "%@:%d" received an action when state contained no element \
-//          with that id. …
-//
-//            Action:
-//              %@
-//            ID:
-//              %@
-//
-//          This is generally considered an application logic error, and can happen for a few \
-//          reasons:
-//
-//          • This "forEachLazy" reducer was combined with or run from another reducer that removed \
-//          the element at this id when it handled this action. To fix this make sure that this \
-//          "forEachLazy" reducer is run before any other reducers that can move or remove elements \
-//          from state. This ensures that "forEachLazy" reducers can handle their actions for the \
-//          element at the intended id.
-//
-//          • An in-flight effect emitted this action while state contained no element at this id. \
-//          It may be perfectly reasonable to ignore this action, but you also may want to cancel \
-//          the effect it originated from when removing an element from the identified array, \
-//          especially if it is a long-living effect.
-//
-//          • This action was sent to the store while its state contained no element at this id. \
-//          To fix this make sure that actions for this reducer can only be sent to a view store \
-//          when its state contains an element at this id. In SwiftUI applications, use \
-//          "ForEachLazyStore".
-//          """,
-//          [
-//            "\(file)",
-//            line,
-//            debugCaseOutput(localAction),
-//            "\(id)",
-//          ]
-//        )
+        //        runtimeWarning(
+        //          """
+        //          A "forEachLazy" reducer at "%@:%d" received an action when state contained no element \
+        //          with that id. …
+        //
+        //            Action:
+        //              %@
+        //            ID:
+        //              %@
+        //
+        //          This is generally considered an application logic error, and can happen for a few \
+        //          reasons:
+        //
+        //          • This "forEachLazy" reducer was combined with or run from another reducer that removed \
+        //          the element at this id when it handled this action. To fix this make sure that this \
+        //          "forEachLazy" reducer is run before any other reducers that can move or remove elements \
+        //          from state. This ensures that "forEachLazy" reducers can handle their actions for the \
+        //          element at the intended id.
+        //
+        //          • An in-flight effect emitted this action while state contained no element at this id. \
+        //          It may be perfectly reasonable to ignore this action, but you also may want to cancel \
+        //          the effect it originated from when removing an element from the identified array, \
+        //          especially if it is a long-living effect.
+        //
+        //          • This action was sent to the store while its state contained no element at this id. \
+        //          To fix this make sure that actions for this reducer can only be sent to a view store \
+        //          when its state contains an element at this id. In SwiftUI applications, use \
+        //          "ForEachLazyStore".
+        //          """,
+        //          [
+        //            "\(file)",
+        //            line,
+        //            debugCaseOutput(localAction),
+        //            "\(id)",
+        //          ]
+        //        )
         return .none
       }
       let effects =
@@ -158,7 +158,8 @@ public struct ForEachLazyStore<
   LazyConversion: LazyIdentifiedCollectionConversion,
   State, Action,
   EachState, EachAction, Data: Collection, Content: View
->: DynamicViewContent where  State == LazyConversion.Source, EachState == LazyConversion.Destination {
+>: DynamicViewContent
+where State == LazyConversion.Source, EachState == LazyConversion.Destination {
   public typealias ID = LazyConversion.ID
   public typealias IDs = LazyConversion.IDs
   public let data: Data

@@ -6,7 +6,7 @@ private let readMe = """
   collection embedding. Both features are similar: an array of 50k items that shares a common \
   `color` value. Only the first 100 items are presented in both cases to avoid the \
   ineluctable impact of diffing 50k identifiers which is not the topic of this study.\
-  
+
   One can check how changing the color is relatively fast in the lazy case,\
   whereas it is much more laggy/glitchy in the eager one.
   """
@@ -20,11 +20,11 @@ enum LazyCollectionDerivationStudy {
     var color: Color = .red
     var value: Int = 0
   }
-  
+
   enum ItemAction {
     case incr
   }
-  
+
   static let itemReducer = Reducer<ItemState, ItemAction, Void> {
     state, action, _ in
     switch action {
@@ -33,21 +33,21 @@ enum LazyCollectionDerivationStudy {
       return .none
     }
   }
-  
+
   static let initialItems: IdentifiedArrayOf<ItemState> =
-  IdentifiedArray(uncheckedUniqueElements: (0..<numberOfItems)
-    .map { ItemState(id: "\($0)", value: $0) })
-  
+    IdentifiedArray(
+      uncheckedUniqueElements: (0..<numberOfItems)
+        .map { ItemState(id: "\($0)", value: $0) })
+
   struct LazyConversionState {
     var color: Color = .blue
     var items: IdentifiedArrayOf<ItemState> = initialItems
-    
-    let lazyItem = LazyIdentifiedArrayConversion(\Self.items)
-    { `self`, id, item in
+
+    let lazyItem = LazyIdentifiedArrayConversion(\Self.items) { `self`, id, item in
       item.color = self.color
     }
   }
-  
+
   struct EagerConversionState {
     var color: Color = .blue
     var _items: IdentifiedArrayOf<ItemState> = initialItems
@@ -62,12 +62,12 @@ enum LazyCollectionDerivationStudy {
       set { _items = newValue }
     }
   }
-  
+
   enum Action {
     case color(Color)
     case item(ItemState.ID, ItemAction)
   }
-  
+
   static let lazyConversionReducer = Reducer<
     LazyConversionState, Action, Void
   >.combine(
@@ -85,7 +85,7 @@ enum LazyCollectionDerivationStudy {
       }
     }
   )
-  
+
   static let eagerConversionReducer = Reducer<
     EagerConversionState, Action, Void
   >.combine(
@@ -103,7 +103,7 @@ enum LazyCollectionDerivationStudy {
       }
     }
   )
-  
+
   struct ItemView: View {
     let store: Store<ItemState, ItemAction>
     var body: some View {
@@ -127,10 +127,10 @@ enum LazyCollectionDerivationStudy {
       }
     }
   }
-  
+
   struct LazyConversionView: View {
     let store: Store<LazyConversionState, Action>
-    
+
     var body: some View {
       List {
         WithViewStore(
@@ -151,10 +151,10 @@ enum LazyCollectionDerivationStudy {
       }
     }
   }
-  
+
   struct EagerConversionView: View {
     let store: Store<EagerConversionState, Action>
-    
+
     var body: some View {
       List {
         WithViewStore(
@@ -189,8 +189,9 @@ extension LazyCollectionDerivationStudy {
   }
 }
 
-
-let lazyCollectionDerivationStudyReducer = Reducer<LazyCollectionDerivationStudy.StudyState, LazyCollectionDerivationStudy.StudyAction, Void>.combine(
+let lazyCollectionDerivationStudyReducer = Reducer<
+  LazyCollectionDerivationStudy.StudyState, LazyCollectionDerivationStudy.StudyAction, Void
+>.combine(
   LazyCollectionDerivationStudy.eagerConversionReducer
     .pullback(
       state: \.eagerConversionState,
@@ -206,29 +207,34 @@ let lazyCollectionDerivationStudyReducer = Reducer<LazyCollectionDerivationStudy
 )
 
 struct LazyCollectionDerivationStudyView: View {
-  let store: Store<
-    LazyCollectionDerivationStudy.StudyState,
-    LazyCollectionDerivationStudy.StudyAction
-  >
+  let store:
+    Store<
+      LazyCollectionDerivationStudy.StudyState,
+      LazyCollectionDerivationStudy.StudyAction
+    >
   var body: some View {
     List {
       Section {
         AboutView(readMe: readMe)
       }
       NavigationLink {
-        LazyCollectionDerivationStudy.EagerConversionView(store: store.scope(
-          state: \.eagerConversionState,
-          action: LazyCollectionDerivationStudy.StudyAction.eager
-        ))
+        LazyCollectionDerivationStudy.EagerConversionView(
+          store: store.scope(
+            state: \.eagerConversionState,
+            action: LazyCollectionDerivationStudy.StudyAction.eager
+          )
+        )
         .navigationTitle("Eager")
       } label: {
         Text("Eager")
       }
       NavigationLink {
-        LazyCollectionDerivationStudy.LazyConversionView(store: store.scope(
-          state: \.lazyConversionState,
-          action: LazyCollectionDerivationStudy.StudyAction.lazy
-        ))
+        LazyCollectionDerivationStudy.LazyConversionView(
+          store: store.scope(
+            state: \.lazyConversionState,
+            action: LazyCollectionDerivationStudy.StudyAction.lazy
+          )
+        )
         .navigationTitle("Lazy")
       } label: {
         Text("Lazy")

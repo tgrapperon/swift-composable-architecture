@@ -87,17 +87,18 @@ extension Reducer {
   /// This generalize `forEach` pullbacks, using a `LazyIdentifiedConversion` to extract and
   /// reinsert elements in a lazy way.
   public func forEachLazy<
-    LazyConversion: LazyIdentifiedConversion, GlobalAction, GlobalEnvironment
+    LazyConversion: LazyIdentifiedConversion, GlobalState, GlobalAction, GlobalEnvironment
   >(
-    conversion: LazyConversion,
+    state: @escaping (GlobalState) -> LazyConversion,
     action toLocalAction: CasePath<GlobalAction, (LazyConversion.ID, Action)>,
     environment toLocalEnvironment: @escaping (GlobalEnvironment) -> Environment,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) -> Reducer<LazyConversion.Source, GlobalAction, GlobalEnvironment>
-  where LazyConversion.Destination == State {
+  ) -> Reducer<GlobalState, GlobalAction, GlobalEnvironment>
+  where LazyConversion.Source == GlobalState, LazyConversion.Destination == State {
     .init { globalState, globalAction, globalEnvironment in
       guard let (id, localAction) = toLocalAction.extract(from: globalAction) else { return .none }
+      let conversion = state(globalState)
       guard var localState = conversion.extract(source: globalState, id: id) else {
         runtimeWarning(
           """
@@ -155,18 +156,17 @@ extension Reducer {
 /// that is not already scoped.
 public struct ForEachLazyStore<
   LazyConversion: LazyIdentifiedCollectionConversion,
-  Action,
+  State, Action,
   EachState, EachAction, Data: Collection, Content: View
->: DynamicViewContent where EachState == LazyConversion.Destination {
+>: DynamicViewContent where  State == LazyConversion.Source, EachState == LazyConversion.Destination {
   public typealias ID = LazyConversion.ID
   public typealias IDs = LazyConversion.IDs
-  public typealias State = LazyConversion.Source
   public let data: Data
   let content: () -> Content
 
   public init<EachContent>(
     _ store: Store<State, Action>,
-    conversion: LazyConversion,
+    state: @escaping (State) -> LazyConversion,
     action: @escaping (ID, EachAction) -> (Action),
     @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
   )
@@ -175,6 +175,7 @@ public struct ForEachLazyStore<
     Content == WithViewStore<IDs, Action, ForEach<IDs, ID, EachContent>>
   {
     let source = ViewStore(store, removeDuplicates: { _, _ in true }).state
+    let conversion = state(source)
     self.data = conversion.ids(source: source).lazy.map {
       conversion.extract(source: source, id: $0)
     }

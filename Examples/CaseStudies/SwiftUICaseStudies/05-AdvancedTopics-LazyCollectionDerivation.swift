@@ -42,7 +42,7 @@ enum LazyCollectionDerivationStudy {
     var color: Color = .blue
     var items: IdentifiedArrayOf<ItemState> = initialItems
     
-    static let itemsConversion = LazyIdentifiedArrayConversion(\Self.items)
+    let lazyItem = LazyIdentifiedArrayConversion(\Self.items)
     { `self`, id, item in
       item.color = self.color
     }
@@ -72,7 +72,7 @@ enum LazyCollectionDerivationStudy {
     LazyConversionState, Action, Void
   >.combine(
     itemReducer.forEachLazy(
-      conversion: LazyConversionState.itemsConversion,
+      state: \.lazyItem,
       action: /Action.item,
       environment: { $0 }),
     .init { state, action, _ in
@@ -144,7 +144,7 @@ enum LazyCollectionDerivationStudy {
         }
         ForEachLazyStore(
           store,
-          conversion: LazyConversionState.itemsConversion,
+          state: \.lazyItem,
           action: Action.item,
           content: ItemView.init(store:)
         )

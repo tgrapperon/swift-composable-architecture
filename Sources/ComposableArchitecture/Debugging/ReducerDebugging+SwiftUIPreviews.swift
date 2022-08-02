@@ -85,15 +85,19 @@ extension DebugEnvironment {
 extension View {
   public func debugUI(
     _ alignment: Alignment = .bottom,
-    height: CGFloat = 300,
+    width: CGFloat? = nil,
+    height: CGFloat? = 300,
+    xOffset: CGFloat = 0,
+    yOffset: CGFloat = 0,
     fontSize: CGFloat = 10,
     opacity: CGFloat = 0.9
   ) -> some View {
     self.overlay(
       DebugEnvironment.ReducerDebugView(fontSize: fontSize)
         .opacity(opacity)
-        .frame(height: height)
-        .frame(maxHeight: .infinity, alignment: alignment)
+        .frame(width: width, height: height)
+        .offset(x: xOffset, y: yOffset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     )
   }
 }
@@ -101,7 +105,10 @@ extension View {
 extension View {
   public func debugUI(
     _ alignment: Alignment = .bottom,
-    height: CGFloat = 300,
+    width: CGFloat? = nil,
+    height: CGFloat? = 300,
+    xOffset: CGFloat = 0,
+    yOffset: CGFloat = 0,
     fontSize: CGFloat = 10,
     opacity: CGFloat = 0.9
   ) -> some View {

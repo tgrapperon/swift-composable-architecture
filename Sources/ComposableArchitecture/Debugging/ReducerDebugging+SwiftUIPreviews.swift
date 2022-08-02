@@ -117,7 +117,7 @@ extension DebugEnvironment {
   }
 }
 #endif
-#if DEBUG
+
 extension View {
   public func debugUI(
     _ alignment: Alignment = .bottom,
@@ -128,6 +128,7 @@ extension View {
     fontSize: CGFloat = 10,
     opacity: CGFloat = 0.9
   ) -> some View {
+    #if DEBUG
     self.overlay(
       DebugEnvironment.ReducerDebugView(fontSize: fontSize)
         .opacity(opacity)
@@ -135,23 +136,11 @@ extension View {
         .offset(x: xOffset, y: yOffset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     )
-  }
-}
-#else
-extension View {
-  public func debugUI(
-    _ alignment: Alignment = .bottom,
-    width: CGFloat? = nil,
-    height: CGFloat? = 300,
-    xOffset: CGFloat = 0,
-    yOffset: CGFloat = 0,
-    fontSize: CGFloat = 10,
-    opacity: CGFloat = 0.9
-  ) -> some View {
+    #else
     self
+    #endif
   }
 }
-#endif
 
 extension Reducer {
   public func debugUI(

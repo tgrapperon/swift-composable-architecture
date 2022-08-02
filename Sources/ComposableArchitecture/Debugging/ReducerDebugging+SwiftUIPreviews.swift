@@ -53,7 +53,7 @@ extension DebugEnvironment {
   }
 
   struct ReducerDebugView: View {
-    var fontHeight: CGFloat
+    var fontSize: CGFloat
     @ObservedObject var printer: DebugEnvironment.DebugUIPrinter = .shared
 
     var body: some View {
@@ -69,13 +69,13 @@ extension DebugEnvironment {
         .frame(maxWidth: .infinity, alignment: .leading)
         .listRowInsets(.init())
         .font(
-          Font.system(size: fontHeight, weight: .semibold, design: .monospaced)
+          Font.system(size: fontSize, weight: .semibold, design: .monospaced)
         )
         .scaleEffect(x: 1, y: -1)
       }
       .scaleEffect(x: 1, y: -1)
       .listStyle(.plain)
-      .environment(\.defaultMinListRowHeight, fontHeight)
+      .environment(\.defaultMinListRowHeight, fontSize)
       .environment(\.colorScheme, .dark)
     }
   }
@@ -86,11 +86,11 @@ extension View {
   public func debugUI(
     _ alignment: Alignment = .bottom,
     height: CGFloat = 300,
-    fontHeight: CGFloat = 10,
+    fontSize: CGFloat = 10,
     opacity: CGFloat = 0.9
   ) -> some View {
     self.overlay(
-      DebugEnvironment.ReducerDebugView(fontHeight: fontHeight)
+      DebugEnvironment.ReducerDebugView(fontSize: fontSize)
         .opacity(opacity)
         .frame(height: height)
         .frame(maxHeight: .infinity, alignment: alignment)
@@ -102,7 +102,7 @@ extension View {
   public func debugUI(
     _ alignment: Alignment = .bottom,
     height: CGFloat = 300,
-    fontHeight: CGFloat = 10,
+    fontSize: CGFloat = 10,
     opacity: CGFloat = 0.9
   ) -> some View {
     self

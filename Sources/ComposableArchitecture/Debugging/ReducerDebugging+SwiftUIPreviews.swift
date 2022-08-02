@@ -51,9 +51,9 @@ extension DebugEnvironment {
     }
   }
 
-
   struct ReducerDebugView: View {
-    var fontSize: CGFloat
+    let fontSize: CGFloat
+    let lightweight: Bool
     @ObservedObject var printer: DebugEnvironment.DebugUIPrinter = .shared
 
     func textColor(_ string: String) -> Color? {
@@ -62,31 +62,39 @@ extension DebugEnvironment {
       if string.starts(with: "received action:") { return .blue }
       return nil
     }
-    
+
     func fontWeight(_ string: String) -> Font.Weight {
       if string.starts(with: "received action:") { return .bold }
       return .semibold
     }
-    
+
     func font(_ string: String) -> Font {
       if string.starts(with: "received action:") {
-          return Font.system(size: fontSize, weight: .bold, design: .monospaced)
+        return Font.system(size: fontSize, weight: .bold, design: .monospaced)
       }
       return Font.system(size: fontSize, weight: .semibold, design: .monospaced)
     }
-    
+
+    @ViewBuilder
+    func row(_ string: String) -> some View {
+      if lightweight {
+        Text(string)
+          .font(Font.system(size: fontSize, weight: .semibold, design: .monospaced))
+      } else {
+        Text(string)
+          .font(self.font(string))
+          .foregroundColor(textColor(string))
+      }
+    }
+
     var body: some View {
       List {
         ForEach(printer.messages) { message in
           if #available(iOS 15.0, *) {
-            Text(message.content)
-              .font(self.font(message.content))
-              .foregroundColor(textColor(message.content))
+            row(message.content)
               .listRowSeparator(.hidden)
           } else {
-            Text(message.content)
-              .font(self.font(message.content))
-              .foregroundColor(textColor(message.content))
+            row(message.content)
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,10 +118,11 @@ extension View {
     xOffset: CGFloat = 0,
     yOffset: CGFloat = 0,
     fontSize: CGFloat = 10,
-    opacity: CGFloat = 0.9
+    opacity: CGFloat = 0.9,
+    lightweight: Bool = false
   ) -> some View {
     self.overlay(
-      DebugEnvironment.ReducerDebugView(fontSize: fontSize)
+      DebugEnvironment.ReducerDebugView(fontSize: fontSize, lightweight: lightweight)
         .opacity(opacity)
         .frame(width: width, height: height)
         .offset(x: xOffset, y: yOffset)
@@ -130,7 +139,8 @@ extension View {
     xOffset: CGFloat = 0,
     yOffset: CGFloat = 0,
     fontSize: CGFloat = 10,
-    opacity: CGFloat = 0.9
+    opacity: CGFloat = 0.9,
+    lightweight: Bool = false
   ) -> some View {
     self
   }

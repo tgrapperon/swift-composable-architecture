@@ -8,11 +8,15 @@ extension DebugEnvironment {
 
   final class DebugUIPrinter: ObservableObject {
     final class MessageAccumulator {
-      @Published var messages: [Message] = [.init(id: -1, content: "")]
+      @Published var messages: [Message] = [
+        .init(id: -1, content: "", color: .primary, isHeader: false)
+      ]
     }
     struct Message: Identifiable {
       var id: Int
       var content: String
+      var color: Color
+      var isHeader: Bool
     }
     static var shared = DebugUIPrinter()
 
@@ -22,8 +26,23 @@ extension DebugEnvironment {
       var id: Int = 0
       return .init { [baseEnvironment, processingQueue] string in
         processingQueue.async { [weak self] in
-          for component in string.components(separatedBy: .newlines) {
-            self?.accumulator.messages.append(.init(id: id, content: component))
+          for (index, component) in zip(0..., string.components(separatedBy: .newlines)) {
+            var color: Color = .primary
+            if index == 0 {
+              color = .blue
+            } else if component.starts(with: "+") {
+              color = .green
+            } else if component.starts(with: "-") {
+              color = .red
+            }
+            self?.accumulator.messages.append(
+              .init(
+                id: id,
+                content: component,
+                color: color,
+                isHeader: index == 0
+              )
+            )
             id += 1
           }
         }
@@ -53,49 +72,38 @@ extension DebugEnvironment {
 
   struct ReducerDebugView: View {
     let fontSize: CGFloat
-    let lightweight: Bool
     @ObservedObject var printer: DebugEnvironment.DebugUIPrinter = .shared
 
-    func textColor(_ string: String, isHeader: Bool) -> Color? {
-      if isHeader { return .blue }
-      if string.starts(with: "+") { return .green }
-      if string.starts(with: "-") { return .red }
-      return nil
-    }
-
     @ViewBuilder
-    func row(_ string: String) -> some View {
-      if lightweight {
-        Text(string)
-          .font(Font.system(size: fontSize, weight: .semibold, design: .monospaced))
-          .frame(maxWidth: .infinity, alignment: .leading)
-      } else {
-        let isHeader = string.starts(with: "received action:")
-        Text(string)
-          .font(
-            Font.system(size: fontSize, weight: isHeader ? .heavy : .semibold, design: .monospaced)
+    func row(message: DebugUIPrinter.Message) -> some View {
+      Text(message.content)
+        .font(
+          Font.system(
+            size: fontSize,
+            weight: message.isHeader ? .heavy : .semibold,
+            design: .monospaced
           )
-          .foregroundColor(textColor(string, isHeader: isHeader))
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .overlay(
-            Group {
-              if isHeader {
-                Divider()
-                  .frame(maxHeight: .infinity, alignment: .top)
-              }
+        )
+        .foregroundColor(message.color)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(
+          Group {
+            if message.isHeader {
+              Divider()
+                .frame(maxHeight: .infinity, alignment: .top)
             }
-          )
-      }
+          }
+        )
     }
 
     var body: some View {
       List {
         ForEach(printer.messages) { message in
           if #available(iOS 15.0, *) {
-            row(message.content)
+            row(message: message)
               .listRowSeparator(.hidden)
           } else {
-            row(message.content)
+            row(message: message)
           }
         }
         .listRowInsets(.init())
@@ -118,11 +126,10 @@ extension View {
     xOffset: CGFloat = 0,
     yOffset: CGFloat = 0,
     fontSize: CGFloat = 10,
-    opacity: CGFloat = 0.9,
-    lightweight: Bool = false
+    opacity: CGFloat = 0.9
   ) -> some View {
     self.overlay(
-      DebugEnvironment.ReducerDebugView(fontSize: fontSize, lightweight: lightweight)
+      DebugEnvironment.ReducerDebugView(fontSize: fontSize)
         .opacity(opacity)
         .frame(width: width, height: height)
         .offset(x: xOffset, y: yOffset)
@@ -139,8 +146,7 @@ extension View {
     xOffset: CGFloat = 0,
     yOffset: CGFloat = 0,
     fontSize: CGFloat = 10,
-    opacity: CGFloat = 0.9,
-    lightweight: Bool = false
+    opacity: CGFloat = 0.9
   ) -> some View {
     self
   }

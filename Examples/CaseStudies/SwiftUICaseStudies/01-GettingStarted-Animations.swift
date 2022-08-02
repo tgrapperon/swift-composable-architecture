@@ -170,7 +170,7 @@ struct AnimationsView_Previews: PreviewProvider {
           )
         )
       }
-      .debugUI(.top, height: 300)
+      .debugUI(.top)
 
       NavigationView {
         AnimationsView(

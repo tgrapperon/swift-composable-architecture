@@ -51,25 +51,46 @@ extension DebugEnvironment {
     }
   }
 
+
   struct ReducerDebugView: View {
     var fontSize: CGFloat
     @ObservedObject var printer: DebugEnvironment.DebugUIPrinter = .shared
 
+    func textColor(_ string: String) -> Color? {
+      if string.starts(with: "+") { return .green }
+      if string.starts(with: "-") { return .red }
+      if string.starts(with: "received action:") { return .blue }
+      return nil
+    }
+    
+    func fontWeight(_ string: String) -> Font.Weight {
+      if string.starts(with: "received action:") { return .bold }
+      return .semibold
+    }
+    
+    func font(_ string: String) -> Font {
+      if string.starts(with: "received action:") {
+          return Font.system(size: fontSize, weight: .bold, design: .monospaced)
+      }
+      return Font.system(size: fontSize, weight: .semibold, design: .monospaced)
+    }
+    
     var body: some View {
       List {
         ForEach(printer.messages) { message in
           if #available(iOS 15.0, *) {
             Text(message.content)
+              .font(self.font(message.content))
+              .foregroundColor(textColor(message.content))
               .listRowSeparator(.hidden)
           } else {
             Text(message.content)
+              .font(self.font(message.content))
+              .foregroundColor(textColor(message.content))
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .listRowInsets(.init())
-        .font(
-          Font.system(size: fontSize, weight: .semibold, design: .monospaced)
-        )
         .scaleEffect(x: 1, y: -1)
       }
       .scaleEffect(x: 1, y: -1)

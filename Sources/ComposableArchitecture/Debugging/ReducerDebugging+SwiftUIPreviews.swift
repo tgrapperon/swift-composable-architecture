@@ -56,40 +56,32 @@ extension DebugEnvironment {
     let lightweight: Bool
     @ObservedObject var printer: DebugEnvironment.DebugUIPrinter = .shared
 
-    func textColor(_ string: String) -> Color? {
+    func textColor(_ string: String, isHeader: Bool) -> Color? {
+      if isHeader { return .blue }
       if string.starts(with: "+") { return .green }
       if string.starts(with: "-") { return .red }
-      if string.starts(with: "received action:") { return .blue }
       return nil
-    }
-
-    func fontWeight(_ string: String) -> Font.Weight {
-      if string.starts(with: "received action:") { return .bold }
-      return .semibold
-    }
-
-    func font(_ string: String) -> Font {
-      if string.starts(with: "received action:") {
-        return Font.system(size: fontSize, weight: .heavy, design: .monospaced)
-      }
-      return Font.system(size: fontSize, weight: .semibold, design: .monospaced)
     }
 
     @ViewBuilder
     func row(_ string: String) -> some View {
       if lightweight {
         Text(string)
-          .frame(maxWidth: .infinity, alignment: .leading)
           .font(Font.system(size: fontSize, weight: .semibold, design: .monospaced))
+          .frame(maxWidth: .infinity, alignment: .leading)
       } else {
+        let isHeader = string.starts(with: "received action:")
         Text(string)
-          .font(self.font(string))
-          .foregroundColor(textColor(string))
+          .font(
+            Font.system(size: fontSize, weight: isHeader ? .heavy : .semibold, design: .monospaced)
+          )
+          .foregroundColor(textColor(string, isHeader: isHeader))
           .frame(maxWidth: .infinity, alignment: .leading)
           .overlay(
             Group {
-              if string.starts(with: "received action:") {
-                Divider().frame(maxHeight: .infinity, alignment: .top)
+              if isHeader {
+                Divider()
+                  .frame(maxHeight: .infinity, alignment: .top)
               }
             }
           )

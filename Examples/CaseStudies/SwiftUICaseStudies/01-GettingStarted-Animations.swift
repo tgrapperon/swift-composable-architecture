@@ -163,13 +163,14 @@ struct AnimationsView_Previews: PreviewProvider {
         AnimationsView(
           store: Store(
             initialState: AnimationsState(),
-            reducer: animationsReducer,
+            reducer: animationsReducer.debugUI(),
             environment: AnimationsEnvironment(
               mainQueue: .main
             )
           )
         )
       }
+      .debugUI(.top, height: 300)
 
       NavigationView {
         AnimationsView(

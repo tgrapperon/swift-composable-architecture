@@ -70,7 +70,7 @@ extension DebugEnvironment {
 
     func font(_ string: String) -> Font {
       if string.starts(with: "received action:") {
-        return Font.system(size: fontSize, weight: .bold, design: .monospaced)
+        return Font.system(size: fontSize, weight: .heavy, design: .monospaced)
       }
       return Font.system(size: fontSize, weight: .semibold, design: .monospaced)
     }
@@ -79,11 +79,20 @@ extension DebugEnvironment {
     func row(_ string: String) -> some View {
       if lightweight {
         Text(string)
+          .frame(maxWidth: .infinity, alignment: .leading)
           .font(Font.system(size: fontSize, weight: .semibold, design: .monospaced))
       } else {
         Text(string)
           .font(self.font(string))
           .foregroundColor(textColor(string))
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .overlay(
+            Group {
+              if string.starts(with: "received action:") {
+                Divider().frame(maxHeight: .infinity, alignment: .top)
+              }
+            }
+          )
       }
     }
 
@@ -97,7 +106,6 @@ extension DebugEnvironment {
             row(message.content)
           }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .listRowInsets(.init())
         .scaleEffect(x: 1, y: -1)
       }

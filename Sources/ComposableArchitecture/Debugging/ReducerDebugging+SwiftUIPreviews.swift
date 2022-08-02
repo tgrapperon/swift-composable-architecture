@@ -18,6 +18,18 @@ extension DebugEnvironment {
 
     let accumulator: MessageAccumulator = .init()
     let baseEnvironment = DebugEnvironment()
+    lazy var debugEnvironment: DebugEnvironment = {
+      var id: Int = 0
+      return .init { [baseEnvironment, processingQueue] string in
+        processingQueue.async { [weak self] in
+          for component in string.components(separatedBy: .newlines) {
+            self?.accumulator.messages.append(.init(id: id, content: component))
+            id += 1
+          }
+        }
+        baseEnvironment.printer(string)
+      }
+    }()
     @Published var messages: [Message] = []
     var messagesCancellable: AnyCancellable?
     let processingQueue = DispatchQueue(
@@ -36,19 +48,6 @@ extension DebugEnvironment {
         ).sink { [weak self] in
           self?.messages = $0
         }
-    }
-
-    var debugEnvironment: DebugEnvironment {
-      .init { [baseEnvironment, processingQueue] string in
-        var id: Int = 0
-        processingQueue.async { [weak self] in
-          for component in string.components(separatedBy: .newlines) {
-            self?.accumulator.messages.append(.init(id: id, content: component))
-            id += 1
-          }
-        }
-        baseEnvironment.printer(string)
-      }
     }
   }
 

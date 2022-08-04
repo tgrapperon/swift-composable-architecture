@@ -115,12 +115,16 @@ struct ReducerDebugView: View {
   var consoleView: some View {
     List {
       ForEach(printer.messages) { message in
-        if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
+        #if os(iOS) || os(macOS)
+        if #available(iOS 15, macOS 13, *) {
           row(message: message)
             .listRowSeparator(.hidden)
         } else {
           row(message: message)
         }
+        #else
+        row(message: message)
+        #endif
       }
       .listRowInsets(.init())
       .scaleEffect(x: 1, y: -1)

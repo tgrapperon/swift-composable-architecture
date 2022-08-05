@@ -99,8 +99,8 @@ where Upstream: ReducerProtocol {
       guard let localAction = toLocalAction(action) else { return effects }
       let nextState = toLocalState(state)
       return .merge(
-        .fireAndForget { [queue, logger] in
-          queue.schedule {
+        .fireAndForget { [logger] in
+          self.queue.schedule {
             var actionOutput = ""
             if actionFormat == .prettyPrint {
               customDump(localAction, to: &actionOutput, indent: 2)

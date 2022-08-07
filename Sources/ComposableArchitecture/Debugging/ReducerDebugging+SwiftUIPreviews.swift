@@ -192,6 +192,25 @@ struct ReducerDebugView: View {
 
 #endif
 extension View {
+  /// Installs a virtual debug console that prints reducers's `.debugUI()` messages in SwiftUI
+  /// Previews.
+  ///
+  /// You should use this method on the topmost view for a better experience. You also need to
+  /// decorate the reducers you want to observe with `.debugUI()` methods.
+  ///
+  /// - Parameters:
+  ///   - alignment: The alignment of the console, `.bottom` by default.
+  ///   - width: The width of the console, `nil` by default.
+  ///   - height: The height of the console, `300` by default.
+  ///   - xOffset: An optional horizontal offset for the console.
+  ///   - yOffset: An optional vertical offset for the console.
+  ///   - scale: The scale used to display messages. You can lower it in domains with long
+  ///   names.
+  ///   - opacity: The opacity of the console, `0.9` by default.
+  ///   - hidden: The initial state of the console. Set this value to `true` if you want to start
+  ///   with a hidden console. Visibility is controlled by the toggle button that appear on the
+  ///   trailing side
+  /// - Returns: A `View` with a `debug` console displayed as an overlay.
   @ViewBuilder
   public func debugUI(
     _ alignment: Alignment = .bottom,
@@ -223,6 +242,7 @@ extension View {
 }
 
 extension Reducer {
+  /// Same as `debug`, but where the environment is the shared UI debug console.
   public func debugUI(
     _ prefix: String = "",
     actionFormat: ActionFormat = .prettyPrint
@@ -235,6 +255,7 @@ extension Reducer {
     )
   }
 
+  /// Same as `debugActions`, but where the environment is the shared UI debug console.
   public func debugActionsUI(
     _ prefix: String = "",
     actionFormat: ActionFormat = .prettyPrint
@@ -247,6 +268,7 @@ extension Reducer {
     )
   }
 
+  /// Same as `debug`, but where the environment is the shared UI debug console.
   public func debugUI<LocalState, LocalAction>(
     _ prefix: String = "",
     state toLocalState: @escaping (State) -> LocalState,

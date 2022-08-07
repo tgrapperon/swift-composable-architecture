@@ -9,12 +9,7 @@ extension DebugEnvironment {
 
 final class DebugUIPrinter: ObservableObject {
   final class MessageAccumulator {
-
     @Published var messages: [Message] = []
-    let processingQueue = DispatchQueue(
-      label: "co.pointfree.ComposableArchitecture.DebugEnvironment.DebugUIPrinter",
-      qos: .default
-    )
 
     func print(_ message: String, color: Color? = nil) {
       processingQueue.async {
@@ -91,6 +86,11 @@ final class DebugUIPrinter: ObservableObject {
       }
   }
 }
+
+private let processingQueue = DispatchQueue(
+  label: "co.pointfree.ComposableArchitecture.DebugEnvironment.DebugUIPrinter",
+  qos: .default
+)
 
 struct ReducerDebugView: View {
   let fontSize: CGFloat

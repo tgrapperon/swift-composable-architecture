@@ -52,7 +52,7 @@ final class DebugUIPrinter: ObservableObject {
     var id: Int
     var content: String
     var color: Color = .primary
-    var fontWeight: Font.Weight = .medium
+    var fontWeight: Font.Weight = .semibold
     var isMessageHeader: Bool = true
   }
   static var shared = DebugUIPrinter()
@@ -233,7 +233,8 @@ extension View {
   /// Previews.
   ///
   /// You should use this method on the topmost view for a better experience. You also need to
-  /// decorate the reducers you want to observe with `.debugUI()` methods.
+  /// decorate the reducers you want to observe with `.debugUI()` methods. You can also use
+  /// ``printUI`` statements manually.
   ///
   /// - Parameters:
   ///   - alignment: The alignment of the console, `.bottom` by default.

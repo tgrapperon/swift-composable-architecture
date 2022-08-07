@@ -66,10 +66,6 @@ final class DebugUIPrinter: ObservableObject {
     }
   }()
 
-  func print(_ message: String, color: Color? = nil) {
-    accumulator.print(message, color: color)
-  }
-
   @Published var messages: [Message] = []
   var messagesCancellable: AnyCancellable?
 
@@ -84,6 +80,10 @@ final class DebugUIPrinter: ObservableObject {
       ).sink { [weak self] in
         self?.messages = $0
       }
+  }
+  
+  func print(_ message: String, color: Color? = nil) {
+    accumulator.print(message, color: color)
   }
 }
 
@@ -191,6 +191,7 @@ public struct printUI {
   @discardableResult
   public init(_ message: String, color: Color? = nil) {
     DebugUIPrinter.shared.print(message, color: color)
+    print(message)
   }
 }
 

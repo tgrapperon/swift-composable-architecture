@@ -199,14 +199,14 @@ extension View {
     height: CGFloat? = 300,
     xOffset: CGFloat = 0,
     yOffset: CGFloat = 0,
-    fontSize: CGFloat = 12,
+    scale: CGFloat = 1,
     opacity: CGFloat = 0.9,
     hidden: Bool = false
   ) -> some View {
     #if DEBUG
     self.overlay(
       ReducerDebugView(
-        fontSize: fontSize,
+        fontSize: 12 * scale,
         alignment: alignment,
         width: width,
         height: height,

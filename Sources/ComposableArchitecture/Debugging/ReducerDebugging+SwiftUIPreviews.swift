@@ -48,6 +48,22 @@ final class DebugUIPrinter: ObservableObject {
       baseEnvironment.printer(string)
     }
   }()
+  
+  private var printMessageID = -1
+  func print(_ message: String, color: Color? = nil) {
+    processingQueue.async { [weak self] in
+      self?.accumulator.messages.append(
+        .init(
+          id: self!.printMessageID,
+          content: message,
+          color: color ?? .primary,
+          isHeader: true
+        )
+      )
+      self?.printMessageID -= 1
+    }
+  }
+  
   @Published var messages: [Message] = []
   var messagesCancellable: AnyCancellable?
   let processingQueue = DispatchQueue(
@@ -161,6 +177,19 @@ struct ReducerDebugView: View {
       maxHeight: .infinity,
       alignment: alignment == .top ? .topTrailing : .bottomTrailing
     )
+  }
+}
+
+public struct printUI {
+  @discardableResult
+  public init(_ message: String, color: Color? = nil) {
+    DebugUIPrinter.shared.print(message, color: color)
+  }
+}
+
+extension printUI: View {
+  public var body: some View {
+    EmptyView()
   }
 }
 

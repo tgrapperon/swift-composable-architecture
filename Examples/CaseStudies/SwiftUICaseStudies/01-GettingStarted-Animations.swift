@@ -111,6 +111,7 @@ struct AnimationsView: View {
   var body: some View {
     WithViewStore(self.store) { viewStore in
       VStack(alignment: .leading) {
+        printUI("VStack.body: start", color: .purple)
         Text(template: readMe, .body)
           .padding()
           .gesture(
@@ -147,8 +148,13 @@ struct AnimationsView: View {
         .padding()
         Button("Rainbow") { viewStore.send(.rainbowButtonTapped, animation: .linear) }
           .padding([.horizontal, .bottom])
+        printUI("The circle's color is \(viewStore.circleColor).", color: .orange)
         Button("Reset") { viewStore.send(.resetButtonTapped) }
           .padding([.horizontal, .bottom])
+        printUI("VStack.body: finish", color: .purple)
+      }
+      .onAppear {
+        printUI("OnAppear")
       }
       .alert(self.store.scope(state: \.alert), dismiss: .dismissAlert)
       .navigationBarTitleDisplayMode(.inline)
@@ -163,7 +169,7 @@ struct AnimationsView_Previews: PreviewProvider {
         AnimationsView(
           store: Store(
             initialState: AnimationsState(),
-            reducer: animationsReducer.debugUI(),
+            reducer: animationsReducer.debugActionsUI(actionFormat: .labelsOnly),
             environment: AnimationsEnvironment(
               mainQueue: .main
             )

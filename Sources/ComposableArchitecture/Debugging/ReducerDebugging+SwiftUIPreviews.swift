@@ -9,22 +9,27 @@ extension DebugEnvironment {
 
 final class DebugUIPrinter: ObservableObject {
   final class MessageAccumulator {
-    @Published var messages: [Message] = []
-  }
-  struct Message: Identifiable {
-    var id: Int
-    var content: String
-    var color: Color
-    var isHeader: Bool
-  }
-  static var shared = DebugUIPrinter()
 
-  let accumulator: MessageAccumulator = .init()
-  let baseEnvironment = DebugEnvironment()
-  lazy var debugEnvironment: DebugEnvironment = {
-    var id: Int = 0
-    return .init { [baseEnvironment, processingQueue] string in
-      processingQueue.async { [weak self] in
+    @Published var messages: [Message] = []
+    let processingQueue = DispatchQueue(
+      label: "co.pointfree.ComposableArchitecture.DebugEnvironment.DebugUIPrinter",
+      qos: .default
+    )
+
+    func print(_ message: String, color: Color? = nil) {
+      processingQueue.async {
+        self.messages.append(
+          .init(
+            id: self.messages.count,
+            content: message,
+            color: color ?? .primary
+          )
+        )
+      }
+    }
+    
+    func printDebugMessage(_ string: String) {
+      processingQueue.async {
         for (index, component) in zip(0..., string.components(separatedBy: .newlines)) {
           var color: Color = .primary
           if index == 0 {
@@ -34,42 +39,44 @@ final class DebugUIPrinter: ObservableObject {
           } else if component.starts(with: "-") {
             color = .red
           }
-          self?.accumulator.messages.append(
+          self.messages.append(
             .init(
-              id: id,
+              id: self.messages.count,
               content: component,
               color: color,
-              isHeader: index == 0
+              fontWeight: index == 0 ? .heavy : .semibold,
+              isMessageHeader: index == 0
             )
           )
-          id += 1
         }
       }
-      baseEnvironment.printer(string)
-    }
-  }()
-  
-  private var printMessageID = -1
-  func print(_ message: String, color: Color? = nil) {
-    processingQueue.async { [weak self] in
-      self?.accumulator.messages.append(
-        .init(
-          id: self!.printMessageID,
-          content: message,
-          color: color ?? .primary,
-          isHeader: true
-        )
-      )
-      self?.printMessageID -= 1
     }
   }
   
+  struct Message: Identifiable {
+    var id: Int
+    var content: String
+    var color: Color = .primary
+    var fontWeight: Font.Weight = .medium
+    var isMessageHeader: Bool = true
+  }
+  static var shared = DebugUIPrinter()
+
+  let accumulator: MessageAccumulator = .init()
+  let baseEnvironment = DebugEnvironment()
+  lazy var debugEnvironment: DebugEnvironment = {
+    return .init { [accumulator, baseEnvironment] string in
+      accumulator.printDebugMessage(string)
+      baseEnvironment.printer(string)
+    }
+  }()
+
+  func print(_ message: String, color: Color? = nil) {
+    accumulator.print(message, color: color)
+  }
+
   @Published var messages: [Message] = []
   var messagesCancellable: AnyCancellable?
-  let processingQueue = DispatchQueue(
-    label: "co.pointfree.ComposableArchitecture.DebugEnvironment.DebugUIPrinter",
-    qos: .default
-  )
 
   init() {
     messagesCancellable =
@@ -112,7 +119,7 @@ struct ReducerDebugView: View {
       .font(
         Font.system(
           size: fontSize,
-          weight: message.isHeader ? .heavy : .semibold,
+          weight: message.fontWeight,
           design: .monospaced
         )
       )
@@ -120,7 +127,7 @@ struct ReducerDebugView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .overlay(
         Group {
-          if message.isHeader {
+          if message.isMessageHeader {
             Divider()
               .frame(maxHeight: .infinity, alignment: .top)
           }

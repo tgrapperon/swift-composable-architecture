@@ -66,11 +66,6 @@ struct TimerEditorButton: ReducerProtocol {
     // Three examples, one direct (disfunctional),
     // one through the `SyncEditor` "container",
     // and one using a computed wrapper.
-    // Only the `SyncEditor` is fully functional.
-    // The computed wrapper doesn't update when
-    // the state's change from the parent.
-    // I hadn't the time to investigate why yet, but
-    // it could be a bug.
     
     // --- Direct
     @PresentationStateOf<TimerEditor> var editor
@@ -97,15 +92,16 @@ struct TimerEditorButton: ReducerProtocol {
     }
     
     // --- Computed property approach
+    @PresentationStateOf<TimerEditor> fileprivate var presentedEditor_
     var presentedEditor: PresentationStateOf<TimerEditor> {
       get {
-        var state = $editor
+        var state = $presentedEditor_
         state.wrappedValue?.currentValue = currentValue
         state.wrappedValue?.timeInterval = timeInterval
         return state
       }
       set {
-        $editor = newValue
+        $presentedEditor_ = newValue
         if let editor = newValue.wrappedValue {
           currentValue = editor.currentValue
           timeInterval = editor.timeInterval
@@ -141,9 +137,20 @@ struct TimerEditorButton: ReducerProtocol {
         return .none
         
       case .editor(.present(id: Self.computedWrapper, _)):
-        state.editor = .init(currentValue: state.currentValue, timeInterval: state.timeInterval)
+        state.presentedEditor_ = .init(currentValue: state.currentValue, timeInterval: state.timeInterval)
         return .none
         
+      case .editor(.presented):
+        // We should propagate upstream changes from the direct case here.
+        // I don't know how to filter changes originating only from this
+        // presentation without creating a new action, so I discriminate using
+        // the state.
+        // That won't solve the fact that it doesn't update its own state
+        // when this parent state changes.
+        if let editor = state.editor {
+          state.timeInterval = editor.timeInterval
+        }
+        return .none
       case .editor:
         return .none
       }
@@ -249,6 +256,11 @@ struct TimerEditorButtonView: View {
     }
     .sheet(store: store.scope(state: \.syncEditor.$editor, action: TimerEditorButton.Action.editor))
     { store in
+      TimerEditorView(store: store)
+        .padding()
+        .presentationDetents([.fraction(0.2)])
+    }
+    .sheet(store: store.scope(state: \.presentedEditor, action: TimerEditorButton.Action.editor)) { store in
       TimerEditorView(store: store)
         .padding()
         .presentationDetents([.fraction(0.2)])

@@ -84,6 +84,7 @@
 		DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD442C5286CA91F008B4EA7 /* AboutView.swift */; };
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
+		E923AE6E28A41F1F00CDCE92 /* 99-DerivedPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E923AE6D28A41F1F00CDCE92 /* 99-DerivedPresentation.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -240,6 +241,7 @@
 		DCD442C5286CA91F008B4EA7 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-Recursion.swift"; sourceTree = "<group>"; };
 		DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaseStudiesApp.swift; sourceTree = "<group>"; };
+		E923AE6D28A41F1F00CDCE92 /* 99-DerivedPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "99-DerivedPresentation.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -398,6 +400,7 @@
 		DC89C41524460F95006900B9 /* SwiftUICaseStudies */ = {
 			isa = PBXGroup;
 			children = (
+				E923AE6D28A41F1F00CDCE92 /* 99-DerivedPresentation.swift */,
 				DC89C42424460F96006900B9 /* Info.plist */,
 				CAF069CF24ACC5AF00A1AAEF /* 00-Core.swift */,
 				DC89C41A24460F95006900B9 /* 00-RootView.swift */,
@@ -778,6 +781,7 @@
 				DC85EBC3285A731E00431CF3 /* ResignFirstResponder.swift in Sources */,
 				DCC68EAB244666AF0037F998 /* 03-Navigation-Sheet-PresentAndLoad.swift in Sources */,
 				CAE962FD24A7F7BE00EFC025 /* 01-GettingStarted-AlertsAndConfirmationDialogs.swift in Sources */,
+				E923AE6E28A41F1F00CDCE92 /* 99-DerivedPresentation.swift in Sources */,
 				CA25E5D224463AD700DA666A /* 01-GettingStarted-Bindings-Basics.swift in Sources */,
 				DC88D8A6245341EC0077F427 /* 01-GettingStarted-Animations.swift in Sources */,
 				DC89C44D244621A5006900B9 /* 03-Navigation-NavigateAndLoad.swift in Sources */,

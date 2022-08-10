@@ -96,7 +96,7 @@ struct TimerEditorButton: ReducerProtocol {
       }
     }
     
-    // --- Computed property approach (not implemented)
+    // --- Computed property approach
     var presentedEditor: PresentationStateOf<TimerEditor> {
       get {
         var state = $editor

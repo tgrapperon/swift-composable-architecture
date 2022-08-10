@@ -2,42 +2,36 @@
 import SwiftUI
 
 enum DerivedTimerStateKey: LiveDependencyKey {
-  static var testValue: AsyncSharedStream<DerivedTimer.State> { .init() }
-  static var liveValue: AsyncSharedStream<DerivedTimer.State> { .init() }
+  static var testValue: AsyncSharedStream<DerivedTimer.State> = .init()
+  static var liveValue: AsyncSharedStream<DerivedTimer.State> = .init()
 }
 
 enum TimerEditorButtonStateKey: LiveDependencyKey {
-  static var testValue: AsyncSharedStream<TimerEditorButton.State> { .init() }
-  static var liveValue: AsyncSharedStream<TimerEditorButton.State> { .init() }
+  static var testValue: AsyncSharedStream<TimerEditorButton.State> = .init()
+  static var liveValue: AsyncSharedStream<TimerEditorButton.State> = .init()
 }
 
 enum TimerEditorStateKey: LiveDependencyKey {
-  static var testValue: AsyncSharedStream<TimerEditor.State> { .init() }
-  static var liveValue: AsyncSharedStream<TimerEditor.State> { .init() }
+  static var testValue: AsyncSharedStream<TimerEditor.State> = .init()
+  static var liveValue: AsyncSharedStream<TimerEditor.State> = .init()
 }
-
-
 
 extension DependencyValues {
   var rootState: AsyncSharedStream<DerivedTimer.State> {
     get { self[DerivedTimerStateKey.self] }
     set { self[DerivedTimerStateKey.self] = newValue }
   }
-  
+
   var branchState: AsyncSharedStream<TimerEditorButton.State> {
     get { self[TimerEditorButtonStateKey.self] }
     set { self[TimerEditorButtonStateKey.self] = newValue }
   }
-  
+
   var leafState: AsyncSharedStream<TimerEditor.State> {
     get { self[TimerEditorStateKey.self] }
     set { self[TimerEditorStateKey.self] = newValue }
   }
 }
-
-
-
-
 
 // Root domain
 struct DerivedTimer: ReducerProtocol {
@@ -69,8 +63,21 @@ struct DerivedTimer: ReducerProtocol {
   }
 
   enum CancellationID {}
+  @Dependency(\.rootState) var rootState
 
   var body: some ReducerProtocol<State, Action> {
+    Scope(state: \.button, action: /Action.button) {
+      TimerEditorButton()
+    }
+    .transformDependency(\.rootState, into: \.leafState) { _, _, root, leaf in
+      root.map {
+        .init(
+          currentValue: $0.currentValue,
+          timeInterval: $0.timeInterval
+        )
+      }.inject(into: leaf)
+    }
+
     Reduce { state, action in
       switch action {
       case .button:
@@ -83,25 +90,17 @@ struct DerivedTimer: ReducerProtocol {
         // This is an effect that happens in the parent of the parent.
         // The presenting/presented feature are not aware of it.
         state.currentValue += state.timeInterval
-        return .task {
-          try? await Task.sleep(nanoseconds: UInt64(Double(NSEC_PER_SEC) * timeInterval))
-          return .tick
-        }.cancellable(id: CancellationID.self)
+        return .merge(
+          .task {
+            try? await Task.sleep(nanoseconds: UInt64(Double(NSEC_PER_SEC) * timeInterval))
+            return .tick
+          }.cancellable(id: CancellationID.self),
+          .fireAndForget { [state] in // Update the dependencies
+            await rootState.send(state)
+          }
+        )
       }
     }
-    
-    Scope(state: \.button, action: /Action.button) {
-      TimerEditorButton()
-    }
-    .transformDependency(\.rootState, into: \.leafState) { _, _, root, leaf in
-      root.map {
-        .init(
-          currentValue: $0.currentValue,
-          timeInterval: $0.timeInterval
-        )
-      }.inject(into: leaf)
-    }
-    
   }
 }
 
@@ -114,7 +113,7 @@ struct TimerEditorButton: ReducerProtocol {
     // Three examples, one direct (disfunctional),
     // one through the `SyncEditor` "container",
     // and one using a computed wrapper.
-    
+
     // --- Direct
     @PresentationStateOf<TimerEditor> var editor
 
@@ -138,7 +137,7 @@ struct TimerEditorButton: ReducerProtocol {
         }
       }
     }
-    
+
     // --- Computed property approach
     @PresentationStateOf<TimerEditor> fileprivate var presentedEditor_
     var presentedEditor: PresentationStateOf<TimerEditor> {
@@ -179,15 +178,16 @@ struct TimerEditorButton: ReducerProtocol {
       case .editor(.present(id: Self.syncEditor, _)):
         state._syncEditor = .init(
           editor: .presented(
-            id: Self.syncEditor, // ? or nothing?
+            id: Self.syncEditor,  // ? or nothing?
             .init(currentValue: state.currentValue, timeInterval: state.timeInterval))
         )
         return .none
-        
+
       case .editor(.present(id: Self.computedWrapper, _)):
-        state.presentedEditor_ = .init(currentValue: state.currentValue, timeInterval: state.timeInterval)
+        state.presentedEditor_ = .init(
+          currentValue: state.currentValue, timeInterval: state.timeInterval)
         return .none
-        
+
       case .editor(.presented):
         // We should propagate upstream changes from the direct case here.
         // I don't know how to filter changes originating only from this
@@ -227,7 +227,7 @@ struct TimerEditor: ReducerProtocol {
     case timeInterval(TimeInterval)
     case task
   }
-  
+
   @Dependency(\.leafState) var leafState
 
   var body: some ReducerProtocol<State, Action> {
@@ -321,7 +321,8 @@ struct TimerEditorButtonView: View {
         .padding()
         .presentationDetents([.fraction(0.2)])
     }
-    .sheet(store: store.scope(state: \.presentedEditor, action: TimerEditorButton.Action.editor)) { store in
+    .sheet(store: store.scope(state: \.presentedEditor, action: TimerEditorButton.Action.editor)) {
+      store in
       TimerEditorView(store: store)
         .padding()
         .presentationDetents([.fraction(0.2)])

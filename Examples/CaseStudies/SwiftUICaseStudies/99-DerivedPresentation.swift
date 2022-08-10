@@ -6,9 +6,9 @@ enum DerivedTimerStateKey: LiveDependencyKey {
   static var liveValue: AsyncSharedStream<DerivedTimer.State> = .init()
 }
 
-enum TimerEditorStateKey: LiveDependencyKey {
-  static var testValue: AsyncSharedStream<TimerEditor.State> = .init()
-  static var liveValue: AsyncSharedStream<TimerEditor.State> = .init()
+enum CurrentValueKey: LiveDependencyKey {
+  static var testValue: AsyncSharedStream<TimeInterval> = .init()
+  static var liveValue: AsyncSharedStream<TimeInterval> = .init()
 }
 
 extension DependencyValues {
@@ -17,9 +17,9 @@ extension DependencyValues {
     set { self[DerivedTimerStateKey.self] = newValue }
   }
 
-  var leafState: AsyncSharedStream<TimerEditor.State> {
-    get { self[TimerEditorStateKey.self] }
-    set { self[TimerEditorStateKey.self] = newValue }
+  var currentValue: AsyncSharedStream<TimeInterval> {
+    get { self[CurrentValueKey.self] }
+    set { self[CurrentValueKey.self] = newValue }
   }
 }
 
@@ -59,13 +59,10 @@ struct DerivedTimer: ReducerProtocol {
     Scope(state: \.button, action: /Action.button) {
       TimerEditorButton()
     }
-    .transformDependency(\.rootState, into: \.leafState) { _, _, root, leaf in
-      root.map {
-        .init(
-          currentValue: $0.currentValue,
-          timeInterval: $0.timeInterval
-        )
-      }.inject(into: leaf)
+    .transformDependency(\.rootState, into: \.currentValue) { _, _, root, currentValue in
+      root.map {$0.currentValue }.inject(into: currentValue)
+      // This creates a new uncancellable task/iteration
+      // each time an action is reduced, so not optimal!
     }
 
     Reduce { state, action in
@@ -218,7 +215,7 @@ struct TimerEditor: ReducerProtocol {
     case task
   }
 
-  @Dependency(\.leafState) var leafState
+  @Dependency(\.currentValue) var currentValues
 
   var body: some ReducerProtocol<State, Action> {
     Reduce { state, action in
@@ -228,8 +225,8 @@ struct TimerEditor: ReducerProtocol {
         return .none
       case .task:
         return .run { send in
-          for await newValue in self.leafState {
-            await send(.currentValue(newValue.currentValue))
+          for await currentValue in self.currentValues {
+            await send(.currentValue(currentValue))
           }
         }
       case let .timeInterval(timeInterval):

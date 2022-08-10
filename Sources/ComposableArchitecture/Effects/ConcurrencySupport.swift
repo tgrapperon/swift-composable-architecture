@@ -459,6 +459,9 @@ public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
 }
 
 extension AsyncSequence {
+  // Some storage/cancellation of the task should be performed. One can use an identifier,
+  // or derive one from the `#fileID`,  `#line`, etc.
+  // Or we should use another way to sync the sequences.
   public func inject(into other: AsyncSharedStream<Element>) {
     Task {
       for try await element in self {

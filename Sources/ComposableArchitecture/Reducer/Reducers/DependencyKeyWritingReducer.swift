@@ -34,7 +34,7 @@ extension ReducerProtocol {
   public func transformDependency<Source, Destination>(
     _ from: WritableKeyPath<DependencyValues, Source>,
     into other: WritableKeyPath<DependencyValues, Destination>,
-    _ transform: @escaping (State, Action, Source, inout Destination) -> Void // Or only (Source) -> Destination ?
+    _ transform: @escaping (State, Action, Source, inout Destination) -> Void // Or only (Source, Destination) -> Void ?
   ) -> DependencyKeyWritingReducer<Self, Destination> {
     .init(upstream: self) { state, action, values in
       transform(state, action, values[keyPath: from], &values[keyPath: other])

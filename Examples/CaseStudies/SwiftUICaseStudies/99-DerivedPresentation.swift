@@ -1,6 +1,44 @@
 @preconcurrency import ComposableArchitecture
 import SwiftUI
 
+enum DerivedTimerStateKey: LiveDependencyKey {
+  static var testValue: AsyncSharedStream<DerivedTimer.State> { .init() }
+  static var liveValue: AsyncSharedStream<DerivedTimer.State> { .init() }
+}
+
+enum TimerEditorButtonStateKey: LiveDependencyKey {
+  static var testValue: AsyncSharedStream<TimerEditorButton.State> { .init() }
+  static var liveValue: AsyncSharedStream<TimerEditorButton.State> { .init() }
+}
+
+enum TimerEditorStateKey: LiveDependencyKey {
+  static var testValue: AsyncSharedStream<TimerEditor.State> { .init() }
+  static var liveValue: AsyncSharedStream<TimerEditor.State> { .init() }
+}
+
+
+
+extension DependencyValues {
+  var rootState: AsyncSharedStream<DerivedTimer.State> {
+    get { self[DerivedTimerStateKey.self] }
+    set { self[DerivedTimerStateKey.self] = newValue }
+  }
+  
+  var branchState: AsyncSharedStream<TimerEditorButton.State> {
+    get { self[TimerEditorButtonStateKey.self] }
+    set { self[TimerEditorButtonStateKey.self] = newValue }
+  }
+  
+  var leafState: AsyncSharedStream<TimerEditor.State> {
+    get { self[TimerEditorStateKey.self] }
+    set { self[TimerEditorStateKey.self] = newValue }
+  }
+}
+
+
+
+
+
 // Root domain
 struct DerivedTimer: ReducerProtocol {
   struct State: Equatable {
@@ -33,9 +71,6 @@ struct DerivedTimer: ReducerProtocol {
   enum CancellationID {}
 
   var body: some ReducerProtocol<State, Action> {
-    Scope(state: \.button, action: /Action.button) {
-      TimerEditorButton()
-    }
     Reduce { state, action in
       switch action {
       case .button:
@@ -54,6 +89,19 @@ struct DerivedTimer: ReducerProtocol {
         }.cancellable(id: CancellationID.self)
       }
     }
+    
+    Scope(state: \.button, action: /Action.button) {
+      TimerEditorButton()
+    }
+    .transformDependency(\.rootState, into: \.leafState) { _, _, root, leaf in
+      root.map {
+        .init(
+          currentValue: $0.currentValue,
+          timeInterval: $0.timeInterval
+        )
+      }.inject(into: leaf)
+    }
+    
   }
 }
 
@@ -175,12 +223,25 @@ struct TimerEditor: ReducerProtocol {
   }
 
   enum Action: Equatable, Sendable {
+    case currentValue(TimeInterval)
     case timeInterval(TimeInterval)
+    case task
   }
+  
+  @Dependency(\.leafState) var leafState
 
   var body: some ReducerProtocol<State, Action> {
     Reduce { state, action in
       switch action {
+      case let .currentValue(timeInterval):
+        state.currentValue = timeInterval
+        return .none
+      case .task:
+        return .run { send in
+          for await newValue in self.leafState {
+            await send(.currentValue(newValue.currentValue))
+          }
+        }
       case let .timeInterval(timeInterval):
         state.timeInterval = timeInterval
         return .none
@@ -285,6 +346,9 @@ struct TimerEditorView: View {
             send: TimerEditor.Action.timeInterval
           ),
           step: 0.1)
+      }
+      .task {
+        await viewStore.send(.task).finish()
       }
     }.monospacedDigit()
   }

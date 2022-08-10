@@ -367,3 +367,104 @@ public struct UncheckedSendable<Value>: @unchecked Sendable {
     _modify { yield &self.value[keyPath: keyPath] }
   }
 }
+
+public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
+  enum Current {
+    case element(Element)
+    case passthrough
+    case finished
+
+    mutating func update(_ element: Element) {
+      switch self {
+      case .element:
+        self = .element(element)
+      case .finished, .passthrough:
+        break
+      }
+    }
+    var isFinished: Bool {
+      if case .finished = self { return true }
+      return false
+    }
+  }
+
+  var continuations: [UUID: AsyncStream<Element>.Continuation] = [:]
+  var current: Current
+
+  public init() {
+    self.current = .passthrough
+  }
+
+  public init(_ element: Element) {
+    self.current = .element(element)
+  }
+
+  public func send(_ value: Element) {
+    precondition(!current.isFinished)
+    current.update(value)
+    for continuation in continuations.values {
+      continuation.yield(value)
+    }
+  }
+
+  public func finish() {
+    self.current = .finished
+    for continuation in continuations.values {
+      continuation.finish()
+    }
+    continuations = [:]
+  }
+
+  func unregisterContinuation(id: UUID) {
+    self.continuations[id] = nil
+  }
+
+  func stream() -> AsyncStream<Element> {
+    AsyncStream(Element.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
+      let id = UUID()
+      switch self.current {
+      case .finished:
+        continuation.finish()
+        return
+      case let .element(element):
+        continuation.yield(element)
+      case .passthrough:
+        break
+      }
+      self.continuations[id] = continuation
+      continuation.onTermination = { _ in
+        Task {
+          await self.unregisterContinuation(id: id)
+        }
+      }
+    }
+  }
+
+  nonisolated public func makeAsyncIterator() -> AsyncIterator {
+    AsyncIterator(sharedStream: self)
+  }
+
+  public struct AsyncIterator: AsyncIteratorProtocol {
+    let sharedStream: AsyncSharedStream<Element>
+    var asyncStreamIterator: AsyncStream<Element>.AsyncIterator?
+    public mutating func next() async -> Element? {
+      if var asyncStreamIterator = asyncStreamIterator {
+        return await asyncStreamIterator.next()
+      } else {
+        self.asyncStreamIterator = await sharedStream.stream().makeAsyncIterator()
+        return await asyncStreamIterator?.next()
+      }
+    }
+  }
+}
+
+extension AsyncSequence {
+  public func inject(into other: AsyncSharedStream<Element>) {
+    Task {
+      for try await element in self {
+        guard !Task.isCancelled else { return }
+        await other.send(element)
+      }
+    }
+  }
+}

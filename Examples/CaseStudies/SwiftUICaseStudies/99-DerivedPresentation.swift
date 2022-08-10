@@ -6,11 +6,6 @@ enum DerivedTimerStateKey: LiveDependencyKey {
   static var liveValue: AsyncSharedStream<DerivedTimer.State> = .init()
 }
 
-enum TimerEditorButtonStateKey: LiveDependencyKey {
-  static var testValue: AsyncSharedStream<TimerEditorButton.State> = .init()
-  static var liveValue: AsyncSharedStream<TimerEditorButton.State> = .init()
-}
-
 enum TimerEditorStateKey: LiveDependencyKey {
   static var testValue: AsyncSharedStream<TimerEditor.State> = .init()
   static var liveValue: AsyncSharedStream<TimerEditor.State> = .init()
@@ -20,11 +15,6 @@ extension DependencyValues {
   var rootState: AsyncSharedStream<DerivedTimer.State> {
     get { self[DerivedTimerStateKey.self] }
     set { self[DerivedTimerStateKey.self] = newValue }
-  }
-
-  var branchState: AsyncSharedStream<TimerEditorButton.State> {
-    get { self[TimerEditorButtonStateKey.self] }
-    set { self[TimerEditorButtonStateKey.self] = newValue }
   }
 
   var leafState: AsyncSharedStream<TimerEditor.State> {
@@ -95,7 +85,7 @@ struct DerivedTimer: ReducerProtocol {
             try? await Task.sleep(nanoseconds: UInt64(Double(NSEC_PER_SEC) * timeInterval))
             return .tick
           }.cancellable(id: CancellationID.self),
-          .fireAndForget { [state] in // Update the dependencies
+          .fireAndForget { [state] in // Update the dependency
             await rootState.send(state)
           }
         )

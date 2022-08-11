@@ -442,7 +442,16 @@ public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
     }
   }
 
-  func _register(id: AnyHashable, mapping: AsyncSharedStreamMapping<Element>) {
+  func _register(id: AnyHashable, mapping: AsyncSharedStreamMapping<Element>) async {
+    if self.mappedStreams[id] == nil {
+      guard !isFinished else {
+        await mapping.finish()
+        return
+      }
+      if let current = current, shouldEmitValueWhenIterationBegins {
+        await mapping.send(current)
+      }
+    }
     self.mappedStreams[id] = mapping
   }
 

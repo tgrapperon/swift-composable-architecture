@@ -85,6 +85,7 @@
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
 		E923AE6E28A41F1F00CDCE92 /* 99-DerivedPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E923AE6D28A41F1F00CDCE92 /* 99-DerivedPresentation.swift */; };
+		E9B1667328A4A8D10019FB1A /* 999-StateDependency.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B1667228A4A8D10019FB1A /* 999-StateDependency.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -242,6 +243,7 @@
 		DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-Recursion.swift"; sourceTree = "<group>"; };
 		DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaseStudiesApp.swift; sourceTree = "<group>"; };
 		E923AE6D28A41F1F00CDCE92 /* 99-DerivedPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "99-DerivedPresentation.swift"; sourceTree = "<group>"; };
+		E9B1667228A4A8D10019FB1A /* 999-StateDependency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "999-StateDependency.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -400,6 +402,7 @@
 		DC89C41524460F95006900B9 /* SwiftUICaseStudies */ = {
 			isa = PBXGroup;
 			children = (
+				E9B1667228A4A8D10019FB1A /* 999-StateDependency.swift */,
 				E923AE6D28A41F1F00CDCE92 /* 99-DerivedPresentation.swift */,
 				DC89C42424460F96006900B9 /* Info.plist */,
 				CAF069CF24ACC5AF00A1AAEF /* 00-Core.swift */,
@@ -774,6 +777,7 @@
 				CA6AC2662451135C00C71CB3 /* DownloadComponent.swift in Sources */,
 				CA3E4C5B24B4FA0E00447C0B /* 04-HigherOrderReducers-Lifecycle.swift in Sources */,
 				DC5B505125C86EBC000D8DFD /* 01-GettingStarted-Bindings-Forms.swift in Sources */,
+				E9B1667328A4A8D10019FB1A /* 999-StateDependency.swift in Sources */,
 				CAA9ADC22446587C0003A984 /* 02-Effects-Basics.swift in Sources */,
 				DC89C41B24460F95006900B9 /* 00-RootView.swift in Sources */,
 				DCC68EDD2447A5B00037F998 /* 01-GettingStarted-OptionalState.swift in Sources */,

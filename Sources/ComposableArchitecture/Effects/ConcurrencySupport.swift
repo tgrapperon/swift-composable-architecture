@@ -369,73 +369,125 @@ public struct UncheckedSendable<Value>: @unchecked Sendable {
 }
 
 public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
-  enum Current {
-    case element(Element)
-    case passthrough
-    case finished
+  //  enum Current {
+  //    case element(Element)
+  //    case passthrough
+  //    case finished
+  //
+  //    mutating func update(_ element: Element) {
+  //      switch self {
+  //      case .element:
+  //        self = .element(element)
+  //      case .finished, .passthrough:
+  //        break
+  //      }
+  //    }
+  //    var isFinished: Bool {
+  //      if case .finished = self { return true }
+  //      return false
+  //    }
+  //  }
 
-    mutating func update(_ element: Element) {
-      switch self {
-      case .element:
-        self = .element(element)
-      case .finished, .passthrough:
-        break
-      }
+  private var continuations: [UUID: AsyncStream<Element>.Continuation] = [:]
+  private var current: Element?
+  private var isFinished: Bool = false
+  private var mappedStreams: [AnyHashable: AsyncSharedStreamMapping<Element>] = [:]
+  private var shouldEmitValueWhenIterationBegins: Bool = false
+
+  private var registrationTasks: [AnyHashable: Task<Void, Never>] = [:]
+
+  private var maintenanceTries: Int = 0
+  private var maintenancePeriod: Int = 1000
+  
+  public init(shouldEmitValueIfPossibleWhenIterationBegins: Bool = true) {
+    self.current = nil
+    self.shouldEmitValueWhenIterationBegins = shouldEmitValueIfPossibleWhenIterationBegins
+  }
+
+  public init(_ element: Element, shouldEmitValueWhenIterationBegins: Bool = true) {
+    self.current = element
+    self.shouldEmitValueWhenIterationBegins = shouldEmitValueWhenIterationBegins
+  }
+
+  public func send(_ value: Element) async {
+    guard !isFinished else {
+      // Error/Crash?
+      return
     }
-    var isFinished: Bool {
-      if case .finished = self { return true }
-      return false
-    }
-  }
-
-  var continuations: [UUID: AsyncStream<Element>.Continuation] = [:]
-  var current: Current
-
-  public init() {
-    self.current = .passthrough
-  }
-
-  public init(_ element: Element) {
-    self.current = .element(element)
-  }
-
-  public func send(_ value: Element) {
-    precondition(!current.isFinished)
-    current.update(value)
+    self.current = value
     for continuation in continuations.values {
       continuation.yield(value)
     }
+    for bound in mappedStreams.values {
+      await bound.send(value)
+    }
+    cleanupStaleMappedStreamsIfNeeded()
   }
 
-  public func finish() {
-    self.current = .finished
+  public func finish() async {
+    self.isFinished = true
     for continuation in continuations.values {
       continuation.finish()
     }
-    continuations = [:]
+    for bound in mappedStreams.values {
+      await bound.finish()
+    }
+    self.continuations = [:]
+    self.mappedStreams = [:]
+    self.maintenanceTries = 0
+  }
+  
+  func cleanupStaleMappedStreamsIfNeeded() {
+    if maintenanceTries < maintenancePeriod {
+      maintenanceTries += 1
+    } else {
+      maintenanceTries = 0
+      self.mappedStreams = self.mappedStreams.filter { !$0.value.isStale }
+    }
   }
 
-  func unregisterContinuation(id: UUID) {
+  nonisolated func register(id: AnyHashable, mapping: AsyncSharedStreamMapping<Element>) {
+    Task {
+      await self._register(id: id, mapping: mapping)
+    }
+  }
+
+  nonisolated func unregisterMapping(id: AnyHashable) {
+    Task {
+      await self._unregisterMapping(id: id)
+    }
+  }
+  nonisolated func unregisterContinuation(id: UUID) {
+    Task {
+      await self._unregisterContinuation(id: id)
+    }
+  }
+
+  func _register(id: AnyHashable, mapping: AsyncSharedStreamMapping<Element>) {
+    self.mappedStreams[id] = mapping
+  }
+
+  func _unregisterMapping(id: AnyHashable) {
+    self.mappedStreams[id] = nil
+  }
+
+  func _unregisterContinuation(id: UUID) {
     self.continuations[id] = nil
   }
 
   func stream() -> AsyncStream<Element> {
     AsyncStream(Element.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
       let id = UUID()
-      switch self.current {
-      case .finished:
+      guard !isFinished else {
         continuation.finish()
         return
-      case let .element(element):
-        continuation.yield(element)
-      case .passthrough:
-        break
+      }
+      if let current = current, shouldEmitValueWhenIterationBegins {
+        continuation.yield(current)
       }
       self.continuations[id] = continuation
       continuation.onTermination = { _ in
-        Task {
-          await self.unregisterContinuation(id: id)
-        }
+        self.unregisterContinuation(id: id)
       }
     }
   }
@@ -448,26 +500,71 @@ public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
     let sharedStream: AsyncSharedStream<Element>
     var asyncStreamIterator: AsyncStream<Element>.AsyncIterator?
     public mutating func next() async -> Element? {
-      if var asyncStreamIterator = asyncStreamIterator {
-        return await asyncStreamIterator.next()
+      guard !Task.isCancelled else { return nil }
+      if asyncStreamIterator != nil {
+        return await asyncStreamIterator!.next()
       } else {
         self.asyncStreamIterator = await sharedStream.stream().makeAsyncIterator()
-        return await asyncStreamIterator?.next()
+        guard !Task.isCancelled else { return nil }
+        return await asyncStreamIterator!.next()
       }
     }
   }
 }
 
-extension AsyncSequence {
-  // Some storage/cancellation of the task should be performed. One can use an identifier,
-  // or derive one from the `#fileID`,  `#line`, etc.
-  // Or we should use another way to sync the sequences.
-  public func inject(into other: AsyncSharedStream<Element>) {
-    Task {
-      for try await element in self {
-        guard !Task.isCancelled else { return }
-        await other.send(element)
-      }
+struct AsyncSharedStreamMapping<Source> {
+  weak var stream: AnyObject?
+  var send: (_ value: Source) async -> Void
+  var finish: () async -> Void
+  var isStale: Bool { stream == nil  }
+}
+
+extension AsyncSharedStreamMapping {
+  // Should we capture or not the destination streams?
+  init<Destination>(
+    stream: AsyncSharedStream<Destination>, transform: @escaping (Source) -> Destination
+  ) {
+    self.stream = stream
+    self.send = { [weak stream] in
+      await stream?.send(transform($0))
     }
+    self.finish = { [weak stream] in
+      await stream?.finish()
+    }
+  }
+
+  init(stream: AsyncSharedStream<Source>) {
+    self.stream = stream
+    self.send = { [weak stream] in
+      await stream?.send($0)
+    }
+    self.finish = { [weak stream] in
+      await stream?.finish()
+    }
+  }
+}
+
+extension AsyncSharedStream {
+  nonisolated
+    public func bind(
+      to other: AsyncSharedStream<Element>,
+      file: StaticString = #fileID,
+      line: UInt = #line,
+      column: UInt = #column
+    )
+  {
+    register(id: "\(file):\(line):\(column)", mapping: .init(stream: other))
+  }
+
+  nonisolated
+    public func bind<Destination>(
+      to other: AsyncSharedStream<Destination>,
+      transform: @escaping (Element) -> Destination,
+      file: StaticString = #fileID,
+      line: UInt = #line,
+      column: UInt = #column
+    )
+  {
+    register(id: "\(file):\(line):\(column)", mapping: .init(stream: other, transform: transform))
   }
 }

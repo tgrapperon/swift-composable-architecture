@@ -59,11 +59,7 @@ struct DerivedTimer: ReducerProtocol {
     Scope(state: \.button, action: /Action.button) {
       TimerEditorButton()
     }
-    .transformDependency(\.rootState, into: \.currentValue) { _, _, root, currentValue in
-      root.map {$0.currentValue }.inject(into: currentValue)
-      // This creates a new uncancellable task/iteration
-      // each time an action is reduced, so not optimal!
-    }
+    .bindStreamDependency(\.rootState, to: \.currentValue, transform: \.currentValue)
 
     Reduce { state, action in
       switch action {

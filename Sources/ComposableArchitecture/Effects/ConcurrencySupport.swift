@@ -369,36 +369,15 @@ public struct UncheckedSendable<Value>: @unchecked Sendable {
 }
 
 public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
-  //  enum Current {
-  //    case element(Element)
-  //    case passthrough
-  //    case finished
-  //
-  //    mutating func update(_ element: Element) {
-  //      switch self {
-  //      case .element:
-  //        self = .element(element)
-  //      case .finished, .passthrough:
-  //        break
-  //      }
-  //    }
-  //    var isFinished: Bool {
-  //      if case .finished = self { return true }
-  //      return false
-  //    }
-  //  }
-
   private var continuations: [UUID: AsyncStream<Element>.Continuation] = [:]
   private var current: Element?
   private var isFinished: Bool = false
+  private var maintenancePeriod: Int = 1000
+  private var maintenanceTries: Int = 0
   private var mappedStreams: [AnyHashable: AsyncSharedStreamMapping<Element>] = [:]
+  private var registrationTasks: [AnyHashable: Task<Void, Never>] = [:]
   private var shouldEmitValueWhenIterationBegins: Bool = false
 
-  private var registrationTasks: [AnyHashable: Task<Void, Never>] = [:]
-
-  private var maintenanceTries: Int = 0
-  private var maintenancePeriod: Int = 1000
-  
   public init(shouldEmitValueIfPossibleWhenIterationBegins: Bool = true) {
     self.current = nil
     self.shouldEmitValueWhenIterationBegins = shouldEmitValueIfPossibleWhenIterationBegins
@@ -436,7 +415,7 @@ public final actor AsyncSharedStream<Element: Sendable>: AsyncSequence {
     self.mappedStreams = [:]
     self.maintenanceTries = 0
   }
-  
+
   func cleanupStaleMappedStreamsIfNeeded() {
     if maintenanceTries < maintenancePeriod {
       maintenanceTries += 1
@@ -516,7 +495,7 @@ struct AsyncSharedStreamMapping<Source> {
   weak var stream: AnyObject?
   var send: (_ value: Source) async -> Void
   var finish: () async -> Void
-  var isStale: Bool { stream == nil  }
+  var isStale: Bool { stream == nil }
 }
 
 extension AsyncSharedStreamMapping {
@@ -545,26 +524,20 @@ extension AsyncSharedStreamMapping {
 }
 
 extension AsyncSharedStream {
-  nonisolated
-    public func bind(
-      to other: AsyncSharedStream<Element>,
-      file: StaticString = #fileID,
-      line: UInt = #line,
-      column: UInt = #column
-    )
-  {
-    register(id: "\(file):\(line):\(column)", mapping: .init(stream: other))
+  @usableFromInline
+  nonisolated func bind(
+    to other: AsyncSharedStream<Element>,
+    id: AnyHashable
+  ) {
+    register(id: id, mapping: .init(stream: other))
   }
 
-  nonisolated
-    public func bind<Destination>(
-      to other: AsyncSharedStream<Destination>,
-      transform: @escaping (Element) -> Destination,
-      file: StaticString = #fileID,
-      line: UInt = #line,
-      column: UInt = #column
-    )
-  {
-    register(id: "\(file):\(line):\(column)", mapping: .init(stream: other, transform: transform))
+  @usableFromInline
+  nonisolated func bind<Destination>(
+    to other: AsyncSharedStream<Destination>,
+    id: AnyHashable,
+    transform: @escaping (Element) -> Destination
+  ) {
+    register(id: id, mapping: .init(stream: other, transform: transform))
   }
 }

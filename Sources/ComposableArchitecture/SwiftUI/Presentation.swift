@@ -128,6 +128,8 @@ public struct PresentationReducer<
       Presenter.Action, PresentationActionOf<Presented>
     >
 
+  private enum DismissID {}
+
   public func reduce(
     into state: inout Presenter.State, action: Presenter.Action
   ) -> Effect<Presenter.Action, Never> {
@@ -146,10 +148,13 @@ public struct PresentationReducer<
         effects.append(
           self.presented
             .dependency(\.navigationID.current, id)
+            .dependency(\.dismiss, DismissEffect { await Task.cancel(id: DismissID.self) })
             .reduce(into: &presentedState, action: presentedAction)
             .map { toPresentedAction.embed(.presented($0)) }
             .cancellable(id: id)
         )
+      } else {
+        // TODO: runtimeWarning
       }
 
     case .present(_, .none), .dismiss, .none:
@@ -165,6 +170,21 @@ public struct PresentationReducer<
       state[keyPath: toPresentedState].id != id
     {
       effects.append(.cancel(id: id))
+    }
+
+    if let id = state[keyPath: toPresentedState].id, id != presentedState.id {
+      effects.append(
+        .concatenate(
+          .task {
+            try await Dependency.with(\.navigationID.current, id) {
+              try await withTaskCancellation(id: DismissID.self) {
+                try await Task.never()
+              }
+            }
+          },
+          Effect(value: self.toPresentedAction.embed(.dismiss))
+        )
+      )
     }
 
     return .merge(effects)
@@ -203,7 +223,7 @@ extension View {
   ) -> some View {
     WithViewStore(
       store.scope(state: { $0.wrappedValue }),
-      removeDuplicates: { ($0 != nil) == ($1 != nil) && enumTag($0) == enumTag($1) }
+      removeDuplicates: areDestinationsEqual
     ) { viewStore in
       self.fullScreenCover(
         item: viewStore.binding(
@@ -259,7 +279,7 @@ extension View {
   ) -> some View {
     WithViewStore(
       store.scope(state: { $0.wrappedValue }),
-      removeDuplicates: { ($0 != nil) == ($1 != nil) && enumTag($0) == enumTag($1) }
+      removeDuplicates: areDestinationsEqual
     ) { viewStore in
       self.popover(
         item: viewStore.binding(
@@ -309,7 +329,7 @@ extension View {
   ) -> some View {
     WithViewStore(
       store.scope(state: { $0.wrappedValue }),
-      removeDuplicates: { ($0 != nil) == ($1 != nil) && enumTag($0) == enumTag($1) }
+      removeDuplicates: areDestinationsEqual
     ) { viewStore in
       self.sheet(
         item: viewStore.binding(
@@ -375,6 +395,10 @@ extension View {
       }
     }
   }
+}
+
+private func areDestinationsEqual<State>(_ lhs: State?, _ rhs: State?) -> Bool {
+  (lhs != nil) == (rhs != nil) && lhs.flatMap(enumTag) == rhs.flatMap(enumTag)
 }
 
 private struct PresentationItem: Identifiable {

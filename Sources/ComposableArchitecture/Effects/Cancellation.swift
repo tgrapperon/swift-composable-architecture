@@ -27,7 +27,10 @@ extension Effect {
   ///   - cancelInFlight: Determines if any in-flight effect with the same identifier should be
   ///     canceled before starting this new one.
   /// - Returns: A new effect that is capable of being canceled by an identifier.
-  public func cancellable(id: AnyHashable, cancelInFlight: Bool = false) -> Self {
+  public func cancellable(
+    id: AnyHashable,
+    cancelInFlight: Bool = false
+  ) -> Self {
     let navigationID = DependencyValues.current.navigationID.current
     return Deferred {
       ()
@@ -82,8 +85,14 @@ extension Effect {
   ///   - cancelInFlight: Determines if any in-flight effect with the same identifier should be
   ///     canceled before starting this new one.
   /// - Returns: A new effect that is capable of being canceled by an identifier.
-  public func cancellable(id: Any.Type, cancelInFlight: Bool = false) -> Self {
-    self.cancellable(id: ObjectIdentifier(id), cancelInFlight: cancelInFlight)
+  public func cancellable(
+    id: Any.Type,
+    cancelInFlight: Bool = false
+  ) -> Self {
+    self.cancellable(
+      id: ObjectIdentifier(id),
+      cancelInFlight: cancelInFlight
+    )
   }
 
   /// An effect that will cancel any currently in-flight effect with the given identifier.
@@ -91,8 +100,8 @@ extension Effect {
   /// - Parameter id: An effect identifier.
   /// - Returns: A new effect that will cancel any currently in-flight effect with the given
   ///   identifier.
-  public static func cancel(id: AnyHashable, navigationID: AnyHashable? = nil) -> Self {
-    let navigationID = navigationID ?? DependencyValues.current.navigationID.current
+  public static func cancel(id: AnyHashable) -> Self {
+    let navigationID = DependencyValues.current.navigationID.current
     return .fireAndForget {
       cancellablesLock.sync {
         cancellationCancellables[.init(id: id, navigationID: navigationID)]?.forEach { $0.cancel() }
@@ -108,8 +117,8 @@ extension Effect {
   /// - Parameter id: A unique type identifying the effect.
   /// - Returns: A new effect that will cancel any currently in-flight effect with the given
   ///   identifier.
-  public static func cancel(id: Any.Type, navigationID: AnyHashable? = nil) -> Self {
-    .cancel(id: ObjectIdentifier(id), navigationID: navigationID)
+  public static func cancel(id: Any.Type) -> Self {
+    .cancel(id: ObjectIdentifier(id))
   }
 
   /// An effect that will cancel multiple currently in-flight effects with the given identifiers.
@@ -208,8 +217,8 @@ extension Task where Success == Never, Failure == Never {
   /// Cancel any currently in-flight operation with the given identifier.
   ///
   /// - Parameter id: An identifier.
-  public static func cancel(id: AnyHashable, navigationID: AnyHashable? = nil) async {
-    let navigationID = navigationID ?? DependencyValues.current.navigationID.current
+  public static func cancel(id: AnyHashable) async {
+    let navigationID = DependencyValues.current.navigationID.current
     await MainActor.run {
       cancellablesLock.sync {
         cancellationCancellables[.init(id: id, navigationID: navigationID)]?
@@ -224,8 +233,8 @@ extension Task where Success == Never, Failure == Never {
   /// identifier.
   ///
   /// - Parameter id: A unique type identifying the operation.
-  public static func cancel(id: Any.Type, navigationID: AnyHashable? = nil) async {
-    await self.cancel(id: ObjectIdentifier(id), navigationID: navigationID)
+  public static func cancel(id: Any.Type) async {
+    await self.cancel(id: ObjectIdentifier(id))
   }
 }
 

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 
 /// A store represents the runtime that powers the application. It is the object that you will pass
 /// around to views that need to interact with the application.
@@ -570,7 +571,7 @@ public struct StoreOfX<R: ReducerProtocol> {
   public typealias Action = R.Action
 
   fileprivate let _store: AnyStoreOf<R>
-  public var storeFix: AnyStoreOf<R> { _store } // Used temporarily to make things build
+  public var storeFix: AnyStoreOf<R> { _store }  // Used temporarily to make things build
   public init(
     initialState: R.State,
     reducer: R,
@@ -612,19 +613,50 @@ public struct StoreOfX<R: ReducerProtocol> {
   ) -> StoreOfX<Reduce<LocalState, LocalAction>> {  // Pseudo erasure using `Reduce`
     .init(_store: _store.scope(state: toLocalState, action: fromLocalAction))
   }
-  
+
   public func scope<LocalState>(
     state toLocalState: @escaping (State) -> LocalState
   ) -> StoreOfX<Reduce<LocalState, Action>> {  // Pseudo erasure using `Reduce`
     .init(_store: _store.scope(state: toLocalState, action: { $0 }))
   }
-  
+
   public var actionless: StoreOfX<Reduce<State, Never>> {
     .init(_store: _store.actionless)
   }
-  
+
   public var stateless: StoreOfX<Reduce<Void, Action>> {
     .init(_store: _store.stateless)
+  }
+
+  public let scoped = Scoped()
+  public let presented = Presented()
+}
+
+public struct ReducerScopeInfo<S: ReducerScope> {
+  var scope: (S.Parent) -> S
+  init(scope: @escaping (S.Parent) -> S) {
+    self.scope = scope
+  }
+}
+
+extension StoreOfX {
+  @dynamicMemberLookup
+  public struct Scoped {
+    public subscript<S: ReducerScope>(dynamicMember keyPath: KeyPath<S.Parent, S>) -> ReducerScopeInfo<S> {
+      .init(scope: { $0[keyPath: keyPath] })
+    }
+  }
+  @dynamicMemberLookup
+  public struct Presented {
+    public subscript<S: ReducerScope, PresentedChildState, PresentedChildAction>(
+      dynamicMember keyPath: KeyPath<S.Parent, S>
+    ) -> ReducerScopeInfo<S>
+    where
+      S.Child.State == PresentationState<PresentedChildState>,
+      S.Child.Action == PresentationAction<PresentedChildState, PresentedChildAction>
+    {
+      .init(scope: { $0[keyPath: keyPath] })
+    }
   }
 }
 
@@ -635,14 +667,13 @@ extension ViewStore {
   ) where R.State == State, R.Action == Action {
     self.init(store._store, removeDuplicates: isDuplicate)
   }
-  
-  public convenience init<R: ReducerProtocol>(_ store: StoreOfX<R>) where R.State == State, R.Action == Action, State: Equatable {
+
+  public convenience init<R: ReducerProtocol>(_ store: StoreOfX<R>)
+  where R.State == State, R.Action == Action, State: Equatable {
     self.init(store._store, removeDuplicates: ==)
   }
 }
 
-
-import SwiftUI
 extension WithViewStore where Content: View {
   public init<R: ReducerProtocol>(
     _ store: StoreOfX<R>,

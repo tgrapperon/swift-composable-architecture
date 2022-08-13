@@ -50,6 +50,7 @@ struct SharedState: ReducerProtocol {
     case selectTab(Tab)
   }
 
+//  let counter = Self.scope(state: \.counter, action: /Action.counter)
   var body: some ReducerProtocol<State, Action> {
     Scope(state: \.counter, action: /Action.counter) {
       Counter()

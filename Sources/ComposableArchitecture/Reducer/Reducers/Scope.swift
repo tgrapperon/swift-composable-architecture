@@ -182,6 +182,43 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
   }
 }
 
+public struct ScopeX<S: ReducerScope> {
+  public typealias ParentState = S.Parent.State
+  public typealias ParentAction = S.Parent.Action
+  
+  @usableFromInline
+  let scope: S
+
+  @usableFromInline
+  let child: S.Child
+}
+
+extension ScopeX {
+  @inlinable
+  public init(
+    _ scope: S,
+    @ReducerBuilderOf<S.Child> _ child: () -> S.Child
+  ) {
+    self.scope = scope
+    self.child = child()
+  }
+}
+
+extension ScopeX: ReducerProtocol {
+  @inlinable
+  public func reduce(
+    into state: inout ParentState, action: ParentAction
+  ) -> Effect<ParentAction, Never> {
+    
+    guard let childAction = self.scope.extractAction(from: action)
+    else { return .none }
+    var childState = self.scope.extractState(from: state)
+    let effects = self.child.reduce(into: &childState, action: childAction).map(self.scope.embedAction(_:))
+    self.scope.embedState(childState, into: &state)
+    return effects
+  }
+}
+
 public struct WritableKeyPathCasePathScope<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerScope {
   public let state: WritableKeyPathStateScope<Parent, Child>
   public let action: CasePathActionScope<Parent, Child>
@@ -193,8 +230,17 @@ public struct KeyPathCasePathScope<Parent: ReducerProtocol, Child: ReducerProtoc
 }
 
 extension WritableKeyPathCasePathScope {
-  init(state: WritableKeyPath<Parent.State, Child.State>, action: CasePath<Parent.Action, Child.Action>) {
+  public init(state: WritableKeyPath<Parent.State, Child.State>, action: CasePath<Parent.Action, Child.Action>) {
     self.state = .init(state)
     self.action = .init(action)
+  }
+}
+
+extension ReducerProtocol {
+  public static func scope<Child>(
+    state: WritableKeyPath<Self.State, Child.State>,
+    action: CasePath<Self.Action, Child.Action>
+  ) -> WritableKeyPathCasePathScope<Self, Child> {
+    .init(state: state, action: action)
   }
 }

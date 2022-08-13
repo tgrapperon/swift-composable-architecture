@@ -50,9 +50,14 @@ struct SharedState: ReducerProtocol {
     case selectTab(Tab)
   }
 
-//  let counter = Self.scope(state: \.counter, action: /Action.counter)
+  var counter: some ReducerScope {
+    WritableKeyPathCasePathScope<Self, Counter>(state: \State.counter, action: /Action.counter)
+  }
   var body: some ReducerProtocol<State, Action> {
-    Scope(state: \.counter, action: /Action.counter) {
+//    Scope(state: \.counter, action: /Action.counter) {
+//      Counter()
+//    }
+    ScopeX(counter) {
       Counter()
     }
 

@@ -230,7 +230,10 @@ public struct KeyPathCasePathScope<Parent: ReducerProtocol, Child: ReducerProtoc
 }
 
 extension WritableKeyPathCasePathScope {
-  public init(state: WritableKeyPath<Parent.State, Child.State>, action: CasePath<Parent.Action, Child.Action>) {
+  public init(
+    state: WritableKeyPath<Parent.State, Child.State>,
+    action: CasePath<Parent.Action, Child.Action>
+  ) {
     self.state = .init(state)
     self.action = .init(action)
   }

@@ -1,13 +1,13 @@
 extension ReducerProtocol {
   @inlinable
   public func ifLet<Wrapped: ReducerProtocol>(
-    state toWrappedState: WritableKeyPath<State, Wrapped.State?>,
+    _ toWrappedState: WritableKeyPath<State, Wrapped.State?>,
     action toWrappedAction: CasePath<Action, Wrapped.Action>,
     @ReducerBuilderOf<Wrapped> then wrapped: () -> Wrapped,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> IfLetReducer<Self, Wrapped> {
+  ) -> _IfLetReducer<Self, Wrapped> {
     .init(
       parent: self,
       child: wrapped(),
@@ -20,14 +20,14 @@ extension ReducerProtocol {
   }
 
   @inlinable
-  public func ifLet<Wrapped: ReducerProtocol>(
-    state toWrappedState: CasePath<State, Wrapped.State>,
+  public func ifCaseLet<Wrapped: ReducerProtocol>(
+    _ toWrappedState: CasePath<State, Wrapped.State>,
     action toWrappedAction: CasePath<Action, Wrapped.Action>,
     @ReducerBuilderOf<Wrapped> then wrapped: () -> Wrapped,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> IfCaseLetReducer<Self, Wrapped> {
+  ) -> _IfCaseLetReducer<Self, Wrapped> {
     .init(
       parent: self,
       child: wrapped(),
@@ -40,7 +40,7 @@ extension ReducerProtocol {
   }
 }
 
-public struct IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
+public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
   @usableFromInline
   let parent: Parent
 
@@ -137,7 +137,7 @@ public struct IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Red
   }
 }
 
-public struct IfCaseLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
+public struct _IfCaseLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
   @usableFromInline
   let parent: Parent
 

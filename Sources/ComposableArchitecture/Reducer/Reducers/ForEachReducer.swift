@@ -1,13 +1,13 @@
 extension ReducerProtocol {
   @inlinable
   public func forEach<ID: Hashable, Element: ReducerProtocol>(
-    state toElementsState: WritableKeyPath<State, IdentifiedArray<ID, Element.State>>,
+    _ toElementsState: WritableKeyPath<State, IdentifiedArray<ID, Element.State>>,
     action toElementAction: CasePath<Action, (ID, Element.Action)>,
     @ReducerBuilderOf<Element> _ element: () -> Element,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> ForEachReducer<Self, ID, Element> {
+  ) -> _ForEachReducer<Self, ID, Element> {
     .init(
       parent: self,
       toElementsState: toElementsState,
@@ -20,7 +20,7 @@ extension ReducerProtocol {
   }
 }
 
-public struct ForEachReducer<
+public struct _ForEachReducer<
   Parent: ReducerProtocol, ID: Hashable, Element: ReducerProtocol
 >: ReducerProtocol {
   @usableFromInline

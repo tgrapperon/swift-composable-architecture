@@ -104,20 +104,20 @@ extension PresentationAction: Hashable where State: Hashable, Action: Hashable {
 
 extension ReducerProtocol {
   public func presentationDestination<Destination: ReducerProtocol>(
-    state: WritableKeyPath<State, PresentationStateOf<Destination>>,
-    action: CasePath<Action, PresentationActionOf<Destination>>,
+    _ toPresentedState: WritableKeyPath<State, PresentationStateOf<Destination>>,
+    action toPresentedAction: CasePath<Action, PresentationActionOf<Destination>>,
     @ReducerBuilderOf<Destination> destination: () -> Destination
-  ) -> PresentationReducer<Self, Destination> {
-    PresentationReducer(
+  ) -> _PresentationDestinationReducer<Self, Destination> {
+    _PresentationDestinationReducer(
       presenter: self,
       presented: destination(),
-      toPresentedState: state,
-      toPresentedAction: action
+      toPresentedState: toPresentedState,
+      toPresentedAction: toPresentedAction
     )
   }
 }
 
-public struct PresentationReducer<
+public struct _PresentationDestinationReducer<
   Presenter: ReducerProtocol, Presented: ReducerProtocol
 >: ReducerProtocol {
   let presenter: Presenter
@@ -176,7 +176,9 @@ public struct PresentationReducer<
       effects.append(
         .concatenate(
           .task {
-            try await Dependency.with(\.navigationID.current, id) {
+            var dependencies = DependencyValues.current
+            dependencies.navigationID.current = id
+            return try await DependencyValues.$current.withValue(dependencies) {
               try await withTaskCancellation(id: DismissID.self) {
                 try await Task.never()
               }

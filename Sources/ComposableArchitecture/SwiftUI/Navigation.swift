@@ -229,10 +229,10 @@ extension NavigationAction: Hashable where Action: Hashable {}
 
 extension ReducerProtocol {
   public func navigationDestination<Destinations: ReducerProtocol>(
-    state toNavigationState: WritableKeyPath<State, NavigationStateOf<Destinations>>,
+    _ toNavigationState: WritableKeyPath<State, NavigationStateOf<Destinations>>,
     action toNavigationAction: CasePath<Action, NavigationActionOf<Destinations>>,
     @ReducerBuilderOf<Destinations> destinations: () -> Destinations
-  ) -> NavigationDestinationReducer<Self, Destinations> {
+  ) -> _NavigationDestinationReducer<Self, Destinations> {
     .init(
       upstream: self,
       toNavigationState: toNavigationState,
@@ -242,7 +242,7 @@ extension ReducerProtocol {
   }
 }
 
-public struct NavigationDestinationReducer<
+public struct _NavigationDestinationReducer<
   Upstream: ReducerProtocol,
   Destinations: ReducerProtocol
 >: ReducerProtocol

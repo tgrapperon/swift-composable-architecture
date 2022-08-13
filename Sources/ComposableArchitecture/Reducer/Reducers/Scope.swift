@@ -181,3 +181,20 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
     }
   }
 }
+
+public struct WritableKeyPathCasePathScope<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerScope {
+  public let state: WritableKeyPathStateScope<Parent, Child>
+  public let action: CasePathActionScope<Parent, Child>
+}
+
+public struct KeyPathCasePathScope<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerScope {
+  public let state: KeyPathStateScope<Parent, Child>
+  public let action: CasePathActionScope<Parent, Child>
+}
+
+extension WritableKeyPathCasePathScope {
+  init(state: WritableKeyPath<Parent.State, Child.State>, action: CasePath<Parent.Action, Child.Action>) {
+    self.state = .init(state)
+    self.action = .init(action)
+  }
+}

@@ -14,7 +14,7 @@ public struct WithViewStore<State, Action, Content> {
   #endif
   @ObservedObject private var viewStore: ViewStore<State, Action>
 
-  fileprivate init(
+  internal init(
     store: Store<State, Action>,
     removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
     file: StaticString = #fileID,

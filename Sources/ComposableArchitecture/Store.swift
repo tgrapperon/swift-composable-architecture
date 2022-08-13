@@ -563,3 +563,122 @@ private final class ScopedReducer<State, Action, LocalState, LocalAction>: Reduc
     }
   }
 }
+
+public typealias AnyStoreOf<R: ReducerProtocol> = StoreOf<R>
+public struct StoreOfX<R: ReducerProtocol> {
+  public typealias State = R.State
+  public typealias Action = R.Action
+
+  fileprivate let _store: AnyStoreOf<R>
+  public var storeFix: AnyStoreOf<R> { _store } // Used temporarily to make things build
+  public init(
+    initialState: R.State,
+    reducer: R,
+    mainThreadChecksEnabled: Bool = true
+  ) {
+    self._store = .init(
+      initialState: initialState,
+      reducer: reducer,
+      mainThreadChecksEnabled: mainThreadChecksEnabled
+    )
+  }
+
+  internal init(_store: AnyStoreOf<R>) {
+    self._store = _store
+  }
+
+  var state: CurrentValueSubject<State, Never> {
+    _store.state
+  }
+
+  func send(
+    _ action: Action,
+    originatingFrom originatingAction: Action? = nil
+  ) -> Task<Void, Never>? {
+    _store.send(action, originatingFrom: originatingAction)
+  }
+
+  public func scope<S: ReducerScope>(_ scope: S) -> StoreOfX<S.Child> where S.Parent == R {
+    .init(
+      _store: _store.scope(
+        state: scope.extractState(from:),
+        action: scope.embedAction)
+    )
+  }
+
+  public func scope<LocalState, LocalAction>(
+    state toLocalState: @escaping (State) -> LocalState,
+    action fromLocalAction: @escaping (LocalAction) -> Action
+  ) -> StoreOfX<Reduce<LocalState, LocalAction>> {  // Pseudo erasure using `Reduce`
+    .init(_store: _store.scope(state: toLocalState, action: fromLocalAction))
+  }
+  
+  public func scope<LocalState>(
+    state toLocalState: @escaping (State) -> LocalState
+  ) -> StoreOfX<Reduce<LocalState, Action>> {  // Pseudo erasure using `Reduce`
+    .init(_store: _store.scope(state: toLocalState, action: { $0 }))
+  }
+  
+  public var actionless: StoreOfX<Reduce<State, Never>> {
+    .init(_store: _store.actionless)
+  }
+  
+  public var stateless: StoreOfX<Reduce<Void, Action>> {
+    .init(_store: _store.stateless)
+  }
+}
+
+extension ViewStore {
+  public convenience init<R: ReducerProtocol>(
+    _ store: StoreOfX<R>,
+    removeDuplicates isDuplicate: @escaping (R.State, R.State) -> Bool
+  ) where R.State == State, R.Action == Action {
+    self.init(store._store, removeDuplicates: isDuplicate)
+  }
+  
+  public convenience init<R: ReducerProtocol>(_ store: StoreOfX<R>) where R.State == State, R.Action == Action, State: Equatable {
+    self.init(store._store, removeDuplicates: ==)
+  }
+}
+
+
+import SwiftUI
+extension WithViewStore where Content: View {
+  public init<R: ReducerProtocol>(
+    _ store: StoreOfX<R>,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
+    file: StaticString = #fileID,
+    line: UInt = #line,
+    @ViewBuilder content: @escaping (ViewStore<State, Action>) -> Content
+  ) where R.State == State, R.Action == Action {
+    self.init(
+      store: store._store,
+      removeDuplicates: isDuplicate,
+      file: file,
+      line: line,
+      content: content
+    )
+  }
+}
+
+extension WithViewStore where State: Equatable, Content: View {
+  public init<R>(
+    _ store: StoreOfX<R>,
+    file: StaticString = #fileID,
+    line: UInt = #line,
+    @ViewBuilder content: @escaping (ViewStore<State, Action>) -> Content
+  ) where R.State == State, R.Action == Action {
+    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+  }
+}
+
+extension WithViewStore where State == Void, Content: View {
+  public init<R>(
+    _ store: StoreOfX<R>,
+    file: StaticString = #fileID,
+    line: UInt = #line,
+    @ViewBuilder content: @escaping (ViewStore<State, Action>) -> Content
+  ) where R.State == State, R.Action == Action {
+    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+  }
+}

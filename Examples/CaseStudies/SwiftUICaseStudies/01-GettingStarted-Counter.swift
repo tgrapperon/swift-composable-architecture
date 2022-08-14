@@ -17,9 +17,13 @@ struct Counter: ReducerProtocol {
   enum Action: Equatable {
     case decrementButtonTapped
     case incrementButtonTapped
+    case longRunning
+    case longRunningResult(TaskResult<Int>)
+    case onDisappear
   }
 
   func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+    enum LongRunningCancellation {}
     switch action {
     case .decrementButtonTapped:
       state.count -= 1
@@ -27,6 +31,26 @@ struct Counter: ReducerProtocol {
     case .incrementButtonTapped:
       state.count += 1
       return .none
+    case .longRunning:
+      print("longRunning")
+      return .fireAndForget {
+        try await Task.sleep(nanoseconds: NSEC_PER_SEC * 3)
+        print("Fire and forget ended")
+      }
+//      return .task {
+//        return await .longRunningResult(
+//          .init(catching: {
+//            try await Task.sleep(nanoseconds: NSEC_PER_SEC * 3)
+//            return 5
+//          }))
+//      }
+//      .cancellable(id: LongRunningCancellation.self)
+    case let .longRunningResult(result):
+      print("longRunningResult: \(result)")
+      return .none
+    case .onDisappear:
+      print("onDisappear")
+      return .cancel(id: LongRunningCancellation.self)
     }
   }
 }
@@ -36,21 +60,29 @@ struct CounterView: View {
 
   var body: some View {
     WithViewStore(self.store) { viewStore in
-      HStack {
-        Button {
-          viewStore.send(.decrementButtonTapped)
-        } label: {
-          Image(systemName: "minus")
-        }
+      VStack {
+        HStack {
+          Button {
+            viewStore.send(.decrementButtonTapped)
+          } label: {
+            Image(systemName: "minus")
+          }
 
-        Text("\(viewStore.count)")
-          .monospacedDigit()
+          Text("\(viewStore.count)")
+            .monospacedDigit()
 
-        Button {
-          viewStore.send(.incrementButtonTapped)
-        } label: {
-          Image(systemName: "plus")
+          Button {
+            viewStore.send(.incrementButtonTapped)
+          } label: {
+            Image(systemName: "plus")
+          }
         }
+        Button("Long running task") {
+          viewStore.send(.longRunning)
+        }
+      }
+      .onDisappear {
+        viewStore.send(.onDisappear)
       }
     }
   }

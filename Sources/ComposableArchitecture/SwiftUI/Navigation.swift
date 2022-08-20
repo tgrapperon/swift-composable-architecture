@@ -362,3 +362,179 @@ extension NavigationLink where Destination == Never {
     self.init(title, value: state.map { NavigationState.Destination(id: UUID(), element: $0) })
   }
 }
+
+
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+struct NavigationPathDependencyKey: LiveDependencyKey {
+  static var testValue: NavigationPathDependency { .init() }
+  static var liveValue: NavigationPathDependency { .init() }
+}
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+extension DependencyValues {
+  var navigationPath: NavigationPathDependency {
+    get { self[NavigationPathDependencyKey.self] }
+    set { self[NavigationPathDependencyKey.self] = newValue }
+  }
+}
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+struct NavigationPathDependency: @unchecked Sendable {
+  init(
+    path: Binding<NavigationPath>? = nil,
+    navigationStackID: AnyHashable = DependencyValues.current.uuid()
+  ) {
+    self.path = path
+    self.navigationStackID = navigationStackID
+  }
+
+  private var path: Binding<NavigationPath>?
+  private var navigationStackID: AnyHashable
+  
+  @MainActor
+  func append<Value: Hashable>(_ value: Value) {
+    path?.wrappedValue.append(value)
+  }
+  @MainActor
+  func removeLast(_ k: Int = 1) {
+    path?.wrappedValue.removeLast(k)
+  }
+}
+
+extension _NavigationDestinationReducer {
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+  public func navigationStack(id: AnyHashable) -> _DependencyKeyWritingReducer<_NavigationDestinationReducer<Upstream, Destinations>> {
+    let path = navigationPathsLock.sync {
+      if let path = navigationPaths[id] {
+        return path
+      }
+      let path = NavigationPathDependency(path: nil, navigationStackID: id)
+      navigationPaths[id] = path
+      return path
+    }
+   return self.dependency(\.navigationPath, path)
+  }
+  
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+  public func navigationStack(id: Any.Type) -> _DependencyKeyWritingReducer<_NavigationDestinationReducer<Upstream, Destinations>> {
+    self.navigationStack(id: ObjectIdentifier(id))
+  }
+}
+
+
+typealias AnyPathElement = any Hashable & Codable
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+var navigationPaths: [AnyHashable: NavigationPathDependency] = [:]
+let navigationPathsLock = NSRecursiveLock()
+
+protocol NavigationDestinationsProtocol {
+  func append(to path: inout [AnyPathElement])
+  init?(navigatingTo path: ArraySlice<AnyPathElement>)
+}
+
+extension NavigationDestinationsProtocol {
+  var currentPath: [AnyPathElement] {
+    var path = [AnyPathElement]()
+    append(to: &path)
+    return path
+  }
+}
+
+enum Module1NavigationDestination {
+  case text(String)
+  case integer(Int)
+  case module2(Module2NavigationDestination)
+}
+
+// (Case + ID) -> Value?
+
+struct NavigationDestination: Hashable, Codable {
+  var tag: UInt32?
+  var typeName: String?
+  var id: UUID
+}
+
+extension NavigationDestination {
+  init<Value>(value: Value, id: UUID) {
+    self.tag = enumTag(value)
+    if #available(iOS 14.0, *) {
+      self.typeName = _mangledTypeName(Value.self)
+    } else {
+      fatalError()
+    }
+    self.id = id
+  }
+}
+
+extension NavigationDestinationsProtocol {
+  var destination: NavigationDestination {
+    let id = UUID()
+    let destination = NavigationDestination(value: self, id: id)
+    navigationDestinationsRepository[id] = self
+    return destination
+  }
+}
+
+var navigationDestinationsRepository: [UUID: Any] = [:]
+
+/// extracting navigation path somehow similar to extracting an action BTW
+
+extension Module1NavigationDestination: NavigationDestinationsProtocol {
+  func append(to path: inout [AnyPathElement]) {
+    path.append(self.destination)
+    switch self {
+    case .text, .integer: break
+    case .module2(let module2NavigationDestination):
+      module2NavigationDestination.append(to: &path)
+    }
+  }
+  init?(navigatingTo path: ArraySlice<AnyPathElement>) {
+    guard let next = path.first else { return nil }
+    switch next {
+    case let x as String where x == "":
+      return nil
+    default: return nil
+    }
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+enum Module2NavigationDestination: NavigationDestinationsProtocol {
+  case textAgain(String)
+  case date(Date)
+
+  func append(to path: inout [AnyPathElement]) {
+    path.append(destination)
+    path.append(destination)
+  }
+  init?(navigatingTo path: ArraySlice<AnyPathElement>) {
+    return nil
+  }
+}
+
+func test() {
+//  let navigationPath = NavigationPath()
+//  navigationPath.inspectable.last
+}
+
+struct NavigationPathElement: Hashable, Codable {
+  var id: UUID
+}
+
+@available(iOS 16, *)
+typealias InpectableNavigationPath = NavigationPath.Inspectable.Of<NavigationPathElement>

@@ -1,5 +1,49 @@
 import Combine
 
+public protocol _ReducerSequenceProtocol: ReducerProtocol {
+  func reduce(into state: inout State, action: Action, accumulated: [Effect<Action, Never>])
+    -> [Effect<Action, Never>]
+}
+
+extension _ReducerSequenceProtocol {
+  @inlinable
+  public func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+    return .merge(reduce(into: &state, action: action))
+  }
+}
+
+// Used in `buildPartialBlock(first:` to ensure that at any time `R0` is a
+// `_ReducerSequenceProtocol`. This allows to flatten effects inline without checks in
+// `reduce(…,accumulated[])`
+extension EmptyReducer: _ReducerSequenceProtocol {
+  @inlinable
+  public func reduce(into state: inout State, action: Action, accumulated: [Effect<Action, Never>])
+    -> [Effect<Action, Never>]
+  {
+    accumulated
+  }
+}
+
+public struct _ReducerSequenceReducer<S: _ReducerSequenceProtocol>: ReducerProtocol {
+  @usableFromInline
+  let reducerSequence: S
+
+  @usableFromInline
+  init(reducerSequence: S) {
+    self.reducerSequence = reducerSequence
+  }
+
+  public func reduce(into state: inout S.State, action: S.Action) -> Effect<S.Action, Never> {
+    let effects = reducerSequence.reduce(into: &state, action: action, accumulated: [])
+    let filtered = effects.filter { !$0.isNone }
+    switch filtered.count {
+    case 0: return .none
+    case 1: return filtered.first!
+    default: return .merge(filtered)
+    }
+  }
+}
+
 @resultBuilder
 public enum ReducerBuilder<State, Action> {
   public static func buildArray<R: ReducerProtocol>(_ reducers: [R]) -> _SequenceMany<R>
@@ -46,6 +90,14 @@ public enum ReducerBuilder<State, Action> {
     reducer
   }
 
+  // Comment this or not to activate the _ReducerSequence branch
+  @inlinable
+  public static func buildFinalResult<R: _ReducerSequenceProtocol>(_ reducer: R)
+  -> _ReducerSequenceReducer<R>
+  where R.State == State, R.Action == Action {
+    _ReducerSequenceReducer(reducerSequence: reducer)
+  }
+
   #if swift(>=5.7)
     @_disfavoredOverload
     @available(
@@ -85,9 +137,10 @@ public enum ReducerBuilder<State, Action> {
   }
 
   @inlinable
-  public static func buildPartialBlock<R: ReducerProtocol>(first: R) -> R
+  public static func buildPartialBlock<R: ReducerProtocol>(first: R)
+    -> _Sequence<EmptyReducer<State, Action>, R>
   where R.State == State, R.Action == Action {
-    first
+    _Sequence(EmptyReducer(), first)
   }
 
   @inlinable
@@ -141,7 +194,7 @@ public enum ReducerBuilder<State, Action> {
     }
   }
 
-  public struct _Sequence<R0: ReducerProtocol, R1: ReducerProtocol>: ReducerProtocol
+  public struct _Sequence<R0: _ReducerSequenceProtocol, R1: ReducerProtocol>: _ReducerSequenceProtocol
   where R0.State == R1.State, R0.Action == R1.Action {
     @usableFromInline
     let r0: R0
@@ -162,9 +215,17 @@ public enum ReducerBuilder<State, Action> {
         self.r1.reduce(into: &state, action: action)
       )
     }
+    @inlinable
+    public func reduce(
+      into state: inout R0.State, action: R0.Action,
+      accumulated: [Effect<R0.Action, Never>]
+    ) -> [Effect<R0.Action, Never>] {
+      let r0Effects = self.r0.reduce(into: &state, action: action, accumulated: [])
+      return accumulated + r0Effects + [self.r1.reduce(into: &state, action: action)]
+    }
   }
 
-  public struct _SequenceMany<Element: ReducerProtocol>: ReducerProtocol {
+  public struct _SequenceMany<Element: ReducerProtocol>: _ReducerSequenceProtocol {
     @usableFromInline
     let reducers: [Element]
 
@@ -178,6 +239,14 @@ public enum ReducerBuilder<State, Action> {
       into state: inout Element.State, action: Element.Action
     ) -> Effect<Element.Action, Never> {
       .merge(self.reducers.map { $0.reduce(into: &state, action: action) })
+    }
+
+    @inlinable
+    public func reduce(
+      into state: inout Element.State, action: Element.Action,
+      accumulated: [Effect<Element.Action, Never>]
+    ) -> [Effect<Element.Action, Never>] {
+      accumulated + self.reducers.map { $0.reduce(into: &state, action: action) }
     }
   }
 }

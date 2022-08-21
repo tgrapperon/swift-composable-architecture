@@ -33,6 +33,7 @@ import XCTestDynamicOverlay
 /// you are using Swift's concurrency tools and the `.task`, `.run` and `.fireAndForget` functions
 /// on ``Effect``, then threading is automatically handled for you.
 public struct Effect<Output, Failure: Error> {
+  var isNone = false
   let publisher: AnyPublisher<Output, Failure>
 }
 
@@ -42,7 +43,9 @@ extension Effect {
   /// An effect that does nothing and completes immediately. Useful for situations where you must
   /// return an effect, but you don't need to do anything.
   public static var none: Self {
-    Empty(completeImmediately: true).eraseToEffect()
+    var effect: Self = Empty(completeImmediately: true).eraseToEffect()
+    effect.isNone = true
+    return effect
   }
 }
 

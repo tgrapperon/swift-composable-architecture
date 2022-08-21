@@ -19,24 +19,91 @@ let viewStore1 = ViewStore(store1)
 let viewStore2 = ViewStore(store2)
 let viewStore3 = ViewStore(store3)
 let viewStore4 = ViewStore(store4)
+//
+//benchmark("Scoping (1)") {
+//  viewStore1.send(true)
+//}
+//viewStore1.send(false)
+//
+//benchmark("Scoping (2)") {
+//  viewStore2.send(true)
+//}
+//viewStore1.send(false)
+//
+//benchmark("Scoping (3)") {
+//  viewStore3.send(true)
+//}
+//viewStore1.send(false)
+//
+//benchmark("Scoping (4)") {
+//  viewStore4.send(true)
+//}
 
-benchmark("Scoping (1)") {
-  viewStore1.send(true)
+struct ComposedReducer: ReducerProtocol {
+  var body: some ReducerProtocol<Int, Void> {
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    EmptyReducer()
+    Reduce { state, action in
+      state += 1
+      return .none
+    }
+  }
 }
-viewStore1.send(false)
 
-benchmark("Scoping (2)") {
-  viewStore2.send(true)
+struct ComposedInlinedReducer: ReducerProtocol {
+  func reduce(into state: inout Int, action: Void) -> Effect<Void, Never> {
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    let _ = EmptyReducer().reduce(into: &state, action: action)
+    return Reduce { state, action in
+      state += 1
+      return .none
+    }
+    .reduce(into: &state, action: action)
+  }
 }
-viewStore1.send(false)
 
-benchmark("Scoping (3)") {
-  viewStore3.send(true)
+
+
+do {
+  let store = Store(initialState: 0, reducer: ComposedReducer())
+  let viewStore = ViewStore(store)
+
+  benchmark("ComposedReducer") {
+    viewStore.send(())
+  }
 }
-viewStore1.send(false)
 
-benchmark("Scoping (4)") {
-  viewStore4.send(true)
+do {
+  let store = Store(initialState: 0, reducer: ComposedInlinedReducer())
+  let viewStore = ViewStore(store)
+
+  benchmark("InlinedReducer") {
+    viewStore.send(())
+  }
 }
 
 Benchmark.main()

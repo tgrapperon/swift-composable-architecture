@@ -47,8 +47,11 @@ struct SharedState: ReducerProtocol {
   enum Action: Equatable {
     case counter(Counter.Action)
     case profile(Profile.Action)
+    case onAppear
     case selectTab(Tab)
   }
+  // Retrieve `\.count`, an `Int`.
+  @DependencyState var count: Int
 
   var body: some ReducerProtocol<State, Action> {
     Scope(state: \.counter, action: /Action.counter) {
@@ -62,6 +65,9 @@ struct SharedState: ReducerProtocol {
     Reduce { state, action in
       switch action {
       case .counter, .profile:
+        return .none
+      case .onAppear:
+        state.counter.count = self.count
         return .none
       case let .selectTab(tab):
         state.currentTab = tab
@@ -178,6 +184,7 @@ struct SharedStateView: View {
 
         Spacer()
       }
+      .onAppear { viewStore.send(.onAppear) }
     }
     .padding()
   }

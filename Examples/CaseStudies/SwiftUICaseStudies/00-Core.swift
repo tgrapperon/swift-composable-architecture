@@ -5,6 +5,8 @@ import XCTestDynamicOverlay
 
 struct Root: ReducerProtocol {
   struct State {
+    var count: Int = 0
+    
     var alertAndConfirmationDialog = AlertAndConfirmationDialog.State()
     var animation = Animations.State()
     var bindingBasics = BindingBasics.State()
@@ -69,7 +71,9 @@ struct Root: ReducerProtocol {
     Reduce { state, action in
       switch action {
       case .onAppear:
+        let count = state.count // Preserve
         state = .init()
+        state.count = count
         return .none
 
       default:
@@ -146,6 +150,7 @@ struct Root: ReducerProtocol {
     Scope(state: \.shared, action: /Action.shared) {
       SharedState()
     }
+    .dependencyState(\.count) // Inject `\.count` into `SharedState`
     Scope(state: \.timers, action: /Action.timers) {
       Timers()
     }
@@ -154,6 +159,15 @@ struct Root: ReducerProtocol {
     }
     Scope(state: \.webSocket, action: /Action.webSocket) {
       WebSocket()
+    }
+    Reduce { state, action in
+      switch action {
+      case .counter: // We need to register the change after `Counter` has run.
+        state.count = state.counter.count
+        return .none
+      default:
+        return .none
+      }
     }
   }
 }

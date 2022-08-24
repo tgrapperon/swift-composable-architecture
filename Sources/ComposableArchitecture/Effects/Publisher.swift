@@ -25,6 +25,19 @@ extension Effect: Publisher {
         }
       }
       .eraseToAnyPublisher()
+    case .merged:
+      switch self.operation.asPublisherAndRun() {
+      case (.none, .none):
+        return Effect.none.publisher
+      case let (.some(publisher), .none):
+        return Effect(operation: .publisher(publisher)).publisher
+      case let (.none, .some(run)):
+        return Effect(operation: .run(run)).publisher
+      case let (.some(publisher), .some(run)):
+        return Publishers.Merge(
+          Effect(operation: .publisher(publisher)).publisher, Effect(operation: .run(run)).publisher
+        ).eraseToAnyPublisher()
+      }
     }
   }
 

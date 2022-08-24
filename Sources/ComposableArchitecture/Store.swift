@@ -357,11 +357,7 @@ public final class Store<State, Action> {
       let action = self.bufferedActions.removeFirst()
       let effect = self.reducer(&currentState, action)
 
-      switch effect.operation {
-      case .none:
-        break
-
-      case let .publisher(publisher):
+      func handle(_ publisher: AnyPublisher<Action, Never>) {
         var didComplete = false
         let boxedTask = Box<Task<Void, Never>?>(wrappedValue: nil)
         let uuid = UUID()
@@ -397,8 +393,9 @@ public final class Store<State, Action> {
           tasks.wrappedValue.append(task)
           self.effectCancellables[uuid] = effectCancellable
         }
-
-      case let .run(operation):
+      }
+      
+      func handle(_ operation: @escaping (Send<Action>) async -> Void) {
         tasks.wrappedValue.append(
           Task {
             await operation(
@@ -410,6 +407,17 @@ public final class Store<State, Action> {
             )
           }
         )
+      }
+      
+      switch effect.operation.asPublisherAndRun() {
+      case (.none, .none): break
+      case let (.some(publisher), .none):
+        handle(publisher)
+      case let (.none, .some(run)):
+        handle(run)
+      case (.some, .some):
+        // Fallback to publisher for mixed effects
+        handle(effect.publisher)
       }
     }
 

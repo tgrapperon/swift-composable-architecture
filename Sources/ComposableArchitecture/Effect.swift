@@ -39,6 +39,10 @@ public struct Effect<Output, Failure: Error> {
     case none
     case publisher(AnyPublisher<Output, Failure>)
     case run(priority: TaskPriority? = nil, @Sendable (Send<Output>) async -> Void)
+    case merged(
+      publishers: [AnyPublisher<Output, Failure>] = [],
+      runs: [@Sendable (Send<Output>) async -> Void] = []
+    )
     // TODO: should we have `case cancel(id:)` so that using Effect.cancel doesn't default to the publisher world?
 
 
@@ -61,6 +65,72 @@ public struct Effect<Output, Failure: Error> {
 
   }
 }
+
+extension Effect.Operation {
+@inlinable
+func merge(with other: Self) -> Self {
+  switch (self, other) {
+  case (.none, _): return other
+  case (_, .none): return self
+  case let (.publisher(p1), .publisher(p2)):
+    return .merged(publishers: [p1, p2])
+  case let (.run(_,r1), .publisher(p2)):
+    return .merged(publishers: [p2], runs: [r1])
+  case let (.merged(publishers: publishers, runs: runs), .publisher(p1)):
+    return .merged(publishers: publishers + [p1], runs: runs)
+  case let (.publisher(p1), .run(_,r2)):
+    return .merged(publishers: [p1], runs: [r2])
+  case let (.run(_,r1), .run(_,r2)):
+    return .merged(runs: [r1, r2])
+  case let (.merged(publishers: publishers, runs: runs), .run(_,r2)):
+    return .merged(publishers: publishers, runs: runs + [r2])
+  case let (.publisher(p1), .merged(publishers: publishers, runs: runs)):
+    return .merged(publishers: [p1] + publishers, runs: runs)
+  case let (.run(_,r1), .merged(publishers: publishers, runs: runs)):
+    return .merged(publishers: publishers, runs: [r1] + runs)
+  case let (
+    .merged(publishers: publishers1, runs: runs1),
+    .merged(publishers: publishers2, runs: runs2)
+  ):
+    return .merged(publishers: publishers1 + publishers2, runs: runs1 + runs2)
+  }
+}
+@inlinable
+func asPublisherAndRun() -> (
+  AnyPublisher<Output, Failure>?, (@Sendable (Send<Output>) async -> Void)?
+) {
+  switch self {
+  case .none:
+    return (nil, nil)
+  case let .publisher(p):
+    return (p, nil)
+  case let .run(_,r):
+    return (nil, r)
+  case .merged(let publishers, let runs):
+    return (flatten(publishers: publishers), flatten(runs: runs))
+  }
+}
+@inlinable
+func flatten(publishers: [AnyPublisher<Output, Failure>]) -> AnyPublisher<Output, Failure>? {
+  Publishers.MergeMany(publishers).eraseToAnyPublisher()
+}
+@inlinable
+func flatten(runs: [@Sendable (Send<Output>) async -> Void]) -> (
+  @Sendable (Send<Output>) async -> Void
+)? {
+  { send in
+    await withTaskGroup(of: Void.self) { group in
+      for run in runs {
+        group.addTask {
+          await run(send)
+        }
+      }
+    }
+  }
+}
+}
+
+
 
 // MARK: - Creating Effects
 
@@ -363,36 +433,37 @@ extension Effect {
 
 
   public func merge(with other: Effect) -> Effect {
-    switch (self.operation, other.operation) {
-    case (.none, _):
-      return other
-    case (_, .none):
-      return self
-
-    case let (.run(lhsPriority, lhsOperation), .run(rhsPriority, rhsOperation)):
-      return .init(
-        operation: .run { send in
-          await withTaskGroup(of: Void.self) { group in
-            group.addTask(priority: lhsPriority) {
-              await lhsOperation(send)
-            }
-            group.addTask(priority: rhsPriority) {
-              await rhsOperation(send)
-            }
-          }
-        }
-      )
-
-    case
-      (.publisher, .publisher),
-      (.run, .publisher),
-      (.publisher, .run):
-      return .init(
-        operation: .publisher(
-          self.publisher.merge(with: other.publisher).eraseToAnyPublisher()
-        )
-      )
-    }
+    Effect(operation: self.operation.merge(with: other.operation))
+//    switch (self.operation, other.operation) {
+//    case (.none, _):
+//      return other
+//    case (_, .none):
+//      return self
+//
+//    case let (.run(lhsPriority, lhsOperation), .run(rhsPriority, rhsOperation)):
+//      return .init(
+//        operation: .run { send in
+//          await withTaskGroup(of: Void.self) { group in
+//            group.addTask(priority: lhsPriority) {
+//              await lhsOperation(send)
+//            }
+//            group.addTask(priority: rhsPriority) {
+//              await rhsOperation(send)
+//            }
+//          }
+//        }
+//      )
+//
+//    case
+//      (.publisher, .publisher),
+//      (.run, .publisher),
+//      (.publisher, .run):
+//      return .init(
+//        operation: .publisher(
+//          self.publisher.merge(with: other.publisher).eraseToAnyPublisher()
+//        )
+//      )
+//    }
   }
 
 
@@ -462,6 +533,8 @@ extension Effect {
           )
         }
       )
+    case .merged(publishers: let publishers, runs: let runs):
+      fatalError()
     }
   }
 }

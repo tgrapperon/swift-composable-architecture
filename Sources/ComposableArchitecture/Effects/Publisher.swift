@@ -19,9 +19,9 @@ extension Effect: Publisher {
     case let .publisher(publisher):
       return publisher
 
-    case let .run(priority, operation):
+    case let .run(_, operation):
       return Effect.run { subscriber in
-        let task = Task(priority: priority) { @MainActor in
+        let task = Task { @MainActor in
           defer { subscriber.send(completion: .finished) }
           let send = Send(send: { subscriber.send($0) })
           await operation(send)
@@ -31,6 +31,19 @@ extension Effect: Publisher {
         }
       }
       .eraseToAnyPublisher()
+    case .merged:
+      switch self.operation.asPublisherAndRun() {
+      case (.none, .none):
+        return Effect.none.publisher
+      case let (.some(publisher), .none):
+        return Effect(operation: .publisher(publisher)).publisher
+      case let (.none, .some(run)):
+        return Effect(operation: .run(run)).publisher
+      case let (.some(publisher), .some(run)):
+        return Publishers.Merge(
+          Effect(operation: .publisher(publisher)).publisher, Effect(operation: .run(run)).publisher
+        ).eraseToAnyPublisher()
+      }
     }
   }
 }

@@ -118,6 +118,8 @@ extension Effect where Failure == Never {
           os_signpost(.end, log: log, name: "Effect", signpostID: sid, "%sFinished", prefix)
         }
       )
+    case .merged:
+      fatalError()
     }
   }
 }

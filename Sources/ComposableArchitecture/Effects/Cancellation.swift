@@ -32,7 +32,7 @@ extension Effect {
     switch self.operation {
     case .none:
       return .none
-
+      
     case let .publisher(publisher):
       return .init(
         operation: .publisher(
@@ -43,14 +43,14 @@ extension Effect {
             > in
             cancellablesLock.lock()
             defer { cancellablesLock.unlock() }
-
+            
             let id = CancelToken(id: id)
             if cancelInFlight {
               cancellationCancellables[id]?.forEach { $0.cancel() }
             }
-
+            
             let cancellationSubject = PassthroughSubject<Void, Never>()
-
+            
             var cancellationCancellable: AnyCancellable!
             cancellationCancellable = AnyCancellable {
               cancellablesLock.sync {
@@ -62,7 +62,7 @@ extension Effect {
                 }
               }
             }
-
+            
             return publisher.prefix(untilOutputFrom: cancellationSubject)
               .handleEvents(
                 receiveSubscription: { _ in
@@ -79,7 +79,7 @@ extension Effect {
             .eraseToAnyPublisher()
         )
       )
-
+      
     case let .run(priority: priority, operation):
       return .init(
         operation: .run(priority: priority) { send in
@@ -88,6 +88,8 @@ extension Effect {
           }
         }
       )
+    case .merged:
+      fatalError()
     }
   }
 

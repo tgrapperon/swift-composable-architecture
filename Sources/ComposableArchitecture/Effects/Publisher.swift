@@ -19,9 +19,9 @@ extension Effect: Publisher {
     case let .publisher(publisher):
       return publisher
 
-    case let .run(_, operation):
+    case let .run(priority, operation):
       return Effect.run { subscriber in
-        let task = Task { @MainActor in
+        let task = Task(priority: priority){ @MainActor in
           defer { subscriber.send(completion: .finished) }
           let send = Send(send: { subscriber.send($0) })
           await operation(send)

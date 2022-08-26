@@ -121,7 +121,7 @@ import Foundation
 /// Further, all actions sent to the store and all scopes (see ``scope(state:action:)``) of the
 /// store are also checked to make sure that work is performed on the main thread.
 public final class Store<State, Action> {
-  private var bufferedActions: [Action] = []
+  private var bufferedActions: BufferedActions = .init()
   var effectCancellables: [UUID: AnyCancellable] = [:]
   private var isSending = false
   var parentCancellable: AnyCancellable?
@@ -569,3 +569,43 @@ private final class ScopedReducer<State, Action, ChildState, ChildAction>: Reduc
     }
   }
 }
+
+extension Store {
+   /// A simplified FIFO buffer
+   struct BufferedActions {
+     final private class Node {
+       let action: Action
+       var next: Node?
+
+       init(_ action: Action) {
+         self.action = action
+         self.next = nil
+       }
+     }
+
+     private var head: Node?
+     private var tail: Node?
+
+     init() {}
+
+     var isEmpty: Bool { head == nil }
+
+     mutating func append(_ action: Action) {
+       if isEmpty {
+         head = Node(action)
+         tail = head
+       } else {
+         tail!.next = Node(action)
+         tail = tail!.next
+       }
+     }
+
+     mutating func removeFirst() -> Action {
+       defer {
+         head = head?.next
+         if isEmpty { tail = nil }
+       }
+       return head!.action
+     }
+   }
+ }

@@ -49,7 +49,7 @@ extension Effect {
   /// An effect that does nothing and completes immediately. Useful for situations where you must
   /// return an effect, but you don't need to do anything.
   public static var none: Self {
-    Empty(completeImmediately: true).eraseToEffect()
+    Effect(operation: .none)
   }
 }
 

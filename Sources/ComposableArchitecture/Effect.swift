@@ -360,9 +360,7 @@ extension Effect {
   /// - Parameter effects: A sequence of effects.
   /// - Returns: A new effect
   public static func merge<S: Sequence>(_ effects: S) -> Self where S.Element == Effect {
-    effects.reduce(.none) { accumulation, effect in
-      accumulation.merge(with: effect)
-    }
+    Effect(operation: .publisher(Publishers.MergeMany(effects).eraseToAnyPublisher()))
   }
 
   public func merge(with other: Self) -> Self {

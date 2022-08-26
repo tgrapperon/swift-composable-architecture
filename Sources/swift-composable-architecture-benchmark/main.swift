@@ -13,11 +13,72 @@ import ComposableArchitecture
 do {
   let store = Store(initialState: (), reducer: EmptyReducer<Void, Void>())
   let viewStore = ViewStore(store)
-  benchmark("Trivial Send") {
-    viewStore.send(())
-  }
+//  benchmark("Trivial Send") {
+//    viewStore.send(())
+//  }
 }
 
+/// This study measures the time it takes to reducer a reducer with many siblings
+/// It compares the time it takes to perform the same work in an inlined way, cheating by
+/// discarding `Effect` that we know to be .none. The objective is to near the performance
+/// of the inlined case with `LargeReducer`.
+///
+/// Base implementation, with `Effect.merge` using `Publishers.MergeMany`
+/// name                    time         std        iterations
+/// ----------------------------------------------------------
+/// Large Reducer           39333.000 ns ±  10.02 %      34309
+/// Large Reducer - Inlined  3833.000 ns ±  26.85 %     334943
+do {
+  struct LargeReducer: ReducerProtocol {
+    var body: some ReducerProtocol<Int, Void> {
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      EmptyReducer()
+      Reduce { state, _ in
+        state = 1
+        return .none
+      }
+    }
+  }
+  struct LargeReducerInlined: ReducerProtocol {
+    var body: some ReducerProtocol<Int, Void> {
+      Reduce { state, action in
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        let _ = EmptyReducer().reduce(into: &state, action: action)
+        state = 1
+        return .none
+      }
+    }
+  }
+  
+  let s1 = Store(initialState: 0, reducer: LargeReducer())
+  let s2 = Store(initialState: 0, reducer: LargeReducerInlined())
+  let vs1 = ViewStore(s1)
+  let vs2 = ViewStore(s2)
+  
+  benchmark("Large Reducer") {
+    vs1.send(())
+  }
+  
+  benchmark("Large Reducer - Inlined") {
+    vs2.send(())
+  }
+}
 
 
 

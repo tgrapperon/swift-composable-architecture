@@ -70,16 +70,98 @@ do {
   let vs1 = ViewStore(s1)
   let vs2 = ViewStore(s2)
   
-  benchmark("Large Reducer") {
-    vs1.send(())
-  }
-  
-  benchmark("Large Reducer - Inlined") {
-    vs2.send(())
-  }
+//  benchmark("Large Reducer") {
+//    vs1.send(())
+//  }
+//  
+//  benchmark("Large Reducer - Inlined") {
+//    vs2.send(())
+//  }
 }
 
+do {
+  struct R1: ReducerProtocol {
+    struct S {
+      var s2: R2.S = .init()
+    }
+    enum A {
+      case a2(R2.A)
+    }
+    var body: some ReducerProtocol<R1.S, R1.A> {
+      Scope(state: \.s2, action: /A.a2) {
+        R2()
+      }
+    }
+  }
+  struct R2: ReducerProtocol {
+    struct S {
+      var s3: R3.S = .init()
+    }
+    enum A {
+      case a3(R3.A)
+    }
+    var body: some ReducerProtocol<R2.S, R2.A> {
+      Scope(state: \.s3, action: /A.a3) {
+        R3()
+      }
+    }
+  }
+  struct R3: ReducerProtocol {
+    struct S {
+      var s4: R4.S = .init()
+    }
+    enum A {
+      case a4(R4.A)
+    }
+    var body: some ReducerProtocol<R3.S, R3.A> {
+      Scope(state: \.s4, action: /A.a4) {
+        R4()
+      }
+    }
+  }
+  struct R4: ReducerProtocol {
+    struct S {
+      var s5: R5.S = .init()
+    }
+    enum A {
+      case a5(R5.A)
+    }
+    var body: some ReducerProtocol<R4.S, R4.A> {
+      Scope(state: \.s5, action: /A.a5) {
+        R5()
+      }
+    }
+  }
+  struct R5: ReducerProtocol {
+    struct S: Equatable {
+      var value = 0
+    }
+    enum A {
+      case ping
+    }
+    var body: some ReducerProtocol<R5.S, R5.A> {
+      Reduce { state, _ in
+        state.value += 1
+        return .none
+      }
+    }
+  }
+  let s1 = Store(initialState: R1.S(), reducer: R1())
+  let s2 = s1.scope(state: \.s2, action: R1.A.a2)
+  let s3 = s2.scope(state: \.s3, action: R2.A.a3)
+  let s4 = s3.scope(state: \.s4, action: R3.A.a4)
+  let s5 = s4.scope(state: \.s5, action: R4.A.a5)
 
+  let vs5 = ViewStore(s5)
+  let vs1 = ViewStore(s1.stateless)
+  
+  benchmark("Scope - Leaf") {
+    vs5.send(.ping)
+  }
+  benchmark("Scope - Root") {
+    vs1.send(.a2(.a3(.a4(.a5(.ping)))))
+  }
+}
 
 
 

@@ -33,10 +33,13 @@ import XCTestDynamicOverlay
 /// you are using Swift's concurrency tools and the `.task`, `.run` and `.fireAndForget` functions
 /// on ``Effect``, then threading is automatically handled for you.
 public struct Effect<Output, Failure: Error> {
+  @usableFromInline
   let operation: Operation
+  @inlinable
   init(operation: Operation) {
     self.operation = operation
   }
+  @usableFromInline
   enum Operation {
     case none
     case publisher(AnyPublisher<Output, Failure>)
@@ -363,6 +366,7 @@ extension Effect {
     Effect(operation: .publisher(Publishers.MergeMany(effects).eraseToAnyPublisher()))
   }
 
+  @inlinable
   public func merge(with other: Self) -> Self {
     switch (self.operation, other.operation) {
     case (.none, _): return other

@@ -23,11 +23,10 @@ do {
 /// discarding `Effect` that we know to be .none. The objective is to near the performance
 /// of the inlined case with `LargeReducer`.
 ///
-/// Base implementation, with `Effect.merge` using `Publishers.MergeMany`
-/// name                    time         std        iterations
-/// ----------------------------------------------------------
-/// Large Reducer           39333.000 ns ±  10.02 %      34309
-/// Large Reducer - Inlined  3833.000 ns ±  26.85 %     334943
+/// name                    time       std        iterations
+/// --------------------------------------------------------
+/// Large Reducer           959.000 ns ± 164.36 %     983614
+/// Large Reducer - Inlined 958.000 ns ± 113.78 %    1000000
 do {
   struct LargeReducer: ReducerProtocol {
     var body: some ReducerProtocol<Int, Void> {

@@ -13,6 +13,17 @@ extension Effect: Publisher {
 }
 
 extension Effect {
+  var publisher: AnyPublisher<Output, Failure> {
+    switch self.operation {
+    case .none:
+      return Empty(completeImmediately: true).eraseToAnyPublisher()
+    case let .publisher(publisher):
+      return publisher
+    }
+  }
+}
+
+extension Effect {
   /// Initializes an effect that wraps a publisher.
   ///
   /// > Important: This Combine interface has been soft-deprecated in favor of Swift concurrency.
@@ -45,7 +56,7 @@ extension Effect {
     message: "Iterate over 'Publisher.values' in an 'Effect.run', instead."
   )
   public init<P: Publisher>(_ publisher: P) where P.Output == Output, P.Failure == Failure {
-    self.publisher = publisher.eraseToAnyPublisher()
+    self = .init(operation: .publisher(publisher.eraseToAnyPublisher()))
   }
 
   /// Initializes an effect that immediately emits the value passed in.

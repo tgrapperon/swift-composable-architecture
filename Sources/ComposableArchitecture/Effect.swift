@@ -33,7 +33,14 @@ import XCTestDynamicOverlay
 /// you are using Swift's concurrency tools and the `.task`, `.run` and `.fireAndForget` functions
 /// on ``Effect``, then threading is automatically handled for you.
 public struct Effect<Output, Failure: Error> {
-  let publisher: AnyPublisher<Output, Failure>
+  let operation: Operation
+  init(operation: Operation) {
+    self.operation = operation
+  }
+  enum Operation {
+    case none
+    case publisher(AnyPublisher<Output, Failure>)
+  }
 }
 
 // MARK: - Creating Effects
@@ -353,7 +360,18 @@ extension Effect {
   /// - Parameter effects: A sequence of effects.
   /// - Returns: A new effect
   public static func merge<S: Sequence>(_ effects: S) -> Self where S.Element == Effect {
-    Publishers.MergeMany(effects).eraseToEffect()
+    effects.reduce(.none) { accumulation, effect in
+      accumulation.merge(with: effect)
+    }
+  }
+
+  public func merge(with other: Self) -> Self {
+    switch (self.operation, other.operation) {
+    case (.none, _): return other
+    case (_, .none): return self
+    case let (.publisher(p1), .publisher(p2)):
+      return .init(operation: .publisher(p1.merge(with: p2).eraseToAnyPublisher()))
+    }
   }
 
   /// Concatenates a variadic list of effects together into a single effect, which runs the effects

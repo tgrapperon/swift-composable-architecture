@@ -595,41 +595,41 @@ private struct Scope<RootState, RootAction>: AnyScope {
 }
 
 extension Store {
-   /// A simplified FIFO buffer
-   struct BufferedActions {
-     final private class Node {
-       let action: Action
-       var next: Node?
+  /// A simplified FIFO buffer
+  struct BufferedActions {
+    final private class Node {
+      let action: Action
+      var next: Node?
 
-       init(_ action: Action) {
-         self.action = action
-         self.next = nil
-       }
-     }
+      init(_ action: Action) {
+        self.action = action
+        self.next = nil
+      }
+    }
 
-     private var head: Node?
-     private var tail: Node?
+    private var head: Node?
+    private var tail: Node?
 
-     init() {}
+    init() {}
 
-     var isEmpty: Bool { head == nil }
+    var isEmpty: Bool { head == nil }
 
-     mutating func append(_ action: Action) {
-       if isEmpty {
-         head = Node(action)
-         tail = head
-       } else {
-         tail!.next = Node(action)
-         tail = tail!.next
-       }
-     }
+    mutating func append(_ action: Action) {
+      if isEmpty {
+        head = Node(action)
+        tail = head
+      } else {
+        tail!.next = Node(action)
+        tail = tail!.next
+      }
+    }
 
-     mutating func removeFirst() -> Action {
-       defer {
-         head = head?.next
-         if isEmpty { tail = nil }
-       }
-       return head!.action
-     }
-   }
- }
+    mutating func removeFirst() -> Action {
+      defer {
+        head = head?.next
+        if isEmpty { tail = nil }
+      }
+      return head!.action
+    }
+  }
+}

@@ -9,9 +9,9 @@ struct CaseStudiesApp: App {
         store: Store(
           initialState: RootState(),
           reducer:
-            rootReducer
-            .debug()
-            .signpost(),
+            rootReducer,
+//            .debug()
+//            .signpost(),
           environment: .live
         )
       )

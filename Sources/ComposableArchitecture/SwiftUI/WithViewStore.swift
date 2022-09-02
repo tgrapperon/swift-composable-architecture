@@ -147,6 +147,12 @@ public struct WithViewStore<State, Action, Content> {
   }
 }
 
+extension WithViewStore: Equatable where State: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.store.state.value == rhs.store.state.value
+  }
+}
+
 @available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
 public struct _StateObjectViewStore<State, Action, Content> {
   @StateObject var viewStore: ViewStore<State, Action>
@@ -193,6 +199,13 @@ public struct _StateObjectViewStore<State, Action, Content> {
   }
 }
 
+@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+extension _StateObjectViewStore: Equatable where State: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.viewStore.state == rhs.viewStore.state
+  }
+}
+
 public struct _ObservedObjectViewStore<State, Action, Content> {
   @ObservedObject var viewStore: ViewStore<State, Action>
   let content: (ViewStore<State, Action>) -> Content
@@ -235,6 +248,12 @@ public struct _ObservedObjectViewStore<State, Action, Content> {
       )
     #endif
     return self.content(ViewStore(self.viewStore))
+  }
+}
+
+extension _ObservedObjectViewStore: Equatable where State: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.viewStore.state == rhs.viewStore.state
   }
 }
 

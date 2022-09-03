@@ -91,6 +91,28 @@ public final class ViewStore<State, Action>: ObservableObject {
         _state.value = $0
       }
   }
+  
+  init(
+    _ store: Store<State, Action>,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
+    accessoryObjectWillChange: ObservableObjectPublisher
+  ) {
+    self._send = { store.send($0) }
+    self._state = CurrentValueRelay(store.state.value)
+    var hasDroppedFirst: Bool = false
+    self.viewCancellable = store.state
+      .removeDuplicates(by: isDuplicate)
+      .sink { [weak objectWillChange = self.objectWillChange, weak _state = self._state] in
+        guard let objectWillChange = objectWillChange, let _state = _state else { return }
+        if hasDroppedFirst {
+          accessoryObjectWillChange.send()
+        } else {
+          hasDroppedFirst = true
+        }
+        objectWillChange.send()
+        _state.value = $0
+      }
+  }
 
   internal init(_ viewStore: ViewStore<State, Action>) {
     self._send = viewStore._send

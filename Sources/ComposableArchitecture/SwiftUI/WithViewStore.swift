@@ -147,75 +147,47 @@ public struct WithViewStore<State, Action, Content> {
   }
 }
 
-@propertyWrapper
-struct _StateObject<Object: ObservableObject>: DynamicProperty
-where Object.ObjectWillChangePublisher.Output == Void {
+struct _StateStore<State, Action>: DynamicProperty{
   private final class ObjectWillChange: ObservableObject {
-    var subscription: AnyCancellable?
-    // Magic `@Published` property, makes this `ObservableObject`
-    // more performant for some reason. This property must stay
-    // here even if one chooses to directly send to `objectWillChange`
-    // instead of assigning it.
     @Published var token: Void = ()
-    init() {}
-    func relay(from storage: Storage) {
-      let object = storage.object
-      // We store the fact that we subscribed in `storage`, because
-      // it is the only value that'll persist.
-      defer { storage.objectWillSendIsRelayed = true }
-      // The following branching would need proper benchmarks do
-      // decide if the difference is real and measurable.
-      if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
-        // Assigning the token with this method seems faster than
-        // sending `objectWillChange` manually.
-        object.objectWillChange.assign(to: &$token)
-      } else {
-        // Sending `objectWillChange` manually seems faster than
-        // assigning the token in a `sink` that doesn't capture
-        // self
-        self.subscription = object.objectWillChange.sink {
-          [weak objectWillChange = self.objectWillChange] _ in
-          guard let objectWillChange = objectWillChange else { return }
-          objectWillChange.send()
-        }
-      }
-    }
   }
 
-  private final class Storage {
-    lazy var object: Object = thunk()
-    var objectWillSendIsRelayed: Bool = false
-    var thunk: (() -> Object)!
+  final class Storage {
+    var store: Store<State, Action>!
+    var isDuplicate: ((State, State) -> Bool)!
+    var accessoryObjectWillChange: ObservableObjectPublisher!
+    var didReceivedAccessoryObjectWillChange: Bool = false
+    lazy var viewStore: ViewStore<State, Action> = ViewStore(
+      store,
+      removeDuplicates: isDuplicate,
+      accessoryObjectWillChange: accessoryObjectWillChange
+    )
     init() {}
   }
-
+  
   @ObservedObject private var objectWillChange = ObjectWillChange()
-  @State private var storage = Storage()
+  @SwiftUI.State private var storage: Storage = .init()
 
-  init(wrappedValue: @autoclosure @escaping () -> Object) {
-    self.storage.thunk = wrappedValue
-    // Unfortunately, `self.storage` doesn't have the correct value
-    // at this point, so we can't rely on this to retrieve an `ObservableObject`
-    // instance from it.
+  init(store: Store<State,Action>, isDuplicate: @escaping (State, State) -> Bool ) {
+    self.storage.store = store
+    self.storage.isDuplicate = isDuplicate
   }
 
   func update() {
-    if !storage.objectWillSendIsRelayed {
-      // Some `ObjectWillChange` instance will be captured at this point
-      // It will be partly captured by the subscription, but its instance
-      // will change during next updates.
-      objectWillChange.relay(from: storage)
+    if !storage.didReceivedAccessoryObjectWillChange {
+      defer { storage.didReceivedAccessoryObjectWillChange = true }
+      storage.accessoryObjectWillChange = objectWillChange.objectWillChange
     }
   }
 
-  var wrappedValue: Object {
-    storage.object
+  var wrappedValue: ViewStore<State, Action> {
+    storage.viewStore
   }
 }
 
-//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
 public struct _StateObjectViewStore<State, Action, Content> {
-  @_StateObject var viewStore: ViewStore<State, Action>
+  let stateStore: _StateStore<State, Action>
+  var viewStore: ViewStore<State, Action> { stateStore.wrappedValue }
   let content: (ViewStore<State, Action>) -> Content
 
   #if DEBUG
@@ -226,13 +198,14 @@ public struct _StateObjectViewStore<State, Action, Content> {
   #endif
 
   init(
-    _ viewStore: @autoclosure @escaping () -> ViewStore<State, Action>,
+    store: Store<State, Action>,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
     content: @escaping (ViewStore<State, Action>) -> Content,
     file: StaticString,
     line: UInt,
     prefix: String? = nil
   ) {
-    self._viewStore = .init(wrappedValue: viewStore())
+    self.stateStore = .init(store: store, isDuplicate: isDuplicate)
     self.content = content
     #if DEBUG
       self.file = file
@@ -329,7 +302,8 @@ extension WithViewStore: View where Content: View {
       store: store,
       content: { store, prefix in
         _StateObjectViewStore(
-          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
+          store: store,
+          isDuplicate: isDuplicate,
           content: content,
           file: file,
           line: line,
@@ -391,14 +365,16 @@ extension WithViewStore: DynamicViewContent where State: Collection, Content: Dy
 //@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
 extension _StateObjectViewStore: View where Content: View {
   fileprivate init(
-    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
+    store: Store<State, Action>,
+    isDuplicate: @escaping (State, State) -> Bool,
     @ViewBuilder content: @escaping (ViewStore<State, Action>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line,
     prefix: String?
   ) {
     self.init(
-      viewStore(),
+      store: store,
+      removeDuplicates: isDuplicate,
       content: content,
       file: file,
       line: line,
@@ -425,494 +401,494 @@ extension _ObservedObjectViewStore: View where Content: View {
   }
 }
 
-// MARK: - AccessibilityRotorContent
-
-@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-extension WithViewStore: AccessibilityRotorContent where Content: AccessibilityRotorContent {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute accessibility rotor content from store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store.
-  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
-  ///     equal, repeat view computations are removed,
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-     For compiler performance, using "WithViewStore" from an accessibility rotor content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-     See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-     """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) ->
-      ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(
-      store: store,
-      content: { store, prefix in
-        _StateObjectViewStore(
-          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
-          content: content,
-          file: file,
-          line: line,
-          prefix: prefix
-        )
-      }
-    )
-  }
-}
-
-@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-extension WithViewStore where State: Equatable, Content: AccessibilityRotorContent {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute accessibility rotor content from equatable store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-     For compiler performance, using "WithViewStore" from an accessibility rotor content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-     See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-     """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) ->
-      ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-extension WithViewStore where State == Void, Content: AccessibilityRotorContent {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute accessibility rotor content from void store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-     For compiler performance, using "WithViewStore" from an accessibility rotor content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-     See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-     """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) ->
-      ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-extension _StateObjectViewStore: AccessibilityRotorContent
-where Content: AccessibilityRotorContent {
-  fileprivate init(
-    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) -> Content,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    prefix: String?
-  ) {
-    self.init(
-      viewStore(),
-      content: content,
-      file: file,
-      line: line,
-      prefix: prefix
-    )
-  }
-}
-
-// MARK: - Commands
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-@available(tvOS, unavailable)
-@available(watchOS, unavailable)
-extension WithViewStore: Commands where Content: Commands {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute commands from store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store.
-  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
-  ///     equal, repeat view computations are removed,
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a command builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(
-      store: store,
-      content: { store, prefix in
-        _StateObjectViewStore(
-          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
-          content: content,
-          file: file,
-          line: line,
-          prefix: prefix
-        )
-      }
-    )
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-@available(tvOS, unavailable)
-@available(watchOS, unavailable)
-extension WithViewStore where State: Equatable, Content: Commands {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute commands from equatable store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a command builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-@available(tvOS, unavailable)
-@available(watchOS, unavailable)
-extension WithViewStore where State == Void, Content: Commands {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute commands from void store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a command builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-@available(tvOS, unavailable)
-@available(watchOS, unavailable)
-extension _StateObjectViewStore: Commands where Content: Commands {
-  fileprivate init(
-    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
-    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> Content,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    prefix: String?
-  ) {
-    self.init(
-      viewStore(),
-      content: content,
-      file: file,
-      line: line,
-      prefix: prefix
-    )
-  }
-}
-
-// MARK: - Scene
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension WithViewStore: Scene where Content: Scene {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute scenes from store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store.
-  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
-  ///     equal, repeat view computations are removed,
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a scene builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(
-      store: store,
-      content: { store, prefix in
-        _StateObjectViewStore(
-          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
-          content: content,
-          file: file,
-          line: line,
-          prefix: prefix
-        )
-      }
-    )
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension WithViewStore where State: Equatable, Content: Scene {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute scenes from equatable store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a scene builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension WithViewStore where State == Void, Content: Scene {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute scenes from void store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a scene builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension _StateObjectViewStore: Scene where Content: Scene {
-  fileprivate init(
-    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
-    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> Content,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    prefix: String?
-  ) {
-    self.init(
-      viewStore(),
-      content: content,
-      file: file,
-      line: line,
-      prefix: prefix
-    )
-  }
-}
-
-// MARK: - ToolbarContent
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension WithViewStore: ToolbarContent where Content: ToolbarContent {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute toolbar content from store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store.
-  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
-  ///     equal, repeat view computations are removed,
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a toolbar content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(
-      store: store,
-      content: { store, prefix in
-        _StateObjectViewStore(
-          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
-          content: content,
-          file: file,
-          line: line,
-          prefix: prefix
-        )
-      }
-    )
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension WithViewStore where State: Equatable, Content: ToolbarContent {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute toolbar content from equatable store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a toolbar content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension WithViewStore where State == Void, Content: ToolbarContent {
-  /// Initializes a structure that transforms a store into an observable view store in order to
-  /// compute toolbar content from void store state.
-  ///
-  /// - Parameters:
-  ///   - store: A store of equatable state.
-  ///   - content: A function that can generate content from a view store.
-  @available(
-    *,
-    deprecated,
-    message:
-      """
-       For compiler performance, using "WithViewStore" from a toolbar content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
-
-       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
-       """
-  )
-  public init<ObservedContent>(
-    _ store: Store<State, Action>,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
-  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
-    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
-  }
-}
-
-@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
-extension _StateObjectViewStore: ToolbarContent where Content: ToolbarContent {
-  fileprivate init(
-    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
-    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> Content,
-    file: StaticString = #fileID,
-    line: UInt = #line,
-    prefix: String?
-  ) {
-    self.init(
-      viewStore(),
-      content: content,
-      file: file,
-      line: line,
-      prefix: prefix
-    )
-  }
-}
-
+//// MARK: - AccessibilityRotorContent
+//
+//@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+//extension WithViewStore: AccessibilityRotorContent where Content: AccessibilityRotorContent {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute accessibility rotor content from store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store.
+//  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
+//  ///     equal, repeat view computations are removed,
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//     For compiler performance, using "WithViewStore" from an accessibility rotor content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//     See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//     """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) ->
+//      ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(
+//      store: store,
+//      content: { store, prefix in
+//        _StateObjectViewStore(
+//          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
+//          content: content,
+//          file: file,
+//          line: line,
+//          prefix: prefix
+//        )
+//      }
+//    )
+//  }
+//}
+//
+//@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+//extension WithViewStore where State: Equatable, Content: AccessibilityRotorContent {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute accessibility rotor content from equatable store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//     For compiler performance, using "WithViewStore" from an accessibility rotor content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//     See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//     """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) ->
+//      ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+//extension WithViewStore where State == Void, Content: AccessibilityRotorContent {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute accessibility rotor content from void store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//     For compiler performance, using "WithViewStore" from an accessibility rotor content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//     See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//     """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) ->
+//      ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+//extension _StateObjectViewStore: AccessibilityRotorContent
+//where Content: AccessibilityRotorContent {
+//  fileprivate init(
+//    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
+//    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<State, Action>) -> Content,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    prefix: String?
+//  ) {
+//    self.init(
+//      store:store,
+//      content: content,
+//      file: file,
+//      line: line,
+//      prefix: prefix
+//    )
+//  }
+//}
+//
+//// MARK: - Commands
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//@available(tvOS, unavailable)
+//@available(watchOS, unavailable)
+//extension WithViewStore: Commands where Content: Commands {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute commands from store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store.
+//  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
+//  ///     equal, repeat view computations are removed,
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a command builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(
+//      store: store,
+//      content: { store, prefix in
+//        _StateObjectViewStore(
+//          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
+//          content: content,
+//          file: file,
+//          line: line,
+//          prefix: prefix
+//        )
+//      }
+//    )
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//@available(tvOS, unavailable)
+//@available(watchOS, unavailable)
+//extension WithViewStore where State: Equatable, Content: Commands {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute commands from equatable store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a command builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//@available(tvOS, unavailable)
+//@available(watchOS, unavailable)
+//extension WithViewStore where State == Void, Content: Commands {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute commands from void store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a command builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//@available(tvOS, unavailable)
+//@available(watchOS, unavailable)
+//extension _StateObjectViewStore: Commands where Content: Commands {
+//  fileprivate init(
+//    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
+//    @CommandsBuilder content: @escaping (ViewStore<State, Action>) -> Content,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    prefix: String?
+//  ) {
+//    self.init(
+//      viewStore(),
+//      content: content,
+//      file: file,
+//      line: line,
+//      prefix: prefix
+//    )
+//  }
+//}
+//
+//// MARK: - Scene
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension WithViewStore: Scene where Content: Scene {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute scenes from store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store.
+//  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
+//  ///     equal, repeat view computations are removed,
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a scene builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(
+//      store: store,
+//      content: { store, prefix in
+//        _StateObjectViewStore(
+//          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
+//          content: content,
+//          file: file,
+//          line: line,
+//          prefix: prefix
+//        )
+//      }
+//    )
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension WithViewStore where State: Equatable, Content: Scene {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute scenes from equatable store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a scene builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension WithViewStore where State == Void, Content: Scene {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute scenes from void store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a scene builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension _StateObjectViewStore: Scene where Content: Scene {
+//  fileprivate init(
+//    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
+//    @SceneBuilder content: @escaping (ViewStore<State, Action>) -> Content,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    prefix: String?
+//  ) {
+//    self.init(
+//      viewStore(),
+//      content: content,
+//      file: file,
+//      line: line,
+//      prefix: prefix
+//    )
+//  }
+//}
+//
+//// MARK: - ToolbarContent
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension WithViewStore: ToolbarContent where Content: ToolbarContent {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute toolbar content from store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store.
+//  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
+//  ///     equal, repeat view computations are removed,
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a toolbar content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(
+//      store: store,
+//      content: { store, prefix in
+//        _StateObjectViewStore(
+//          viewStore: ViewStore(store, removeDuplicates: isDuplicate),
+//          content: content,
+//          file: file,
+//          line: line,
+//          prefix: prefix
+//        )
+//      }
+//    )
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension WithViewStore where State: Equatable, Content: ToolbarContent {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute toolbar content from equatable store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a toolbar content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension WithViewStore where State == Void, Content: ToolbarContent {
+//  /// Initializes a structure that transforms a store into an observable view store in order to
+//  /// compute toolbar content from void store state.
+//  ///
+//  /// - Parameters:
+//  ///   - store: A store of equatable state.
+//  ///   - content: A function that can generate content from a view store.
+//  @available(
+//    *,
+//    deprecated,
+//    message:
+//      """
+//       For compiler performance, using "WithViewStore" from a toolbar content builder is no longer supported. Extract this "WithViewStore" to the parent view, instead, or observe your view store from an "@ObservedObject" property.
+//
+//       See the documentation for "WithViewStore" (https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/viewstore#overview) for more information.
+//       """
+//  )
+//  public init<ObservedContent>(
+//    _ store: Store<State, Action>,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> ObservedContent
+//  ) where Content == _StateObjectViewStore<State, Action, ObservedContent> {
+//    self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
+//  }
+//}
+//
+//@available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
+//extension _StateObjectViewStore: ToolbarContent where Content: ToolbarContent {
+//  fileprivate init(
+//    viewStore: @escaping @autoclosure () -> ViewStore<State, Action>,
+//    @ToolbarContentBuilder content: @escaping (ViewStore<State, Action>) -> Content,
+//    file: StaticString = #fileID,
+//    line: UInt = #line,
+//    prefix: String?
+//  ) {
+//    self.init(
+//      viewStore(),
+//      content: content,
+//      file: file,
+//      line: line,
+//      prefix: prefix
+//    )
+//  }
+//}
+//
 #if DEBUG
   private func debugPrint<State, Action>(
     prefix: String?,

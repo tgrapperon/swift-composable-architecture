@@ -129,6 +129,7 @@ public final class Store<State, Action> {
   var parentCancellable: AnyCancellable?
   private let reducer: (inout State, Action) -> Effect<Action, Never>
   fileprivate var scope: AnyScope?
+  
   var state: CurrentValueSubject<State, Never>
   #if DEBUG
     private let mainThreadChecksEnabled: Bool

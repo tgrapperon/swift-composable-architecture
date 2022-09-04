@@ -17,26 +17,27 @@ public protocol ViewActionProtocol {
   static func embed(action: Self) -> Action
 }
 
-struct EquatableViewState<State: Equatable>: ViewStateProtocol {
-  let state: State
-  init(_ state: State) {
-    self.state = state
-  }
-  static func isDuplicate(
-    lhs: EquatableViewState<State>, rhs: EquatableViewState<State>
-  ) -> Bool {
-    lhs.state == rhs.state
-  }
-}
-
-struct IdentityViewAction<Action>: ViewActionProtocol {
-  let action: Action
-  static func embed(action: IdentityViewAction<Action>) -> Action {
-    action.action
-  }
-}
+//struct EquatableViewState<State: Equatable>: ViewStateProtocol {
+//  let state: State
+//  init(_ state: State) {
+//    self.state = state
+//  }
+//  static func isDuplicate(
+//    lhs: EquatableViewState<State>, rhs: EquatableViewState<State>
+//  ) -> Bool {
+//    lhs.state == rhs.state
+//  }
+//}
+//
+//struct IdentityViewAction<Action>: ViewActionProtocol {
+//  let action: Action
+//  static func embed(action: IdentityViewAction<Action>) -> Action {
+//    action.action
+//  }
+//}
 
 extension Store {
+  // Needs to return registered ViewStore
   func viewStore<ViewState: ViewStateProtocol>() -> ViewStore<ViewState, Action>
   where ViewState.State == State {
     ViewStore(
@@ -56,12 +57,12 @@ extension Store {
 }
 
 public protocol StoreView: View {
-  associatedtype State
-  associatedtype Action
+  associatedtype StoreState
+  associatedtype StoreAction
   associatedtype ViewState
   associatedtype ViewAction
   associatedtype ViewBody: View
-  var store: Store<State, Action> { get }
+  var store: Store<StoreState, StoreAction> { get }
   @ViewBuilder
   func body(viewStore: ViewStore<ViewState, ViewAction>) -> ViewBody
 }
@@ -69,10 +70,11 @@ public protocol StoreView: View {
 extension StoreView
 where
   ViewBody == Body,
-  ViewState == State,
-  ViewAction == Action,
-  State: Equatable
+  ViewState == StoreState,
+  ViewAction == StoreAction,
+  StoreState: Equatable
 {
+  public typealias State = ViewState
   public var body: Body {
     body(viewStore: store.viewStore())
   }
@@ -81,10 +83,11 @@ where
 extension StoreView
 where
   ViewBody == Body,
-  ViewAction == Action,
+  ViewAction == StoreAction,
   ViewState: ViewStateProtocol,
-  ViewState.State == State
+  ViewState.State == StoreState
 {
+  public typealias State = StoreState
   public var body: Body {
     body(viewStore: store.viewStore())
   }

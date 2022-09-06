@@ -50,16 +50,19 @@ public struct IfLetStore<State, Action, Content: View>: View {
     _ store: Store<State?, Action>,
     @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent,
     @ViewBuilder else elseContent: @escaping () -> ElseContent
-  ) where Content == _ConditionalContent<IfContent, ElseContent> {
+  ) where Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent> {
     self.store = store
     self.content = { viewStore in
       if var state = viewStore.state {
         return ViewBuilder.buildEither(
-          first: ifContent(
-            store.scope {
+          first: ScopeView(
+            store: store,
+            state: {
               state = $0 ?? state
               return state
-            }
+            },
+            action: { $0 },
+            content: ifContent
           )
         )
       } else {
@@ -78,15 +81,18 @@ public struct IfLetStore<State, Action, Content: View>: View {
   public init<IfContent>(
     _ store: Store<State?, Action>,
     @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent
-  ) where Content == IfContent? {
+  ) where Content == ScopeView<State?, Action, State, Action, IfContent>? {
     self.store = store
     self.content = { viewStore in
       if var state = viewStore.state {
-        return ifContent(
-          store.scope {
+        return ScopeView(
+          store: store,
+          state: {
             state = $0 ?? state
             return state
-          }
+          },
+          action: { $0 },
+          content: ifContent
         )
       } else {
         return nil

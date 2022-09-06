@@ -1,6 +1,6 @@
 import Combine
 import Foundation
-
+var scopeCount: Int = 0
 /// A store represents the runtime that powers the application. It is the object that you will pass
 /// around to views that need to interact with the application.
 ///
@@ -299,6 +299,8 @@ public final class Store<State, Action> {
     action fromChildAction: @escaping (ChildAction) -> Action
   ) -> Store<ChildState, ChildAction> {
     self.threadCheck(status: .scope)
+    scopeCount += 1
+    print("Scopecount", scopeCount)
 
     return (self.scope ?? Scope(root: self))
       .rescope(self, state: toChildState, action: fromChildAction)

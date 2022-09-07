@@ -226,6 +226,22 @@ extension View {
       )
     }
   }
+  
+  @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+  public func alert<State, Action>(
+    store: Store<State, Action>,
+    state: @escaping (State) -> AlertState<Action>?,
+    dismiss: Action
+  ) -> some View {
+    ScopeView(store: store, state: state, action: { $0 }) { store in
+      self.modifier(
+        NewAlertModifier(
+          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
+          dismiss: dismiss
+        )
+      )
+    }
+  }
 }
 
 // NB: Workaround for iOS 14 runtime crashes during iOS 15 availability checks.

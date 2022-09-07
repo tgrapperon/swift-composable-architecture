@@ -147,9 +147,7 @@ struct VoiceMemosView: View {
       NavigationView {
         VStack {
           List {
-            ForEachStore(
-              self.store.scope(state: \.voiceMemos, action: { .voiceMemo(id: $0, action: $1) })
-            ) {
+            ForEachStore(store, state: \.voiceMemos, action: VoiceMemosAction.voiceMemo) {
               VoiceMemoView(store: $0)
             }
             .onDelete { indexSet in
@@ -158,11 +156,8 @@ struct VoiceMemosView: View {
               }
             }
           }
-
-          IfLetStore(
-            self.store.scope(state: \.recordingMemo, action: { .recordingMemo($0) })
-          ) { store in
-            RecordingMemoView(store: store)
+          IfLetStore(store, state: \.recordingMemo, action: VoiceMemosAction.recordingMemo) {
+            RecordingMemoView(store: $0)
           } else: {
             RecordButton(permission: viewStore.audioRecorderPermission) {
               viewStore.send(.recordButtonTapped, animation: .spring())
@@ -175,7 +170,8 @@ struct VoiceMemosView: View {
           .background(Color.init(white: 0.95))
         }
         .alert(
-          self.store.scope(state: \.alert),
+          store: self.store,
+          state: \.alert,
           dismiss: .alertDismissed
         )
         .navigationTitle("Voice memos")

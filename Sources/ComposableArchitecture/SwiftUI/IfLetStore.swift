@@ -35,8 +35,8 @@ import SwiftUI
 /// ```
 ///
 public struct IfLetStore<State, Action, Content: View>: View {
-  private let content: (ViewStore<State?, Action>) -> Content
-  private let store: Store<State?, Action>
+  private let content: (Self, ViewStore<State?, Action>) -> Content
+  @_LazyState var store: Store<State?, Action>
 
   /// Initializes an ``IfLetStore`` view that computes content depending on if a store of optional
   /// state is `nil` or non-`nil`.
@@ -51,8 +51,8 @@ public struct IfLetStore<State, Action, Content: View>: View {
     @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent,
     @ViewBuilder else elseContent: @escaping () -> ElseContent
   ) where Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent> {
-    self.store = store
-    self.content = { viewStore in
+    self._store = .init(wrappedValue: store)
+    self.content = { _,  viewStore in
       if var state = viewStore.state {
         return ViewBuilder.buildEither(
           first: ScopeView(
@@ -82,11 +82,63 @@ public struct IfLetStore<State, Action, Content: View>: View {
     _ store: Store<State?, Action>,
     @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent
   ) where Content == ScopeView<State?, Action, State, Action, IfContent>? {
-    self.store = store
-    self.content = { viewStore in
+    self._store = .init(wrappedValue: store)
+    self.content = { _, viewStore in
       if var state = viewStore.state {
         return ScopeView(
           store: store,
+          state: {
+            state = $0 ?? state
+            return state
+          },
+          action: { $0 },
+          content: ifContent
+        )
+      } else {
+        return nil
+      }
+    }
+  }
+  
+  
+  public init<ParentState, ParentAction, IfContent, ElseContent>(
+    _ store: Store<ParentState, ParentAction>,
+    state: @escaping (ParentState) -> State?,
+    action: @escaping (Action) -> ParentAction,
+    @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent,
+    @ViewBuilder else elseContent: @escaping () -> ElseContent
+  ) where Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent> {
+    self._store = .init(wrappedValue: store.scope(state: state, action: action))
+    self.content = { `self`, viewStore in
+      if var state = viewStore.state {
+        return ViewBuilder.buildEither(
+          first: ScopeView(
+            store: self.store,
+            state: {
+              state = $0 ?? state
+              return state
+            },
+            action: { $0 },
+            content: ifContent
+          )
+        )
+      } else {
+        return ViewBuilder.buildEither(second: elseContent())
+      }
+    }
+  }
+  
+  public init<ParentState, ParentAction, IfContent>(
+    _ store: Store<ParentState, ParentAction>,
+    state: @escaping (ParentState) -> State?,
+    action: @escaping (Action) -> ParentAction,
+    @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent
+  ) where Content == ScopeView<State?, Action, State, Action, IfContent>? {
+    self._store = .init(wrappedValue: store.scope(state: state, action: action))
+    self.content = { `self`, viewStore in
+      if var state = viewStore.state {
+        return ScopeView(
+          store: self.store,
           state: {
             state = $0 ?? state
             return state
@@ -104,7 +156,7 @@ public struct IfLetStore<State, Action, Content: View>: View {
     WithViewStore(
       self.store,
       removeDuplicates: { ($0 != nil) == ($1 != nil) },
-      content: self.content
+      content: { self.content(self, $0) }
     )
   }
 }

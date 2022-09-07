@@ -26,4 +26,9 @@ public struct ScopeView<ParentState, ParentAction, ChildState, ChildAction, Cont
 //        $scopedStore.onDisappear()
 //      } as! ModifiedContent<Content, _AppearanceActionModifier>
 //  }
+  
+  // Stores are not immediatly deinitialized when the view disappears. It seems to also be the case
+  // with plain old properties, and thus with the current way it works, but this is need be checked
+  // more thouroughly. It doesn't seem that @State lives longer than a bare property in a view that
+  // disappeared.
 }

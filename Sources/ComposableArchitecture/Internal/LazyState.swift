@@ -25,3 +25,10 @@ public struct _LazyState<Object>: DynamicProperty {
     storage._object = nil
   }
 }
+
+// Voice Memo 150 -> 8 scopes
+// Todo: 44 -> 8 scopes
+// Case Study Animations: 1 scope for the whole feature (without activating .alert)
+
+// Main issue: @State live a little longer that desired, at least when navigating back, so we
+// probably need to shut scoped stores down at `onDisappear`.

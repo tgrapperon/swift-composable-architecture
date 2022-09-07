@@ -54,6 +54,7 @@ import SwiftUI
 ///   in transforming reducers that operate on each case of an enum into reducers that operate on
 ///   the entire enum.
 public struct SwitchStore<State, Action, Content: View>: View {
+  #warning("Handle onDisappear")
   @_LazyState public var store: Store<State, Action>
   public let content: () -> Content
 
@@ -64,7 +65,7 @@ public struct SwitchStore<State, Action, Content: View>: View {
     self._store = .init(wrappedValue: store)
     self.content = content
   }
-  
+
   init<ParentState, ParentAction>(
     store: Store<ParentState, ParentAction>,
     state: @escaping (ParentState) -> State,

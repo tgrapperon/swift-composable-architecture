@@ -10,13 +10,14 @@ struct RootView: View {
       NavigationView {
         Form {
           Section(header: Text("Getting started")) {
-            ScopeView(store: store, state: \.counter, action: RootAction.counter) { store in
-              NavigationLink(
-                "Basics",
-                destination: CounterDemoView(store: store)
-              )
-            }
-            #warning("TODO: Convert other ones")
+            NavigationLink(
+              "Basics",
+              destination:
+                ScopeView(store: store, state: \.counter, action: RootAction.counter) { store in
+                  CounterDemoView(store: store)
+                }
+            )
+            #warning("TODO: Conver other ones")
             NavigationLink(
               "Pullback and combine",
               destination: TwoCountersView(
@@ -89,12 +90,11 @@ struct RootView: View {
 
             NavigationLink(
               "Animations",
-              destination: AnimationsView(
-                store: self.store.scope(
-                  state: \.animation,
-                  action: RootAction.animation
-                )
-              )
+              destination: ScopeView(
+                store: store,
+                state: \.animation,
+                action: RootAction.animation
+              ) { AnimationsView(store: $0) }
             )
           }
 

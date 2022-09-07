@@ -50,9 +50,13 @@ public struct IfLetStore<State, Action, Content: View>: View {
     _ store: Store<State?, Action>,
     @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent,
     @ViewBuilder else elseContent: @escaping () -> ElseContent
-  ) where Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent> {
+  )
+  where
+    Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent>
+  {
+    #warning("Handle onDisappear")
     self._store = .init(wrappedValue: store)
-    self.content = { _,  viewStore in
+    self.content = { _, viewStore in
       if var state = viewStore.state {
         return ViewBuilder.buildEither(
           first: ScopeView(
@@ -99,15 +103,17 @@ public struct IfLetStore<State, Action, Content: View>: View {
       }
     }
   }
-  
-  
+
   public init<ParentState, ParentAction, IfContent, ElseContent>(
     _ store: Store<ParentState, ParentAction>,
     state: @escaping (ParentState) -> State?,
     action: @escaping (Action) -> ParentAction,
     @ViewBuilder then ifContent: @escaping (Store<State, Action>) -> IfContent,
     @ViewBuilder else elseContent: @escaping () -> ElseContent
-  ) where Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent> {
+  )
+  where
+    Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent>
+  {
     self._store = .init(wrappedValue: store.scope(state: state, action: action))
     self.content = { `self`, viewStore in
       if var state = viewStore.state {
@@ -127,7 +133,7 @@ public struct IfLetStore<State, Action, Content: View>: View {
       }
     }
   }
-  
+
   public init<ParentState, ParentAction, IfContent>(
     _ store: Store<ParentState, ParentAction>,
     state: @escaping (ParentState) -> State?,

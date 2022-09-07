@@ -98,6 +98,7 @@ public struct ForEachStore<
       >
     >
   {
+    #warning("Handle onDisappear")
     self._store = .init(wrappedValue: store)
     self.content = { _ in
       WithViewStore(
@@ -135,11 +136,22 @@ public struct ForEachStore<
   )
   where
     Data == IdentifiedArray<ID, EachState>,
-      Content == ScopeView<IdentifiedArray<ID, EachState>, (ID, EachAction), OrderedSet<ID>, (ID, EachAction), WithViewStore<OrderedSet<ID>, (ID, EachAction), ForEach<OrderedSet<ID>, ID, ScopeView<IdentifiedArray<ID, EachState>, (ID, EachAction), EachState, EachAction, EachContent>>>>
+    Content == ScopeView<
+      IdentifiedArray<ID, EachState>, (ID, EachAction), OrderedSet<ID>, (ID, EachAction),
+      WithViewStore<
+        OrderedSet<ID>, (ID, EachAction),
+        ForEach<
+          OrderedSet<ID>, ID,
+          ScopeView<
+            IdentifiedArray<ID, EachState>, (ID, EachAction), EachState, EachAction, EachContent
+          >
+        >
+      >
+    >
   {
 
     self._store = .init(wrappedValue: store.scope(state: state, action: action))
-    
+
     self.content = { `self` in
       ScopeView(
         store: self.store, state: \.ids, action: { $0 },

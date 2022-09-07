@@ -15,8 +15,10 @@ public struct ScopeView<ParentState, ParentAction, ChildState, ChildAction, Cont
     self.content = content
   }
 
-  public var body: Content {
+  public var body: ModifiedContent<Content, _AppearanceActionModifier> {
     content(scopedStore)
+      .onDisappear {
+        $scopedStore.onDisappear()
+      } as! ModifiedContent<Content, _AppearanceActionModifier>
   }
 }
-

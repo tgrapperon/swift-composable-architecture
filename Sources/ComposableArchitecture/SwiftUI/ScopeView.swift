@@ -14,11 +14,16 @@ public struct ScopeView<ParentState, ParentAction, ChildState, ChildAction, Cont
     self._scopedStore = .init(wrappedValue: store.scope(state: state, action: action))
     self.content = content
   }
-
-  public var body: ModifiedContent<Content, _AppearanceActionModifier> {
+  
+  public var body: Content {
     content(scopedStore)
-      .onDisappear {
-        $scopedStore.onDisappear()
-      } as! ModifiedContent<Content, _AppearanceActionModifier>
   }
+  
+  // TODO: compare store lifetime with the existing configuration
+//  public var body: ModifiedContent<Content, _AppearanceActionModifier> {
+//    content(scopedStore)
+//      .onDisappear {
+//        $scopedStore.onDisappear()
+//      } as! ModifiedContent<Content, _AppearanceActionModifier>
+//  }
 }

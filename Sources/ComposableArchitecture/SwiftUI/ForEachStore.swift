@@ -83,7 +83,7 @@ public struct ForEachStore<
   ///   - store: A store on an identified array of data and an identified action.
   ///   - content: A function that can generate content given a store of an element.
   public init<EachContent>(
-    _ store: Store<IdentifiedArray<ID, EachState>, (ID, EachAction)>,
+    _ store: @autoclosure @escaping () -> Store<IdentifiedArray<ID, EachState>, (ID, EachAction)>,
     @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
   )
   where
@@ -99,10 +99,10 @@ public struct ForEachStore<
     >
   {
     #warning("Handle onDisappear?")
-    self._store = .init(wrappedValue: store)
-    self.content = { _ in
+    self._store = .init(wrappedValue: store())
+    self.content = { `self` in
       WithViewStore(
-        store.scope(state: { $0.ids }),
+        self.store.scope(state: { $0.ids }),
         removeDuplicates: areOrderedSetsDuplicates
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) {
@@ -113,9 +113,9 @@ public struct ForEachStore<
           //     views for elements no longer in the collection.
           //
           // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          var element = store.state.value[id: id]!
+          var element = self.store.state.value[id: id]!
           ScopeView(
-            store: store,
+            store: self.store,
             state: {
               element = $0[id: id] ?? element
               return element
@@ -177,7 +177,8 @@ public struct ForEachStore<
               )
             }
           }
-        })
+        }
+      )
     }
   }
 

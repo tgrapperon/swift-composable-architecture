@@ -305,7 +305,7 @@ public final class Store<State, Action> {
     let scoped = (self.scope ?? Scope(root: self))
       .rescope(self, state: toChildState, action: fromChildAction)
     scopeCounts["\(scoped)", default: 0] += 1
-    print("SCP: ScopeCount: \(scopeCounts["\(scoped)"]!) \(scoped)")
+    print("SCP: ScopeCount: Total: \(scopeCounts.values.reduce(0, +)), with \(scopeCounts["\(scoped)"]!) \(scoped)")
     return scoped
   }
 

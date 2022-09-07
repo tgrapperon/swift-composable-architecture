@@ -31,4 +31,7 @@ public struct ScopeView<ParentState, ParentAction, ChildState, ChildAction, Cont
   // with plain old properties, and thus with the current way it works, but this is need be checked
   // more thouroughly. It doesn't seem that @State lives longer than a bare property in a view that
   // disappeared.
+  
+  // autoclosure instead of deferred doesn't seem to perform as well in terms of counts. (cf. TODO).
+  // Need to check why.
 }

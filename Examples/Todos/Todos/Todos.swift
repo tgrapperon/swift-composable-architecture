@@ -139,8 +139,13 @@ struct AppView: View {
         .padding(.horizontal)
 
         List {
+          // Deferred
           ForEachStore(store, state: \.filteredTodos, action: AppAction.todo(id:action:)) { TodoView(store: $0)
           }
+          // Autoclosure
+//          ForEachStore(store.scope(state: \.todos, action: AppAction.todo(id:action:))) {
+//            TodoView(store: $0)
+//          }
           .onDelete { self.viewStore.send(.delete($0)) }
           .onMove { self.viewStore.send(.move($0, $1)) }
         }

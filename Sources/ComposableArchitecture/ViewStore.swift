@@ -550,6 +550,9 @@ private struct HashableWrapper<Value>: Hashable {
 
 extension ViewStore {
   /// This type provides access to the state of a store at the time this value is created.
+  ///
+  /// It is not intended for general use, and you should use a ``ViewStore`` if you want to
+  /// access the state of a ``Store``.
   public struct _Snapshot {
     /// The ``Store``'s state at the time the ``ViewStore/Snapshot`` was created.
     public let state: State

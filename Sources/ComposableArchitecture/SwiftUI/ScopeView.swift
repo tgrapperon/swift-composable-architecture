@@ -19,3 +19,4 @@ public struct ScopeView<ParentState, ParentAction, ChildState, ChildAction, Cont
     content(scopedStore)
   }
 }
+

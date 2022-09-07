@@ -250,13 +250,43 @@ extension View {
       #endif
     }
   }
+  
+  @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+  public func confirmationDialog<State, Action>(
+    _ store: Store<State, Action>,
+    state: @escaping (State) -> ConfirmationDialogState<Action>?,
+    dismiss: Action
+  ) -> some View where Action: Equatable {
+    self.modifier(NewConfirmationDialogModifier(store: store, state: state, dismiss: dismiss))
+  }
 }
 
 // NB: Workaround for iOS 14 runtime crashes during iOS 15 availability checks.
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 private struct NewConfirmationDialogModifier<Action>: ViewModifier {
-  @ObservedObject var viewStore: ViewStore<ConfirmationDialogState<Action>?, Action>
+  @_StateObject var viewStore: ViewStore<ConfirmationDialogState<Action>?, Action>
   let dismiss: Action
+  init(
+    viewStore: ViewStore<ConfirmationDialogState<Action>?, Action>,
+    dismiss: Action
+  ) {
+    self._viewStore = .init(wrappedValue: viewStore)
+    self.dismiss = dismiss
+  }
+  
+  init<State>(
+    store: Store<State, Action>,
+    state: @escaping (State) -> ConfirmationDialogState<Action>?,
+    dismiss: Action
+  ) where Action: Equatable {
+    self._viewStore = .init(
+      wrappedValue: ViewStore(
+        store.scope(state: state),
+        removeDuplicates: { $0?.id == $1?.id }
+      )
+    )
+    self.dismiss = dismiss
+  }
 
   func body(content: Content) -> some View {
     content.confirmationDialog(

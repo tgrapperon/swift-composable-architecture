@@ -139,7 +139,7 @@ public struct ForEachStore<
   {
 
     self._store = .init(wrappedValue: store.scope(state: state, action: action))
-
+    
     self.content = { `self` in
       ScopeView(
         store: self.store, state: \.ids, action: { $0 },

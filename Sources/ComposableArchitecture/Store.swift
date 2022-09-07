@@ -154,6 +154,9 @@ public final class Store<State, Action> {
     self.threadCheck(status: .`init`)
   }
 
+  deinit {
+    print("deinit \(self)")
+  }
   /// Scopes the store to one that exposes child state and actions.
   ///
   /// This can be useful for deriving new stores to hand to child views in an application. For

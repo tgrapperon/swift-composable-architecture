@@ -54,14 +54,24 @@ import SwiftUI
 ///   in transforming reducers that operate on each case of an enum into reducers that operate on
 ///   the entire enum.
 public struct SwitchStore<State, Action, Content: View>: View {
-  public let store: Store<State, Action>
+  @_LazyState public var store: Store<State, Action>
   public let content: () -> Content
 
   init(
     store: Store<State, Action>,
     @ViewBuilder content: @escaping () -> Content
   ) {
-    self.store = store
+    self._store = .init(wrappedValue: store)
+    self.content = content
+  }
+  
+  init<ParentState, ParentAction>(
+    store: Store<ParentState, ParentAction>,
+    state: @escaping (ParentState) -> State,
+    action: @escaping (Action) -> ParentAction,
+    @ViewBuilder content: @escaping () -> Content
+  ) {
+    self._store = .init(wrappedValue: store.scope(state: state, action: action))
     self.content = content
   }
 
@@ -99,10 +109,9 @@ public struct CaseLet<EnumState, EnumAction, CaseState, CaseAction, Content: Vie
 
   public var body: some View {
     IfLetStore(
-      self.store.wrappedValue.scope(
-        state: self.toCaseState,
-        action: self.fromCaseAction
-      ),
+      store.wrappedValue,
+      state: self.toCaseState,
+      action: self.fromCaseAction,
       then: self.content
     )
   }
@@ -151,6 +160,7 @@ public struct Default<Content: View>: View {
   }
 }
 
+#warning("TODO: Add overloads for deferred scope?")
 extension SwitchStore {
   public init<State1, Action1, Content1, DefaultContent>(
     _ store: Store<State, Action>,

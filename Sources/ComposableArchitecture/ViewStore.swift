@@ -547,3 +547,15 @@ private struct HashableWrapper<Value>: Hashable {
   static func == (lhs: Self, rhs: Self) -> Bool { false }
   func hash(into hasher: inout Hasher) {}
 }
+
+extension ViewStore {
+  /// This type provides access to the state of a store at the time this value is created.
+  public struct _Snapshot {
+    /// The ``Store``'s state at the time the ``ViewStore/Snapshot`` was created.
+    public let state: State
+    /// Creates a snapshot of the state of `store`.
+    public init(store: Store<State, Action>) {
+      self.state = store.state.value
+    }
+  }
+}

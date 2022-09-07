@@ -169,11 +169,7 @@ struct VoiceMemosView: View {
           .frame(maxWidth: .infinity)
           .background(Color.init(white: 0.95))
         }
-        .alert(
-          store: self.store,
-          state: \.alert,
-          dismiss: .alertDismissed
-        )
+        .alert(store: store, state: \.alert, dismiss: .alertDismissed)
         .navigationTitle("Voice memos")
       }
       .navigationViewStyle(.stack)

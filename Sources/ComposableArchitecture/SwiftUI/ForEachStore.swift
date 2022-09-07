@@ -98,7 +98,7 @@ public struct ForEachStore<
       >
     >
   {
-    #warning("Handle onDisappear")
+    #warning("Handle onDisappear?")
     self._store = .init(wrappedValue: store)
     self.content = { _ in
       WithViewStore(

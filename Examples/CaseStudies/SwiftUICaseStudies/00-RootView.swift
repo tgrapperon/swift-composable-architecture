@@ -13,11 +13,14 @@ struct RootView: View {
             NavigationLink(
               "Basics",
               destination:
-                ScopeView(store: store, state: \.counter, action: RootAction.counter) { store in
-                  CounterDemoView(store: store)
-                }
+                ScopeView(
+                  store: store,
+                  state: \.counter,
+                  action: RootAction.counter,
+                  content: CounterView.init
+                )
             )
-            #warning("TODO: Conver other ones")
+            #warning("TODO: Convert other ones")
             NavigationLink(
               "Pullback and combine",
               destination: TwoCountersView(

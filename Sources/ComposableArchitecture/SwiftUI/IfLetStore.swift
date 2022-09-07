@@ -54,7 +54,7 @@ public struct IfLetStore<State, Action, Content: View>: View {
   where
     Content == _ConditionalContent<ScopeView<State?, Action, State, Action, IfContent>, ElseContent>
   {
-    #warning("Handle onDisappear")
+    #warning("Handle onDisappear?")
     self._store = .init(wrappedValue: store)
     self.content = { _, viewStore in
       if var state = viewStore.state {

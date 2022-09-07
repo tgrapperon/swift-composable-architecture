@@ -73,9 +73,9 @@ import SwiftUI
 public struct ForEachStore<
   EachState, EachAction, Data: Collection, ID: Hashable, Content: View
 >: DynamicViewContent {
-  public let data: Data
-  let content: () -> Content
-
+  public var data: Data { store.state.value as! Data }
+  let content: (Self) -> Content
+  @_LazyState var store: Store<IdentifiedArray<ID, EachState>, (ID, EachAction)>
   /// Initializes a structure that computes views on demand from a store on a collection of data and
   /// an identified action.
   ///
@@ -98,8 +98,8 @@ public struct ForEachStore<
       >
     >
   {
-    self.data = store.state.value
-    self.content = {
+    self._store = .init(wrappedValue: store)
+    self.content = { _ in
       WithViewStore(
         store.scope(state: { $0.ids }),
         removeDuplicates: areOrderedSetsDuplicates
@@ -127,8 +127,50 @@ public struct ForEachStore<
     }
   }
 
+  public init<State, Action, EachContent>(
+    _ store: Store<State, Action>,
+    state: @escaping (State) -> IdentifiedArray<ID, EachState>,
+    action: @escaping (ID, EachAction) -> Action,
+    @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
+  )
+  where
+    Data == IdentifiedArray<ID, EachState>,
+      Content == ScopeView<IdentifiedArray<ID, EachState>, (ID, EachAction), OrderedSet<ID>, (ID, EachAction), WithViewStore<OrderedSet<ID>, (ID, EachAction), ForEach<OrderedSet<ID>, ID, ScopeView<IdentifiedArray<ID, EachState>, (ID, EachAction), EachState, EachAction, EachContent>>>>
+  {
+
+    self._store = .init(wrappedValue: store.scope(state: state, action: action))
+
+    self.content = { `self` in
+      ScopeView(
+        store: self.store, state: \.ids, action: { $0 },
+        content: { idsStore in
+          WithViewStore(
+            idsStore,
+            removeDuplicates: areOrderedSetsDuplicates
+          ) { viewStore in
+            ForEach(viewStore.state, id: \.self) { id in
+              // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
+              //     views for elements no longer in the collection.
+              //
+              // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
+              var element = self.store.state.value[id: id]!
+              ScopeView(
+                store: self.store,
+                state: {
+                  element = $0[id: id] ?? element
+                  return element
+                },
+                action: { (id, $0) },
+                content: content
+              )
+            }
+          }
+        })
+    }
+  }
+
   public var body: some View {
-    self.content()
+    self.content(self)
   }
 }
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 public struct ScopeView<ParentState, ParentAction, ChildState, ChildAction, Content: View>: View {
   let store: Store<ParentState, ParentAction>
-  @LazyState var scopedStore: Store<ChildState, ChildAction>
+  @_LazyState var scopedStore: Store<ChildState, ChildAction>
   let content: (Store<ChildState, ChildAction>) -> Content
   public init(
     store: Store<ParentState, ParentAction>,

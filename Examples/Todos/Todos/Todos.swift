@@ -139,10 +139,7 @@ struct AppView: View {
         .padding(.horizontal)
 
         List {
-          ForEachStore(
-            self.store.scope(state: \.filteredTodos, action: AppAction.todo(id:action:))
-          ) {
-            TodoView(store: $0)
+          ForEachStore(store, state: \.filteredTodos, action: AppAction.todo(id:action:)) { TodoView(store: $0)
           }
           .onDelete { self.viewStore.send(.delete($0)) }
           .onMove { self.viewStore.send(.move($0, $1)) }

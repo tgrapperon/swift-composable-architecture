@@ -123,7 +123,7 @@ import Foundation
 /// Further, all actions sent to the store and all scopes (see ``scope(state:action:)``) of the
 /// store are also checked to make sure that work is performed on the main thread.
 public final class Store<State, Action> {
-  private var bufferedActions: [Action] = []
+  private var bufferedActions: Buffer<Action> = .init()
   var effectCancellables: [UUID: AnyCancellable] = [:]
   private var isSending = false
   var parentCancellable: AnyCancellable?
@@ -333,14 +333,10 @@ public final class Store<State, Action> {
     }
 
     let tasks = Box<[Task<Void, Never>]>(wrappedValue: [])
-
-    var index = self.bufferedActions.startIndex
-    defer { self.bufferedActions = [] }
-    while index < self.bufferedActions.endIndex {
-      defer { index += 1 }
-      let action = self.bufferedActions[index]
+    
+    while let action = bufferedActions.popFirst() {
       let effect = self.reducer(&currentState, action)
-
+      
       switch effect.operation {
       case .none:
         break

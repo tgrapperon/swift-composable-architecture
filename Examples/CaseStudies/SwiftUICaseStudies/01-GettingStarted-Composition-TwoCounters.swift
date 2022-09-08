@@ -34,7 +34,7 @@ let twoCountersReducer = Reducer<TwoCountersState, TwoCountersAction, TwoCounter
     )
   )
 
-struct TwoCountersView: View {
+struct TwoCountersView: StoreView {
   let store: Store<TwoCountersState, TwoCountersAction>
 
   var body: some View {
@@ -46,7 +46,7 @@ struct TwoCountersView: View {
       HStack {
         Text("Counter 1")
         Spacer()
-        ScopeView(store: store, state: \.counter1, action: TwoCountersAction.counter1) {
+        Scope(state: \.counter1, action: TwoCountersAction.counter1) {
           CounterView(store: $0)
         }
       }

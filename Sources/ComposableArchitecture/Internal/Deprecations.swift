@@ -32,7 +32,7 @@ extension WithViewStore: AccessibilityRotorContent where Content: AccessibilityR
       Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(
       store: store,
       removeDuplicates: isDuplicate,
@@ -67,7 +67,7 @@ extension WithViewStore where ViewState: Equatable, Content: AccessibilityRotorC
       Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -96,7 +96,7 @@ extension WithViewStore where ViewState == Void, Content: AccessibilityRotorCont
     line: UInt = #line,
     @AccessibilityRotorContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) ->
       Content
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -129,7 +129,7 @@ extension WithViewStore: Commands where Content: Commands {
     @CommandsBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(
       store: store,
       removeDuplicates: isDuplicate,
@@ -165,7 +165,7 @@ extension WithViewStore where ViewState: Equatable, Content: Commands {
     @CommandsBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -195,7 +195,7 @@ extension WithViewStore where ViewState == Void, Content: Commands {
     file: StaticString = #fileID,
     line: UInt = #line,
     @CommandsBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -226,7 +226,7 @@ extension WithViewStore: Scene where Content: Scene {
     @SceneBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(
       store: store,
       removeDuplicates: isDuplicate,
@@ -260,7 +260,7 @@ extension WithViewStore where ViewState: Equatable, Content: Scene {
     @SceneBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -288,7 +288,7 @@ extension WithViewStore where ViewState == Void, Content: Scene {
     file: StaticString = #fileID,
     line: UInt = #line,
     @SceneBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -319,7 +319,7 @@ extension WithViewStore: ToolbarContent where Content: ToolbarContent {
     file: StaticString = #fileID,
     line: UInt = #line,
     @ToolbarContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(
       store: store,
       removeDuplicates: isDuplicate,
@@ -353,7 +353,7 @@ extension WithViewStore where ViewState: Equatable, Content: ToolbarContent {
     file: StaticString = #fileID,
     line: UInt = #line,
     @ToolbarContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
   }
 }
@@ -381,7 +381,7 @@ extension WithViewStore where ViewState == Void, Content: ToolbarContent {
     file: StaticString = #fileID,
     line: UInt = #line,
     @ToolbarContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
   }
 }
@@ -1091,7 +1091,9 @@ extension ForEachStore {
   where
     Data == [EachState],
     Content == WithViewStore<
-      [ID], (Data.Index, EachAction), ForEach<[(offset: Int, element: ID)], ID, EachContent>
+      [ID], (Data.Index, EachAction),
+      [ID], (Data.Index, EachAction),
+      ForEach<[(offset: Int, element: ID)], ID, EachContent>
     >
   {
     let data = store.state.value
@@ -1118,7 +1120,9 @@ extension ForEachStore {
   where
     Data == [EachState],
     Content == WithViewStore<
-      [ID], (Data.Index, EachAction), ForEach<[(offset: Int, element: ID)], ID, EachContent>
+      [ID], (Data.Index, EachAction),
+      [ID], (Data.Index, EachAction),
+      ForEach<[(offset: Int, element: ID)], ID, EachContent>
     >,
     EachState: Identifiable,
     EachState.ID == ID

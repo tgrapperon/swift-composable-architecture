@@ -62,7 +62,7 @@ import SwiftUI
 /// > all interactions must happen on the _main_ thread. See the documentation of the ``Store``
 /// > class for more information as to why this decision was made.
 @dynamicMemberLookup
-public final class ViewStore<State, Action>: ObservableObject {
+public class ViewStore<State, Action>: ObservableObject {
   // N.B. `ViewStore` does not use a `@Published` property, so `objectWillChange`
   // won't be synthesized automatically. To work around issues on iOS 13 we explicitly declare it.
   public private(set) lazy var objectWillChange = ObservableObjectPublisher()
@@ -546,4 +546,40 @@ private struct HashableWrapper<Value>: Hashable {
   let rawValue: Value
   static func == (lhs: Self, rhs: Self) -> Bool { false }
   func hash(into hasher: inout Hasher) {}
+}
+
+public final class ScopedViewStore<ParentState, ParentAction, State, Action>: ViewStore<
+  State, Action
+>
+{
+  let store: Store<ParentState, ParentAction>
+  let toViewState: (ParentState) -> State
+  let fromViewAction: (Action) -> ParentAction
+  init(
+    _ store: Store<ParentState, ParentAction>,
+    observe toViewState: @escaping (ParentState) -> State,
+    send fromViewAction: @escaping (Action) -> ParentAction,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
+  ) {
+    self.store = store
+    self.toViewState = toViewState
+    self.fromViewAction = fromViewAction
+    super.init(
+      store.scope(state: toViewState, action: fromViewAction), removeDuplicates: isDuplicate)
+  }
+
+  @available(*, unavailable)
+  public override init(
+    _ store: Store<State, Action>,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
+  ) {
+    fatalError()
+  }
+
+  internal init(_ viewStore: ScopedViewStore<ParentState, ParentAction, State, Action>) {
+    self.store = viewStore.store
+    self.toViewState = viewStore.toViewState
+    self.fromViewAction = viewStore.fromViewAction
+    super.init(viewStore)
+  }
 }

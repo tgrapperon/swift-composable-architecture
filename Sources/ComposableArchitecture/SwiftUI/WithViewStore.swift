@@ -109,20 +109,47 @@ import SwiftUI
 ///   ViewStore(self.store).send(.buttonTapped)
 /// }
 /// ```
-public struct WithViewStore<ViewState, ViewAction, Content> {
-  private let content: (ViewStore<ViewState, ViewAction>) -> Content
+public struct WithViewStore<State, Action, ViewState, ViewAction, Content> {
+  private let content: (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content
   #if DEBUG
     private let file: StaticString
     private let line: UInt
     private var prefix: String?
     private var previousState: (ViewState) -> ViewState?
   #endif
-  @ObservedObject private var viewStore: ViewStore<ViewState, ViewAction>
+  @ObservedObject private var viewStore: ScopedViewStore<State, Action, ViewState, ViewAction>
 
   init(
     store: Store<ViewState, ViewAction>,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
     content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    file: StaticString = #fileID,
+    line: UInt = #line
+  ) where State == ViewState, Action == ViewAction {
+    self.content = content
+    #if DEBUG
+      self.file = file
+      self.line = line
+      var previousState: ViewState? = nil
+      self.previousState = { currentState in
+        defer { previousState = currentState }
+        return previousState
+      }
+    #endif
+    self.viewStore = ScopedViewStore(
+      store,
+      observe: { $0 },
+      send: { $0 },
+      removeDuplicates: isDuplicate
+    )
+  }
+
+  init(
+    store: Store<State, Action>,
+    observe toViewState: @escaping (State) -> ViewState,
+    send fromViewAction: @escaping (ViewAction) -> Action,
+    removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
+    content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) {
@@ -136,7 +163,12 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
         return previousState
       }
     #endif
-    self.viewStore = ViewStore(store, removeDuplicates: isDuplicate)
+    self.viewStore = ScopedViewStore(
+      store,
+      observe: toViewState,
+      send: fromViewAction,
+      removeDuplicates: isDuplicate
+    )
   }
 
   /// Prints debug information to the console whenever the view is computed.
@@ -179,7 +211,7 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
         )
       }
     #endif
-    return self.content(ViewStore(self.viewStore))
+    return self.content(ScopedViewStore(self.viewStore))
   }
 }
 
@@ -196,17 +228,20 @@ extension WithViewStore: View where Content: View {
   ///   - isDuplicate: A function to determine when two `ViewState` values are equal. When values
   ///     are equal, repeat view computations are removed,
   ///   - content: A function that can generate content from a view store.
-  public init<State, Action>(
+  public init(
     _ store: Store<State, Action>,
     observe toViewState: @escaping (State) -> ViewState,
     send fromViewAction: @escaping (ViewAction) -> Action,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) ->
+      Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) {
     self.init(
-      store: store.scope(state: toViewState, action: fromViewAction),
+      store: store,
+      observe: toViewState,
+      send: fromViewAction,
       removeDuplicates: isDuplicate,
       content: content,
       file: file,
@@ -223,16 +258,18 @@ extension WithViewStore: View where Content: View {
   ///   - isDuplicate: A function to determine when two `ViewState` values are equal. When values
   ///     are equal, repeat view computations are removed,
   ///   - content: A function that can generate content from a view store.
-  public init<State>(
+  public init(
     _ store: Store<State, ViewAction>,
     observe toViewState: @escaping (State) -> ViewState,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where Action == ViewAction {
     self.init(
-      store: store.scope(state: toViewState),
+      store: store,
+      observe: toViewState,
+      send: { $0 },
       removeDuplicates: isDuplicate,
       content: content,
       file: file,
@@ -274,7 +311,7 @@ extension WithViewStore: View where Content: View {
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(
       store: store,
       removeDuplicates: isDuplicate,
@@ -296,16 +333,19 @@ extension WithViewStore where ViewState: Equatable, Content: View {
   ///   - isDuplicate: A function to determine when two `ViewState` values are equal. When values
   ///     are equal, repeat view computations are removed,
   ///   - content: A function that can generate content from a view store.
-  public init<State, Action>(
+  public init(
     _ store: Store<State, Action>,
     observe toViewState: @escaping (State) -> ViewState,
     send fromViewAction: @escaping (ViewAction) -> Action,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) ->
+      Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) {
     self.init(
-      store: store.scope(state: toViewState, action: fromViewAction),
+      store: store,
+      observe: toViewState,
+      send: fromViewAction,
       removeDuplicates: ==,
       content: content,
       file: file,
@@ -322,15 +362,18 @@ extension WithViewStore where ViewState: Equatable, Content: View {
   ///   - isDuplicate: A function to determine when two `ViewState` values are equal. When values
   ///     are equal, repeat view computations are removed,
   ///   - content: A function that can generate content from a view store.
-  public init<State>(
+  public init(
     _ store: Store<State, ViewAction>,
     observe toViewState: @escaping (State) -> ViewState,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, ViewAction, ViewState, ViewAction>) ->
+      Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where Action == ViewAction {
     self.init(
-      store: store.scope(state: toViewState),
+      store: store,
+      observe: toViewState,
+      send: { $0 },
       removeDuplicates: ==,
       content: content,
       file: file,
@@ -369,7 +412,7 @@ extension WithViewStore where ViewState: Equatable, Content: View {
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
@@ -406,7 +449,7 @@ extension WithViewStore where ViewState == Void, Content: View {
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }

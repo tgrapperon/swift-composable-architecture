@@ -165,6 +165,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         CaseLet<State, Action, State1, Action1, Content1>,
         Default<DefaultContent>
@@ -194,6 +196,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         CaseLet<State, Action, State1, Action1, Content1>,
         Default<_ExhaustivityCheckView<State, Action>>
@@ -218,6 +222,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -259,6 +265,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           CaseLet<State, Action, State1, Action1, Content1>,
@@ -294,6 +302,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -341,6 +351,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           CaseLet<State, Action, State1, Action1, Content1>,
@@ -382,6 +394,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -440,6 +454,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           _ConditionalContent<
@@ -487,6 +503,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -552,6 +570,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           _ConditionalContent<
@@ -605,6 +625,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -677,6 +699,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           _ConditionalContent<
@@ -736,6 +760,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -815,6 +841,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           _ConditionalContent<
@@ -880,6 +908,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -966,6 +996,8 @@ extension SwitchStore {
     Content == WithViewStore<
       State,
       Action,
+      State,
+      Action,
       _ConditionalContent<
         _ConditionalContent<
           _ConditionalContent<
@@ -1037,6 +1069,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<
@@ -1128,6 +1162,8 @@ extension SwitchStore {
   )
   where
     Content == WithViewStore<
+      State,
+      Action,
       State,
       Action,
       _ConditionalContent<

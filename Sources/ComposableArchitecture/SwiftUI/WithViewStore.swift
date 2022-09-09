@@ -296,23 +296,28 @@ extension WithViewStore where ViewState: Equatable, Content: View {
   ///   - isDuplicate: A function to determine when two `ViewState` values are equal. When values
   ///     are equal, repeat view computations are removed,
   ///   - content: A function that can generate content from a view store.
-  public init<State, Action>(
+  public init<State, Action, _Content: View>(
     _ store: Store<State, Action>,
     observe toViewState: @escaping (State) -> ViewState,
     send fromViewAction: @escaping (ViewAction) -> Action,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> _Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where Content == ModifiedContent<_WithEnvironmentViewStore<ViewState, ViewAction, _Content>, _EnvironmentKeyWritingModifier<Optional<ViewStore<ViewState, ViewAction>>>>  {
     self.init(
       store: store.scope(state: toViewState, action: fromViewAction),
       removeDuplicates: ==,
-      content: content,
+      content: {
+        if #available(iOS 15.0, *) {
+          let _ = _Content._printChanges()
+        }
+        return _WithEnvironmentViewStore(content: content).environmentObject($0) as! Content
+      },
       file: file,
       line: line
     )
   }
-
+  
   /// Initializes a structure that transforms a store into an observable view store in order to
   /// compute views from equatable state.
   ///
@@ -322,17 +327,22 @@ extension WithViewStore where ViewState: Equatable, Content: View {
   ///   - isDuplicate: A function to determine when two `ViewState` values are equal. When values
   ///     are equal, repeat view computations are removed,
   ///   - content: A function that can generate content from a view store.
-  public init<State>(
+  public init<State, _Content: View>(
     _ store: Store<State, ViewAction>,
     observe toViewState: @escaping (State) -> ViewState,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> _Content,
     file: StaticString = #fileID,
     line: UInt = #line
-  ) {
+  ) where Content == ModifiedContent<_WithEnvironmentViewStore<ViewState, ViewAction, _Content>, _EnvironmentKeyWritingModifier<Optional<ViewStore<ViewState, ViewAction>>>> {
     self.init(
       store: store.scope(state: toViewState),
       removeDuplicates: ==,
-      content: content,
+      content: {
+        if #available(iOS 15.0, *) {
+          let _ = _Content._printChanges()
+        }
+        return _WithEnvironmentViewStore(content: content).environmentObject($0) as! Content
+      },
       file: file,
       line: line
     )

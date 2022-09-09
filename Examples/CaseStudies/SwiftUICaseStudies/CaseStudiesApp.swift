@@ -10,7 +10,7 @@ struct CaseStudiesApp: App {
           initialState: RootState(),
           reducer:
             rootReducer
-            .debug()
+//            .debug()
             .signpost(),
           environment: .live
         )

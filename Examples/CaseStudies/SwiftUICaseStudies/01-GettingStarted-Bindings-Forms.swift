@@ -97,6 +97,57 @@ struct BindingFormView: View {
   }
 }
 
+struct PartialBindingFormView: View {
+  let store: Store<BindingFormState, BindingFormAction>
+  struct ViewState: Equatable {
+    let stepCount: Int
+    let text: String
+    let isToggleOn: Bool
+    init(state: BindingFormState) {
+      self.stepCount = state.stepCount
+      self.text = state.text
+      self.isToggleOn = state.toggleIsOn
+    }
+  }
+  var body: some View {
+    WithViewStore(self.store, observe: { ViewState(state: $0) }) { viewStore in
+      Form {
+        Section {
+          AboutView(readMe: readMe)
+        }
+
+        HStack {
+          TextField("Type here", text: viewStore.binding(\.$stepCount))
+            .disableAutocorrection(true)
+            .foregroundStyle(viewStore.toggleIsOn ? Color.secondary : .primary)
+          Text(alternate(viewStore.text))
+        }
+//        .disabled(viewStore.toggleIsOn)
+//
+//        Toggle(
+//          "Disable other controls",
+//          isOn: viewStore.binding(\.$toggleIsOn)
+//            .resignFirstResponder()
+//        )
+//
+//        Stepper(
+//          "Max slider value: \(viewStore.stepCount)",
+//          value: viewStore.binding(\.$stepCount),
+//          in: 0...100
+//        )
+//        .disabled(viewStore.toggleIsOn)
+
+        Button("Reset") {
+          viewStore.send(.resetButtonTapped)
+        }
+        .tint(.red)
+      }
+    }
+    .monospacedDigit()
+    .navigationTitle("Bindings form")
+  }
+}
+
 private func alternate(_ string: String) -> String {
   string
     .enumerated()

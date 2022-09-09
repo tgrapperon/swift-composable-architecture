@@ -299,6 +299,43 @@ extension ViewStore where Action: BindableAction, Action.State == State {
   }
 }
 
+extension ScopedViewStore
+where
+  ParentAction: BindableAction,
+  Action == ParentAction,
+  ParentAction.State == ParentState
+{
+  /// Returns a binding to the resulting bindable state of a given key path.
+  ///
+  /// - Parameter keyPath: A key path to a specific bindable state.
+  /// - Returns: A new binding.
+  public func binding<Value: Equatable>(
+    _ keyPath: WritableKeyPath<ParentState, BindableState<Value>>,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> Binding<Value> {
+    self.observe({ $0[keyPath: keyPath].wrappedValue }, id: ObjectIdentifier(keyPath))
+    return self.binding(
+      get: { _ in self.dynamicParentViewStore.state[keyPath: keyPath].wrappedValue },
+      send: { value in
+        #if DEBUG
+          let debugger = BindableActionViewStoreDebugger(
+            value: value, bindableActionType: Action.self, file: file, fileID: fileID, line: line
+          )
+          let set: (inout ParentState) -> Void = {
+            $0[keyPath: keyPath].wrappedValue = value
+            debugger.wasCalled = true
+          }
+        #else
+          let set: (inout ParentState) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
+        #endif
+        return .binding(.init(keyPath: keyPath, set: set, value: value))
+      }
+    )
+  }
+}
+
 /// An action that describes simple mutations to some root state at a writable key path.
 ///
 /// Used in conjunction with ``BindableState`` and ``BindableAction`` to safely eliminate the

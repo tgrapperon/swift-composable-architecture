@@ -555,6 +555,46 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
   let store: Store<ParentState, ParentAction>
   let toViewState: (ParentState) -> State
   let fromViewAction: (Action) -> ParentAction
+
+  private var dynamicParentObservedSlices: [AnyHashable: (ParentState) -> any Equatable] = [:]
+  func observe<Value: Equatable, ID: Hashable>(
+    _ slice: @escaping (ParentState) -> Value,
+    id: ID
+  ) {
+    dynamicParentObservedSlices[id] = slice
+  }
+
+  func dynamicParentStateIsDuplicate(lhs: ParentState, rhs: ParentState) -> Bool {
+    for slice in dynamicParentObservedSlices.values {
+      if _isEqual(slice(lhs), slice(rhs)) { return false }
+    }
+    return true
+  }
+  
+  var dynamicParentViewStoreCancellable: AnyCancellable?
+  var _dynamicParentViewStore: ViewStore<ParentState, ParentAction>?
+
+  lazy var dynamicParentViewStore: ViewStore<ParentState, ParentAction> = {
+    if let _dynamicParentViewStore = _dynamicParentViewStore {
+      return _dynamicParentViewStore
+    }
+    let parentViewStore: ViewStore<ParentState, ParentAction> = ViewStore(
+      self.store,
+      removeDuplicates: { [weak self] in
+        guard let self = self else {
+          return false
+        }
+        return self.dynamicParentStateIsDuplicate(lhs: $0, rhs: $1)
+      }
+    )
+    self._dynamicParentViewStore = parentViewStore
+    self.dynamicParentViewStoreCancellable = _dynamicParentViewStore?
+      .objectWillChange.sink { [weak self] in
+      self?.objectWillChange.send()
+    }
+    return parentViewStore
+  }()
+
   init(
     _ store: Store<ParentState, ParentAction>,
     observe toViewState: @escaping (ParentState) -> State,
@@ -565,7 +605,12 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
     self.toViewState = toViewState
     self.fromViewAction = fromViewAction
     super.init(
-      store.scope(state: toViewState, action: fromViewAction), removeDuplicates: isDuplicate)
+      store.scope(
+        state: toViewState,
+        action: fromViewAction
+      ),
+      removeDuplicates: isDuplicate
+    )
   }
 
   @available(*, unavailable)
@@ -580,6 +625,16 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
     self.store = viewStore.store
     self.toViewState = viewStore.toViewState
     self.fromViewAction = viewStore.fromViewAction
+    self.dynamicParentObservedSlices = viewStore.dynamicParentObservedSlices
+    self._dynamicParentViewStore = viewStore._dynamicParentViewStore
+    self.dynamicParentViewStoreCancellable = viewStore.dynamicParentViewStoreCancellable
     super.init(viewStore)
   }
+}
+
+private func _isEqual(_ lhs: any Equatable, _ rhs: any Equatable) -> Bool {
+  func open<A: Equatable>(_ lhs: A, _ rhs: any Equatable) -> Bool {
+    lhs == (rhs as? A)
+  }
+  return open(lhs, rhs)
 }

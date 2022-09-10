@@ -89,21 +89,69 @@ public struct ForEachStore<
   /// - Parameters:
   ///   - store: A store on an identified array of data and an identified action.
   ///   - content: A function that can generate content given a store of an element.
-  public init<EachContent>(
-    _ store: Store<IdentifiedArray<ID, EachState>, (ID, EachAction)>,
+  public init<States: ForEachStateProvider, EachContent>(
+    _ store: Store<States, (ID, EachAction)>,
     @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
   )
   where
-    Data == IdentifiedArray<ID, EachState>,
+    States.State == EachState,
+    States.ID == ID,
+    States.IDs: Equatable,
+    Data == States.States,
     Content == WithViewStore<
-      OrderedSet<ID>, (ID, EachAction), ForEach<OrderedSet<ID>, ID, EachContent>
+      States.IDs, (ID, EachAction), ForEach<States.IDs, States.IDs.Element, EachContent>
     >
   {
-    self.data = store.state.value
+    self.data = store.state.value.states()
     self.content = {
       WithViewStore(
         store,
-        observe: { $0.ids },
+        observe: { $0.stateIdentifiers() },
+        removeDuplicates: ==
+      ) { viewStore in
+        ForEach(viewStore.state, id: \.self) { id -> EachContent in
+          // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
+          //     views for elements no longer in the collection.
+          //
+          // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
+          var element = store.state.value.state(id: id)!
+          return content(
+            store.scope(
+              state: {
+                element = $0.state(id: id) ?? element
+                return element
+              },
+              action: { (id, $0) }
+            )
+          )
+        }
+      }
+    }
+  }
+  
+  /// Initializes a structure that computes views on demand from a store on a collection of data and
+  /// an identified action.
+  ///
+  /// - Parameters:
+  ///   - store: A store on an identified array of data and an identified action.
+  ///   - content: A function that can generate content given a store of an element.
+  public init<States: ForEachStateProvider, EachContent>(
+    _ store: Store<States, (ID, EachAction)>,
+    @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
+  )
+  where
+    States.State == EachState,
+    States.IDs == OrderedSet<ID>,
+    Data == States.States,
+    Content == WithViewStore<
+      States.IDs, (ID, EachAction), ForEach<States.IDs, States.IDs.Element, EachContent>
+    >
+  {
+    self.data = store.state.value.states()
+    self.content = {
+      WithViewStore(
+        store,
+        observe: { $0.stateIdentifiers() },
         removeDuplicates: areOrderedSetsDuplicates
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) { id -> EachContent in
@@ -111,11 +159,11 @@ public struct ForEachStore<
           //     views for elements no longer in the collection.
           //
           // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          var element = store.state.value[id: id]!
+          var element = store.state.value.state(id: id)!
           return content(
             store.scope(
               state: {
-                element = $0[id: id] ?? element
+                element = $0.state(id: id) ?? element
                 return element
               },
               action: { (id, $0) }

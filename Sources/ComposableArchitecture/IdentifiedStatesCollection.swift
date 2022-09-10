@@ -59,8 +59,6 @@ extension OrderedDictionary: IdentifiedStatesCollection {
   }
 }
 
-// This should work for any CoW type, but only explicitly installed in `IdentifiedArray`
-// and `OrderedDictionary` for now
 private func areCoWEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
   var lhs = lhs
   var rhs = rhs

@@ -45,7 +45,6 @@ extension IdentifiedArray: ForEachStateProvider {
 }
 
 extension OrderedDictionary: ForEachStateProvider {
-  typealias Element = Value
   public var stateIdentifiers: OrderedSet<Key> { self.keys }
   public var states: OrderedDictionary<Key, Value>.Values { self.values }
   

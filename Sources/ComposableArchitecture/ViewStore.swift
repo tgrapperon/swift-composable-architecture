@@ -555,7 +555,7 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
   let store: Store<ParentState, ParentAction>
   let toViewState: (ParentState) -> State
   let fromViewAction: (Action) -> ParentAction
-
+  // NB: All the dynamic stuff is very wip
   private var dynamicParentObservedSlices: [AnyHashable: (ParentState) -> any Equatable] = [:]
   func observe<Value: Equatable, ID: Hashable>(
     _ slice: @escaping (ParentState) -> Value,
@@ -570,7 +570,7 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
     }
     return true
   }
-  
+
   var dynamicParentViewStoreCancellable: AnyCancellable?
   var _dynamicParentViewStore: ViewStore<ParentState, ParentAction>?
 
@@ -590,8 +590,8 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
     self._dynamicParentViewStore = parentViewStore
     self.dynamicParentViewStoreCancellable = _dynamicParentViewStore?
       .objectWillChange.sink { [weak self] in
-      self?.objectWillChange.send()
-    }
+        self?.objectWillChange.send()
+      }
     return parentViewStore
   }()
 
@@ -629,6 +629,18 @@ public final class ScopedViewStore<ParentState, ParentAction, State, Action>: Vi
     self._dynamicParentViewStore = viewStore._dynamicParentViewStore
     self.dynamicParentViewStoreCancellable = viewStore.dynamicParentViewStoreCancellable
     super.init(viewStore)
+  }
+
+  public subscript<Value: Equatable>(
+    dynamicMember keyPath: WritableKeyPath<ParentState, BindableState<Value>>
+  )
+    -> Binding<Value>
+  where
+    ParentAction: BindableAction,
+    Action == ParentAction,
+    ParentAction.State == ParentState
+  {
+    self.binding(keyPath)
   }
 }
 

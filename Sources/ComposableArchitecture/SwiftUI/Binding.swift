@@ -167,11 +167,7 @@ public struct BindableState<Value> {
   public init(wrappedValue: Value) {
     self.wrappedValue = wrappedValue
   }
-  
-//  public init() {
-//    fatalError()
-//  }
-  
+
   init<Parent>(wrappedValue: Value, keyPath: WritableKeyPath<Parent, Value>) {
     self.wrappedValue = wrappedValue
     self.keyPath = keyPath
@@ -199,12 +195,8 @@ public struct BindableState<Value> {
   public subscript<Subject>(
     dynamicMember keyPath: WritableKeyPath<Value, Subject>
   ) -> BindableState<Subject> {
-    get {
-      .init(wrappedValue: self.wrappedValue[keyPath: keyPath], keyPath: keyPath)
-    }
-    set {
-      self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue
-    }
+    get { .init(wrappedValue: self.wrappedValue[keyPath: keyPath], keyPath: keyPath) }
+    set { self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue }
   }
 }
 
@@ -329,24 +321,8 @@ where
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) -> Binding<Value> {
-    self.observe({ $0[keyPath: keyPath].wrappedValue }, id: ObjectIdentifier(keyPath))
-    return self.binding(
-      get: { _ in self.dynamicParentViewStore.state[keyPath: keyPath].wrappedValue },
-      send: { value in
-        #if DEBUG
-          let debugger = BindableActionViewStoreDebugger(
-            value: value, bindableActionType: Action.self, file: file, fileID: fileID, line: line
-          )
-          let set: (inout ParentState) -> Void = {
-            $0[keyPath: keyPath].wrappedValue = value
-            debugger.wasCalled = true
-          }
-        #else
-          let set: (inout ParentState) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
-        #endif
-        return .binding(.init(keyPath: keyPath, set: set, value: value))
-      }
-    )
+//    self.observe({ $0[keyPath: keyPath] }, id: ObjectIdentifier(keyPath))
+    return self.dynamicParentViewStore.binding(keyPath)
   }
 }
 

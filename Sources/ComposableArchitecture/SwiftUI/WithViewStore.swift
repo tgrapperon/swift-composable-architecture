@@ -122,7 +122,7 @@ public struct WithViewStore<State, Action, ViewState, ViewAction, Content> {
   init(
     store: Store<ViewState, ViewAction>,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -262,7 +262,7 @@ extension WithViewStore: View where Content: View {
     _ store: Store<State, ViewAction>,
     observe toViewState: @escaping (State) -> ViewState,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where Action == ViewAction {
@@ -308,7 +308,7 @@ extension WithViewStore: View where Content: View {
   public init(
     _ store: Store<ViewState, ViewAction>,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -409,7 +409,7 @@ extension WithViewStore where ViewState: Equatable, Content: View {
   )
   public init(
     _ store: Store<ViewState, ViewAction>,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -446,7 +446,7 @@ extension WithViewStore where ViewState == Void, Content: View {
   )
   public init(
     _ store: Store<ViewState, ViewAction>,
-    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @ViewBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {

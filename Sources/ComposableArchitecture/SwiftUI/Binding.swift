@@ -159,18 +159,12 @@ import SwiftUI
 @dynamicMemberLookup
 @propertyWrapper
 public struct BindableState<Value> {
-  var keyPath: AnyKeyPath? = nil
   /// The underlying value wrapped by the bindable state.
   public var wrappedValue: Value
 
   /// Creates bindable state from the value of another bindable state.
   public init(wrappedValue: Value) {
     self.wrappedValue = wrappedValue
-  }
-
-  init<Parent>(wrappedValue: Value, keyPath: WritableKeyPath<Parent, Value>) {
-    self.wrappedValue = wrappedValue
-    self.keyPath = keyPath
   }
 
   /// A projection that can be used to derive bindings from a view store.
@@ -195,7 +189,7 @@ public struct BindableState<Value> {
   public subscript<Subject>(
     dynamicMember keyPath: WritableKeyPath<Value, Subject>
   ) -> BindableState<Subject> {
-    get { .init(wrappedValue: self.wrappedValue[keyPath: keyPath], keyPath: keyPath) }
+    get { .init(wrappedValue: self.wrappedValue[keyPath: keyPath]) }
     set { self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue }
   }
 }
@@ -274,7 +268,7 @@ extension BindableAction {
   }
 }
 
-extension ViewStore where Action: BindableAction, Action.State == State {
+extension ScopedViewStore where Action: BindableAction, Action.State == State {
   /// Returns a binding to the resulting bindable state of a given key path.
   ///
   /// - Parameter keyPath: A key path to a specific bindable state.
@@ -302,27 +296,6 @@ extension ViewStore where Action: BindableAction, Action.State == State {
         return .binding(.init(keyPath: keyPath, set: set, value: value))
       }
     )
-  }
-}
-
-extension ScopedViewStore
-where
-  ParentAction: BindableAction,
-  Action == ParentAction,
-  ParentAction.State == ParentState
-{
-  /// Returns a binding to the resulting bindable state of a given key path.
-  ///
-  /// - Parameter keyPath: A key path to a specific bindable state.
-  /// - Returns: A new binding.
-  public func binding<Value: Equatable>(
-    _ keyPath: WritableKeyPath<ParentState, BindableState<Value>>,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> Binding<Value> {
-//    self.observe({ $0[keyPath: keyPath] }, id: ObjectIdentifier(keyPath))
-    return self.dynamicParentViewStore.binding(keyPath)
   }
 }
 

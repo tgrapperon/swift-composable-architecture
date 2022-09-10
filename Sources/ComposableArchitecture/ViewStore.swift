@@ -62,43 +62,19 @@ import SwiftUI
 /// > all interactions must happen on the _main_ thread. See the documentation of the ``Store``
 /// > class for more information as to why this decision was made.
 @dynamicMemberLookup
-public class ViewStore<State, Action>: ObservableObject {
-  // N.B. `ViewStore` does not use a `@Published` property, so `objectWillChange`
-  // won't be synthesized automatically. To work around issues on iOS 13 we explicitly declare it.
-  public private(set) lazy var objectWillChange = ObservableObjectPublisher()
+public class ViewStore<State, Action>: ScopedViewStore<State, Action, State, Action> {}
 
-  private let _send: (Action) -> Task<Void, Never>?
-  fileprivate let _state: CurrentValueRelay<State>
-  private var viewCancellable: AnyCancellable?
-
-  /// Initializes a view store from a store.
-  ///
-  /// - Parameters:
-  ///   - store: A store.
-  ///   - isDuplicate: A function to determine when two `State` values are equal. When values are
-  ///     equal, repeat view computations are removed.
-  public init(
-    _ store: Store<State, Action>,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
-  ) {
-    self._send = { store.send($0) }
-    self._state = CurrentValueRelay(store.state.value)
-    self.viewCancellable = store.state
-      .removeDuplicates(by: isDuplicate)
-      .sink { [weak objectWillChange = self.objectWillChange, weak _state = self._state] in
-        guard let objectWillChange = objectWillChange, let _state = _state else { return }
-        objectWillChange.send()
-        _state.value = $0
-      }
+extension ScopedViewStore {
+  /// The current state.
+  public var state: State {
+    self._state.value
   }
-
-  internal init(_ viewStore: ViewStore<State, Action>) {
-    self._send = viewStore._send
-    self._state = viewStore._state
-    self.objectWillChange = viewStore.objectWillChange
-    self.viewCancellable = viewStore.viewCancellable
+  
+  /// Returns the resulting value of a given key path.
+  public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
+    self._state.value[keyPath: keyPath]
   }
-
+  
   /// A publisher that emits when state changes.
   ///
   /// This publisher supports dynamic member lookup so that you can pluck out a specific field in
@@ -127,17 +103,9 @@ public class ViewStore<State, Action>: ObservableObject {
   public var publisher: StorePublisher<State> {
     StorePublisher(viewStore: self)
   }
+}
 
-  /// The current state.
-  public var state: State {
-    self._state.value
-  }
-
-  /// Returns the resulting value of a given key path.
-  public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
-    self._state.value[keyPath: keyPath]
-  }
-
+extension ScopedViewStore {
   /// Sends an action to the store.
   ///
   /// This method returns a ``ViewStoreTask``, which represents the lifecycle of the effect started
@@ -508,7 +476,9 @@ public struct StorePublisher<State>: Publisher {
   public let upstream: AnyPublisher<State, Never>
   public let viewStore: Any
 
-  fileprivate init<Action>(viewStore: ViewStore<State, Action>) {
+  fileprivate init<StoreState, StoreAction, Action>(
+    viewStore: ScopedViewStore<StoreState, StoreAction, State, Action>
+  ) {
     self.viewStore = viewStore
     self.upstream = viewStore._state.eraseToAnyPublisher()
   }
@@ -548,105 +518,105 @@ private struct HashableWrapper<Value>: Hashable {
   func hash(into hasher: inout Hasher) {}
 }
 
-public final class ScopedViewStore<ParentState, ParentAction, State, Action>: ViewStore<
-  State, Action
->
-{
-  let store: Store<ParentState, ParentAction>
-  let toViewState: (ParentState) -> State
-  let fromViewAction: (Action) -> ParentAction
-  // NB: All the dynamic stuff is very wip
-  private var dynamicParentObservedSlices: [AnyHashable: (ParentState) -> any Equatable] = [:]
-  func observe<Value: Equatable, ID: Hashable>(
-    _ slice: @escaping (ParentState) -> Value,
-    id: ID
-  ) {
-    dynamicParentObservedSlices[id] = slice
-  }
-
-  func dynamicParentStateIsDuplicate(lhs: ParentState, rhs: ParentState) -> Bool {
-    for slice in dynamicParentObservedSlices.values {
-      if _isEqual(slice(lhs), slice(rhs)) { return false }
-    }
-    return true
-  }
-
-  var dynamicParentViewStoreCancellable: AnyCancellable?
-  var _dynamicParentViewStore: ViewStore<ParentState, ParentAction>?
-
-  lazy var dynamicParentViewStore: ViewStore<ParentState, ParentAction> = {
-    if let _dynamicParentViewStore = _dynamicParentViewStore {
-      return _dynamicParentViewStore
-    }
-    let parentViewStore: ViewStore<ParentState, ParentAction> = ViewStore(
-      self.store,
-      removeDuplicates: { [weak self] in
-        guard let self = self else {
-          return false
-        }
-        return self.dynamicParentStateIsDuplicate(lhs: $0, rhs: $1)
-      }
-    )
-    self._dynamicParentViewStore = parentViewStore
-    self.dynamicParentViewStoreCancellable = _dynamicParentViewStore?
-      .objectWillChange.sink { [weak self] in
-        self?.objectWillChange.send()
-      }
-    return parentViewStore
-  }()
-
-  init(
-    _ store: Store<ParentState, ParentAction>,
-    observe toViewState: @escaping (ParentState) -> State,
-    send fromViewAction: @escaping (Action) -> ParentAction,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
-  ) {
-    self.store = store
-    self.toViewState = toViewState
-    self.fromViewAction = fromViewAction
-    super.init(
-      store.scope(
-        state: toViewState,
-        action: fromViewAction
-      ),
-      removeDuplicates: isDuplicate
-    )
-  }
-
-  @available(*, unavailable)
-  public override init(
-    _ store: Store<State, Action>,
-    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
-  ) {
-    fatalError()
-  }
-
-  internal init(_ viewStore: ScopedViewStore<ParentState, ParentAction, State, Action>) {
-    self.store = viewStore.store
-    self.toViewState = viewStore.toViewState
-    self.fromViewAction = viewStore.fromViewAction
-    self.dynamicParentObservedSlices = viewStore.dynamicParentObservedSlices
-    self._dynamicParentViewStore = viewStore._dynamicParentViewStore
-    self.dynamicParentViewStoreCancellable = viewStore.dynamicParentViewStoreCancellable
-    super.init(viewStore)
-  }
-
-  public subscript<Value: Equatable>(
-    dynamicMember keyPath: WritableKeyPath<ParentState, BindableState<Value>>
-  )
-    -> Binding<Value>
-  where
-    ParentAction: BindableAction,
-    Action == ParentAction,
-    ParentAction.State == ParentState
-  {
-    self.binding(keyPath)
-  }
-}
-
-private func _isEqual(_ lhs: any Equatable, _ rhs: any Equatable) -> Bool {
-  func open<A: Equatable>(_ lhs: A, _ rhs: any Equatable) -> Bool {
-    lhs == (rhs as? A)
-  }
-  return open(lhs, rhs)
-}
+//public class __ScopedViewStore<ParentState, ParentAction, State, Action>: ViewStore<
+//  State, Action
+//>
+//{
+//  let store: Store<ParentState, ParentAction>
+//  let toViewState: (ParentState) -> State
+//  let fromViewAction: (Action) -> ParentAction
+//  // NB: All the dynamic stuff is very wip
+//  private var dynamicParentObservedSlices: [AnyHashable: (ParentState) -> any Equatable] = [:]
+//  func observe<Value: Equatable, ID: Hashable>(
+//    _ slice: @escaping (ParentState) -> Value,
+//    id: ID
+//  ) {
+//    dynamicParentObservedSlices[id] = slice
+//  }
+//
+//  func dynamicParentStateIsDuplicate(lhs: ParentState, rhs: ParentState) -> Bool {
+//    for slice in dynamicParentObservedSlices.values {
+//      if _isEqual(slice(lhs), slice(rhs)) { return false }
+//    }
+//    return true
+//  }
+//
+//  var dynamicParentViewStoreCancellable: AnyCancellable?
+//  var _dynamicParentViewStore: ViewStore<ParentState, ParentAction>?
+//
+//  lazy var dynamicParentViewStore: ViewStore<ParentState, ParentAction> = {
+//    if let _dynamicParentViewStore = _dynamicParentViewStore {
+//      return _dynamicParentViewStore
+//    }
+//    let parentViewStore: ViewStore<ParentState, ParentAction> = ViewStore(
+//      self.store,
+//      removeDuplicates: { [weak self] in
+//        guard let self = self else {
+//          return false
+//        }
+//        return self.dynamicParentStateIsDuplicate(lhs: $0, rhs: $1)
+//      }
+//    )
+//    self._dynamicParentViewStore = parentViewStore
+//    self.dynamicParentViewStoreCancellable = _dynamicParentViewStore?
+//      .objectWillChange.sink { [weak self] in
+//        self?.objectWillChange.send()
+//      }
+//    return parentViewStore
+//  }()
+//
+//  init(
+//    _ store: Store<ParentState, ParentAction>,
+//    observe toViewState: @escaping (ParentState) -> State,
+//    send fromViewAction: @escaping (Action) -> ParentAction,
+//    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
+//  ) {
+//    self.store = store
+//    self.toViewState = toViewState
+//    self.fromViewAction = fromViewAction
+//    super.init(
+//      store.scope(
+//        state: toViewState,
+//        action: fromViewAction
+//      ),
+//      removeDuplicates: isDuplicate
+//    )
+//  }
+//
+//  @available(*, unavailable)
+//  public override init(
+//    _ store: Store<State, Action>,
+//    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
+//  ) {
+//    fatalError()
+//  }
+//
+//  internal init(_ viewStore: ScopedViewStore<ParentState, ParentAction, State, Action>) {
+//    self.store = viewStore.store
+//    self.toViewState = viewStore.toViewState
+//    self.fromViewAction = viewStore.fromViewAction
+//    self.dynamicParentObservedSlices = viewStore.dynamicParentObservedSlices
+//    self._dynamicParentViewStore = viewStore._dynamicParentViewStore
+//    self.dynamicParentViewStoreCancellable = viewStore.dynamicParentViewStoreCancellable
+//    super.init(viewStore)
+//  }
+//
+//  public subscript<Value: Equatable>(
+//    dynamicMember keyPath: WritableKeyPath<ParentState, BindableState<Value>>
+//  )
+//    -> Binding<Value>
+//  where
+//    ParentAction: BindableAction,
+//    Action == ParentAction,
+//    ParentAction.State == ParentState
+//  {
+//    self.binding(keyPath)
+//  }
+//}
+//
+//private func _isEqual(_ lhs: any Equatable, _ rhs: any Equatable) -> Bool {
+//  func open<A: Equatable>(_ lhs: A, _ rhs: any Equatable) -> Bool {
+//    lhs == (rhs as? A)
+//  }
+//  return open(lhs, rhs)
+//}

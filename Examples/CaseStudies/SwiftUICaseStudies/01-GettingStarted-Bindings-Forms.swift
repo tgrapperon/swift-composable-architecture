@@ -63,7 +63,7 @@ struct BindingFormView: View {
     }
   }
   var body: some View {
-    WithViewStore(self.store, observe: ViewState.init) { viewStore in
+    WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
         Section {
           AboutView(readMe: readMe)

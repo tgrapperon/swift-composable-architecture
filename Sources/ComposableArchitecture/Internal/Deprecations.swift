@@ -28,7 +28,7 @@ extension WithViewStore: AccessibilityRotorContent where Content: AccessibilityR
   public init(
     _ store: Store<ViewState, ViewAction>,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) ->
+    @AccessibilityRotorContentBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) ->
       Content,
     file: StaticString = #fileID,
     line: UInt = #line
@@ -63,7 +63,7 @@ extension WithViewStore where ViewState: Equatable, Content: AccessibilityRotorC
   )
   public init(
     _ store: Store<ViewState, ViewAction>,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) ->
+    @AccessibilityRotorContentBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) ->
       Content,
     file: StaticString = #fileID,
     line: UInt = #line
@@ -94,7 +94,7 @@ extension WithViewStore where ViewState == Void, Content: AccessibilityRotorCont
     _ store: Store<ViewState, ViewAction>,
     file: StaticString = #fileID,
     line: UInt = #line,
-    @AccessibilityRotorContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) ->
+    @AccessibilityRotorContentBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) ->
       Content
   ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
@@ -126,7 +126,7 @@ extension WithViewStore: Commands where Content: Commands {
   public init(
     _ store: Store<ViewState, ViewAction>,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    @CommandsBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @CommandsBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -162,7 +162,7 @@ extension WithViewStore where ViewState: Equatable, Content: Commands {
   )
   public init(
     _ store: Store<ViewState, ViewAction>,
-    @CommandsBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @CommandsBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -194,7 +194,7 @@ extension WithViewStore where ViewState == Void, Content: Commands {
     _ store: Store<ViewState, ViewAction>,
     file: StaticString = #fileID,
     line: UInt = #line,
-    @CommandsBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
+    @CommandsBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content
   ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
@@ -223,7 +223,7 @@ extension WithViewStore: Scene where Content: Scene {
   public init(
     _ store: Store<ViewState, ViewAction>,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    @SceneBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @SceneBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -257,7 +257,7 @@ extension WithViewStore where ViewState: Equatable, Content: Scene {
   )
   public init(
     _ store: Store<ViewState, ViewAction>,
-    @SceneBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    @SceneBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
   ) where State == ViewState, Action == ViewAction {
@@ -287,7 +287,7 @@ extension WithViewStore where ViewState == Void, Content: Scene {
     _ store: Store<ViewState, ViewAction>,
     file: StaticString = #fileID,
     line: UInt = #line,
-    @SceneBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
+    @SceneBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content
   ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
@@ -318,7 +318,7 @@ extension WithViewStore: ToolbarContent where Content: ToolbarContent {
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
     file: StaticString = #fileID,
     line: UInt = #line,
-    @ToolbarContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
+    @ToolbarContentBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content
   ) where State == ViewState, Action == ViewAction {
     self.init(
       store: store,
@@ -352,7 +352,7 @@ extension WithViewStore where ViewState: Equatable, Content: ToolbarContent {
     _ store: Store<ViewState, ViewAction>,
     file: StaticString = #fileID,
     line: UInt = #line,
-    @ToolbarContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
+    @ToolbarContentBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content
   ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
   }
@@ -380,7 +380,7 @@ extension WithViewStore where ViewState == Void, Content: ToolbarContent {
     _ store: Store<ViewState, ViewAction>,
     file: StaticString = #fileID,
     line: UInt = #line,
-    @ToolbarContentBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content
+    @ToolbarContentBuilder content: @escaping (ScopedViewStore<State, Action, ViewState, ViewAction>) -> Content
   ) where State == ViewState, Action == ViewAction {
     self.init(store, removeDuplicates: ==, file: file, line: line, content: content)
   }

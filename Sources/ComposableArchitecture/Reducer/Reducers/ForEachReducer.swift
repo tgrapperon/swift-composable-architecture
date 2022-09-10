@@ -10,15 +10,15 @@ extension ReducerProtocol {
   ///     state.
   /// - Returns: A reducer that combines the child reducer with the parent reducer.
   @inlinable
-  public func forEach<StateProvider: IdentifiedStatesCollection, Element: ReducerProtocol>(
-    _ toElementsState: WritableKeyPath<State, StateProvider>,
-    action toElementAction: CasePath<Action, (StateProvider.ID, Element.Action)>,
+  public func forEach<StatesCollection: IdentifiedStatesCollection, Element: ReducerProtocol>(
+    _ toElementsState: WritableKeyPath<State, StatesCollection>,
+    action toElementAction: CasePath<Action, (StatesCollection.ID, Element.Action)>,
     @ReducerBuilderOf<Element> _ element: () -> Element,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> _ForEachReducer<Self, StateProvider, Element> {
-    _ForEachReducer<Self, StateProvider, Element>(
+  ) -> _ForEachReducer<Self, StatesCollection, Element> {
+    _ForEachReducer<Self, StatesCollection, Element>(
       parent: self,
       toElementsState: toElementsState,
       toElementAction: toElementAction,
@@ -32,18 +32,18 @@ extension ReducerProtocol {
 
 public struct _ForEachReducer<
   Parent: ReducerProtocol,
-  StateProvider: IdentifiedStatesCollection,
+  StatesCollection: IdentifiedStatesCollection,
   Element: ReducerProtocol
 >: ReducerProtocol
-where StateProvider.State == Element.State {
+where StatesCollection.State == Element.State {
   @usableFromInline
   let parent: Parent
 
   @usableFromInline
-  let toElementsState: WritableKeyPath<Parent.State, StateProvider>
+  let toElementsState: WritableKeyPath<Parent.State, StatesCollection>
 
   @usableFromInline
-  let toElementAction: CasePath<Parent.Action, (StateProvider.ID, Element.Action)>
+  let toElementAction: CasePath<Parent.Action, (StatesCollection.ID, Element.Action)>
 
   @usableFromInline
   let element: Element
@@ -60,8 +60,8 @@ where StateProvider.State == Element.State {
   @inlinable
   init(
     parent: Parent,
-    toElementsState: WritableKeyPath<Parent.State, StateProvider>,
-    toElementAction: CasePath<Parent.Action, (StateProvider.ID, Element.Action)>,
+    toElementsState: WritableKeyPath<Parent.State, StatesCollection>,
+    toElementAction: CasePath<Parent.Action, (StatesCollection.ID, Element.Action)>,
     element: Element,
     file: StaticString,
     fileID: StaticString,

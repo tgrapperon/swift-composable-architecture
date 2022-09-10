@@ -2,27 +2,36 @@ import OrderedCollections
 import Foundation
 
 public protocol ForEachStateProvider {
-  associatedtype IDs: Collection // Used in `SwiftUI.ForEach`
-  associatedtype States: Collection // Or even less constrained?
+  // Strangely, it was building even with `Collection` whereas `ForEach` used
+  // in `ForEachStore` expects a `RandomAccessCollection`.
+  associatedtype IDs: RandomAccessCollection
+  // A `Collection` to work nicely with `DynamicViewContent` without adding more
+  // conditions.
+  associatedtype States: Collection
 
   typealias ID = IDs.Element
   typealias State = States.Element
 
-  // Should we use vars instead of functions?
-  func stateIdentifiers() -> IDs
+  // Should we use functions instead?
+  var stateIdentifiers: IDs { get }
+  var states: States { get }
+  
   func state(id: IDs.Element) -> State?
-  func states() -> States
+
   mutating func modify<T>(id: IDs.Element, _ body: (inout State) -> T) -> T
   
   static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool
 }
 
 extension ForEachStateProvider where IDs: Equatable {
+  // Default for `Equatable` `IDs`.
   public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool  {
     lhs == rhs
   }
 }
 
+// This should work for any CoW type, but only explicitly installed in `IdentifiedArray`
+// and `OrderedDictionary` for now
 fileprivate func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
   var lhs = lhs
   var rhs = rhs
@@ -33,19 +42,16 @@ fileprivate func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> B
 }
 
 extension IdentifiedArray: ForEachStateProvider {
-  public func stateIdentifiers() -> OrderedSet<ID> {
-    self.ids
-  }
+  public var stateIdentifiers: OrderedSet<ID> { self.ids }
+  public var states: Self { self }
+
   public func state(id: ID) -> Element? {
     self[id: id]
   }
   public mutating func modify<T>(id: ID, _ body: (inout Element) -> T) -> T {
     body(&self[id: id]!)
   }
-  public func states() -> Self {
-    self
-  }
-  
+
   public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
     areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }
@@ -53,18 +59,16 @@ extension IdentifiedArray: ForEachStateProvider {
 
 extension OrderedDictionary: ForEachStateProvider {
   typealias Element = Value
-  public func stateIdentifiers() -> OrderedSet<Key> {
-    self.keys
-  }
+  public var stateIdentifiers: OrderedSet<Key> { self.keys }
+  public var states: OrderedDictionary<Key, Value>.Values { self.values }
+  
   public func state(id: Key) -> Value? {
     self[id]
   }
   public mutating func modify<T>(id: Key, _ body: (inout Value) -> T) -> T {
     body(&self[id]!)
   }
-  public func states() -> OrderedDictionary<Key, Value>.Values {
-    self.values
-  }
+  
   public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
     areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }

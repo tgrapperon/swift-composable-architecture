@@ -96,17 +96,16 @@ public struct ForEachStore<
   where
     States.State == EachState,
     States.ID == ID,
-    States.IDs: Equatable,
     Data == States.States,
     Content == WithViewStore<
       States.IDs, (ID, EachAction), ForEach<States.IDs, States.IDs.Element, EachContent>
     >
   {
-    self.data = store.state.value.states()
+    self.data = store.state.value.states
     self.content = {
       WithViewStore(
         store,
-        observe: { $0.stateIdentifiers() },
+        observe: { $0.stateIdentifiers },
         removeDuplicates: States.areIdentifiersEqual(lhs:rhs:)
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) { id -> EachContent in

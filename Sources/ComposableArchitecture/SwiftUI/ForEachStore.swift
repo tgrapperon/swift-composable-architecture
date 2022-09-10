@@ -105,7 +105,7 @@ public struct ForEachStore<
     self.content = {
       WithViewStore(
         store,
-        observe: { $0.stateIdentifiers },
+        observe: { $0.stateIDs },
         removeDuplicates: StatesCollection.areIdentifiersEqual(lhs:rhs:)
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) { id -> EachContent in

@@ -13,7 +13,7 @@ public protocol IdentifiedStatesCollection {
   typealias State = States.Element
 
   // Should we use functions instead?
-  var stateIdentifiers: IDs { get }
+  var stateIDs: IDs { get }
   // These elements must have a 1to1 relation with IDs.
   // This is unconstrained for now, until one assesses the requirements for lazy variants.
   var states: States { get }
@@ -32,7 +32,7 @@ extension IdentifiedStatesCollection where IDs: Equatable {
 }
 
 extension IdentifiedArray: IdentifiedStatesCollection {
-  public var stateIdentifiers: OrderedSet<ID> { self.ids }
+  public var stateIDs: OrderedSet<ID> { self.ids }
   public var states: Self { self }
 
   public subscript(stateID stateID: ID) -> State? {
@@ -46,7 +46,7 @@ extension IdentifiedArray: IdentifiedStatesCollection {
 }
 
 extension OrderedDictionary: IdentifiedStatesCollection {
-  public var stateIdentifiers: OrderedSet<Key> { self.keys }
+  public var stateIDs: OrderedSet<Key> { self.keys }
   public var states: OrderedDictionary<Key, Value>.Values { self.values }
   
   public subscript(stateID stateID: ID) -> State? {

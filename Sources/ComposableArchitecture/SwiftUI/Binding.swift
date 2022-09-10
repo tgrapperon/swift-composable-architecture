@@ -274,7 +274,7 @@ extension BindableAction {
   }
 }
 
-extension ScopedViewStore where Action: BindableAction, Action.State == State {
+extension ScopedViewStore where StoreState == State, Action: BindableAction, Action.State == State {
   /// Returns a binding to the resulting bindable state of a given key path.
   ///
   /// - Parameter keyPath: A key path to a specific bindable state.

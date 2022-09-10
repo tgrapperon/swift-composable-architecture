@@ -159,12 +159,22 @@ import SwiftUI
 @dynamicMemberLookup
 @propertyWrapper
 public struct BindableState<Value> {
+  var keyPath: AnyKeyPath? = nil
   /// The underlying value wrapped by the bindable state.
   public var wrappedValue: Value
 
   /// Creates bindable state from the value of another bindable state.
   public init(wrappedValue: Value) {
     self.wrappedValue = wrappedValue
+  }
+  
+//  public init() {
+//    fatalError()
+//  }
+  
+  init<Parent>(wrappedValue: Value, keyPath: WritableKeyPath<Parent, Value>) {
+    self.wrappedValue = wrappedValue
+    self.keyPath = keyPath
   }
 
   /// A projection that can be used to derive bindings from a view store.
@@ -189,8 +199,12 @@ public struct BindableState<Value> {
   public subscript<Subject>(
     dynamicMember keyPath: WritableKeyPath<Value, Subject>
   ) -> BindableState<Subject> {
-    get { .init(wrappedValue: self.wrappedValue[keyPath: keyPath]) }
-    set { self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue }
+    get {
+      .init(wrappedValue: self.wrappedValue[keyPath: keyPath], keyPath: keyPath)
+    }
+    set {
+      self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue
+    }
   }
 }
 

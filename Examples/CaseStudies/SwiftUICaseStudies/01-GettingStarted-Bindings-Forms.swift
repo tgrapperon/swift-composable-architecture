@@ -100,13 +100,13 @@ struct BindingFormView: View {
 struct PartialBindingFormView: View {
   let store: Store<BindingFormState, BindingFormAction>
   struct ViewState: Equatable {
-    let stepCount: Int
-    let text: String
-    let isToggleOn: Bool
+    @BindableState var stepCount: Int
+    @BindableState var text: String
+    @BindableState var isToggleOn: Bool
     init(state: BindingFormState) {
-      self.stepCount = state.stepCount
-      self.text = state.text
-      self.isToggleOn = state.toggleIsOn
+      self.$stepCount = state.$stepCount
+      self.$text = state.$text
+      self.$isToggleOn = state.$toggleIsOn
     }
   }
   var body: some View {
@@ -117,10 +117,10 @@ struct PartialBindingFormView: View {
         }
 
         HStack {
-          TextField("Type here", text: viewStore.binding(\.$stepCount))
-            .disableAutocorrection(true)
-            .foregroundStyle(viewStore.toggleIsOn ? Color.secondary : .primary)
-          Text(alternate(viewStore.text))
+//          TextField("Type here", text: viewStore.binding(\.$stepCount))
+//            .disableAutocorrection(true)
+//            .foregroundStyle(viewStore.toggleIsOn ? Color.secondary : .primary)
+//          Text(alternate(viewStore.text))
         }
 //        .disabled(viewStore.toggleIsOn)
 //

@@ -113,11 +113,11 @@ public struct ForEachStore<
           //     views for elements no longer in the collection.
           //
           // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          var element = store.state.value.state(id: id)!
+          var element = store.state.value[stateID: id]!
           return content(
             store.scope(
               state: {
-                element = $0.state(id: id) ?? element
+                element = $0[stateID: id] ?? element
                 return element
               },
               action: { (id, $0) }

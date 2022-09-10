@@ -1,5 +1,5 @@
-import OrderedCollections
 import Foundation
+import OrderedCollections
 
 public protocol IdentifiedStatesCollection {
   // Strangely, it was building even with `Collection` whereas `ForEach` used
@@ -14,16 +14,19 @@ public protocol IdentifiedStatesCollection {
 
   // Should we use functions instead?
   var stateIdentifiers: IDs { get }
+  // These elements must have a 1to1 relation with IDs.
+  // This is unconstrained for now, until one assesses the requirements for lazy variants.
   var states: States { get }
+
+  subscript(stateID stateID: ID) -> State? { get set }
   
-  func state(id: ID) -> State?
-  mutating func modify<T>(id: ID, _ body: (inout State) -> T) -> T
+  /// Default implementation provided, allows to memcmp for elligible types.
   static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool
 }
 
 extension IdentifiedStatesCollection where IDs: Equatable {
   // Default for `Equatable` `IDs`.
-  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool  {
+  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
     lhs == rhs
   }
 }
@@ -32,14 +35,12 @@ extension IdentifiedArray: IdentifiedStatesCollection {
   public var stateIdentifiers: OrderedSet<ID> { self.ids }
   public var states: Self { self }
 
-  public func state(id: ID) -> Element? {
-    self[id: id]
-  }
-  public mutating func modify<T>(id: ID, _ body: (inout Element) -> T) -> T {
-    body(&self[id: id]!)
+  public subscript(stateID stateID: ID) -> State? {
+    _read { yield self[id: stateID] }
+    _modify { yield &self[id: stateID] }
   }
 
-  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
+  public static func areIdentifiersEqual(lhs: OrderedSet<ID>, rhs: OrderedSet<ID>) -> Bool {
     areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }
 }
@@ -48,21 +49,19 @@ extension OrderedDictionary: IdentifiedStatesCollection {
   public var stateIdentifiers: OrderedSet<Key> { self.keys }
   public var states: OrderedDictionary<Key, Value>.Values { self.values }
   
-  public func state(id: Key) -> Value? {
-    self[id]
-  }
-  public mutating func modify<T>(id: Key, _ body: (inout Value) -> T) -> T {
-    body(&self[id]!)
+  public subscript(stateID stateID: ID) -> State? {
+    _read { yield self[stateID] }
+    _modify { yield &self[stateID] }
   }
   
-  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
+  public static func areIdentifiersEqual(lhs: OrderedSet<Key>, rhs: OrderedSet<Key>) -> Bool {
     areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }
 }
 
 // This should work for any CoW type, but only explicitly installed in `IdentifiedArray`
 // and `OrderedDictionary` for now
-fileprivate func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
+private func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
   var lhs = lhs
   var rhs = rhs
   if memcmp(&lhs, &rhs, MemoryLayout<IDs>.size) == 0 {
@@ -162,7 +161,7 @@ where StateProvider.State == Element.State {
     into state: inout Parent.State, action: Parent.Action
   ) -> Effect<Parent.Action, Never> {
     guard let (id, elementAction) = self.toElementAction.extract(from: action) else { return .none }
-    if state[keyPath: self.toElementsState].state(id: id) == nil {
+    if state[keyPath: self.toElementsState][stateID: id] == nil {
       runtimeWarning(
         """
         A "forEach" at "%@:%d" received an action for a missing element.
@@ -194,8 +193,8 @@ where StateProvider.State == Element.State {
       )
       return .none
     }
-    return state[keyPath: self.toElementsState]
-      .modify(id: id, { self.element.reduce(into: &$0, action: elementAction) })
+    return self.element
+      .reduce(into: &state[keyPath: self.toElementsState][stateID: id]!, action: elementAction)
       .map { self.toElementAction.embed((id, $0)) }
   }
 }

@@ -51,15 +51,15 @@ struct BindingFormView: View {
   let store: Store<BindingFormState, BindingFormAction>
 
   struct ViewState: Equatable {
-    @BindableState var stepCount: Int
-    @BindableState var text: String
-    @BindableState var toggleIsOn: Bool
-    @BindableState var sliderValue: Double
+    @BindableViewState var stepCount: Int
+    @BindableViewState var text: String
+    @BindableViewState var toggleIsOn: Bool
+    @BindableViewState var sliderValue: Double
     init(state: BindingFormState) {
-      self.stepCount = state.stepCount
-      self.text = state.text
-      self.toggleIsOn = state.toggleIsOn
-      self.sliderValue = state.sliderValue
+      self.$stepCount = state.$stepCount
+      self.$text = state.$text
+      self.$toggleIsOn = state.$toggleIsOn
+      self.$sliderValue = state.$sliderValue
     }
   }
   var body: some View {

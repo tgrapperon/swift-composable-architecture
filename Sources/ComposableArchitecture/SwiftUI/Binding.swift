@@ -193,6 +193,49 @@ public struct BindableState<Value> {
     set { self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue }
   }
 }
+@propertyWrapper
+public struct BindableViewState<Value> {
+  /// The underlying value wrapped by the bindable state.
+  public var _wrappedValue: Value!
+  public var bindableValue: BindableState<Value>!
+  public var wrappedValue: Value {
+    _wrappedValue!
+  }
+
+//  var keyPath: PartialKeyPath<StoreState>?
+  /// Creates bindable state from the value of another bindable state.
+  public init(wrappedValue: Value) {
+    self._wrappedValue = wrappedValue
+  }
+  
+  public init() {}
+  
+  public init(bindableValue: BindableState<Value>) {
+    self._wrappedValue = bindableValue.wrappedValue
+    self.bindableValue = bindableValue
+  }
+  
+  public var projectedValue: BindableState<Value> {
+    get { self.bindableValue }
+    set { self = .init(bindableValue: newValue) }
+  }
+
+  
+//  /// Returns bindable state to the resulting value of a given key path.
+//  ///
+//  /// - Parameter keyPath: A key path to a specific resulting value.
+//  /// - Returns: A new bindable state.
+//  public subscript<Subject>(
+//    dynamicMember keyPath: WritableKeyPath<Value, Subject>
+//  ) -> BindableViewState<StoreState, Subject> {
+//    get { .init(wrappedValue: self.wrappedValue[keyPath: keyPath], partialKeyPath: self.keyPath ) }
+//    set { self.wrappedValue[keyPath: keyPath] = newValue.wrappedValue }
+//  }
+}
+
+extension BindableViewState: Equatable where Value: Equatable {}
+extension BindableViewState: Hashable where Value: Hashable {}
+
 
 extension BindableState: Equatable where Value: Equatable {}
 

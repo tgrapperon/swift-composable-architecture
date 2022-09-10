@@ -41,7 +41,7 @@ extension IdentifiedArray: IdentifiedStatesCollection {
   }
 
   public static func areIdentifiersEqual(lhs: OrderedSet<ID>, rhs: OrderedSet<ID>) -> Bool {
-    areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
+    areCoWEqual(lhs: lhs, rhs: rhs)
   }
 }
 
@@ -55,13 +55,13 @@ extension OrderedDictionary: IdentifiedStatesCollection {
   }
   
   public static func areIdentifiersEqual(lhs: OrderedSet<Key>, rhs: OrderedSet<Key>) -> Bool {
-    areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
+    areCoWEqual(lhs: lhs, rhs: rhs)
   }
 }
 
 // This should work for any CoW type, but only explicitly installed in `IdentifiedArray`
 // and `OrderedDictionary` for now
-private func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
+private func areCoWEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
   var lhs = lhs
   var rhs = rhs
   if memcmp(&lhs, &rhs, MemoryLayout<IDs>.size) == 0 {

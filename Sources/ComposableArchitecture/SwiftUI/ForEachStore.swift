@@ -107,7 +107,7 @@ public struct ForEachStore<
       WithViewStore(
         store,
         observe: { $0.stateIdentifiers() },
-        removeDuplicates: ==
+        removeDuplicates: States.areIdentifiersEqual(lhs:rhs:)
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) { id -> EachContent in
           // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
@@ -129,63 +129,7 @@ public struct ForEachStore<
     }
   }
   
-  /// Initializes a structure that computes views on demand from a store on a collection of data and
-  /// an identified action.
-  ///
-  /// - Parameters:
-  ///   - store: A store on an identified array of data and an identified action.
-  ///   - content: A function that can generate content given a store of an element.
-  public init<States: ForEachStateProvider, EachContent>(
-    _ store: Store<States, (ID, EachAction)>,
-    @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
-  )
-  where
-    States.State == EachState,
-    States.IDs == OrderedSet<ID>,
-    Data == States.States,
-    Content == WithViewStore<
-      States.IDs, (ID, EachAction), ForEach<States.IDs, States.IDs.Element, EachContent>
-    >
-  {
-    self.data = store.state.value.states()
-    self.content = {
-      WithViewStore(
-        store,
-        observe: { $0.stateIdentifiers() },
-        removeDuplicates: areOrderedSetsDuplicates
-      ) { viewStore in
-        ForEach(viewStore.state, id: \.self) { id -> EachContent in
-          // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
-          //     views for elements no longer in the collection.
-          //
-          // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          var element = store.state.value.state(id: id)!
-          return content(
-            store.scope(
-              state: {
-                element = $0.state(id: id) ?? element
-                return element
-              },
-              action: { (id, $0) }
-            )
-          )
-        }
-      }
-    }
-  }
-
   public var body: some View {
     self.content()
   }
-}
-
-private func areOrderedSetsDuplicates<ID: Hashable>(lhs: OrderedSet<ID>, rhs: OrderedSet<ID>)
-  -> Bool
-{
-  var lhs = lhs
-  var rhs = rhs
-  if memcmp(&lhs, &rhs, MemoryLayout<OrderedSet<ID>>.size) == 0 {
-    return true
-  }
-  return lhs == rhs
 }

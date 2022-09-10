@@ -1,4 +1,5 @@
 import OrderedCollections
+import Foundation
 
 public protocol ForEachStateProvider {
   associatedtype IDs: Collection // Used in `SwiftUI.ForEach`
@@ -12,6 +13,23 @@ public protocol ForEachStateProvider {
   func state(id: IDs.Element) -> State?
   func states() -> States
   mutating func modify<T>(id: IDs.Element, _ body: (inout State) -> T) -> T
+  
+  static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool
+}
+
+extension ForEachStateProvider where IDs: Equatable {
+  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool  {
+    lhs == rhs
+  }
+}
+
+fileprivate func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
+  var lhs = lhs
+  var rhs = rhs
+  if memcmp(&lhs, &rhs, MemoryLayout<IDs>.size) == 0 {
+    return true
+  }
+  return lhs == rhs
 }
 
 extension IdentifiedArray: ForEachStateProvider {
@@ -26,6 +44,10 @@ extension IdentifiedArray: ForEachStateProvider {
   }
   public func states() -> Self {
     self
+  }
+  
+  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
+    areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }
 }
 
@@ -42,6 +64,9 @@ extension OrderedDictionary: ForEachStateProvider {
   }
   public func states() -> OrderedDictionary<Key, Value>.Values {
     self.values
+  }
+  public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
+    areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }
 }
 

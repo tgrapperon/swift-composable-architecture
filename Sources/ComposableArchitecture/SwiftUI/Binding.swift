@@ -283,6 +283,37 @@ extension ScopedViewStore where Action: BindableAction, Action.State == State {
       get: { $0[keyPath: keyPath].wrappedValue },
       send: { value in
         #if DEBUG
+        let debugger = BindableActionViewStoreDebugger(
+          value: value, bindableActionType: Action.self, file: file, fileID: fileID, line: line
+        )
+        let set: (inout State) -> Void = {
+          $0[keyPath: keyPath].wrappedValue = value
+          debugger.wasCalled = true
+        }
+        #else
+        let set: (inout State) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
+        #endif
+        return .binding(.init(keyPath: keyPath, set: set, value: value))
+      }
+    )
+  }
+}
+extension ScopedViewStore where Action: BindableAction, Action.State == StoreState {
+  /// Returns a binding to the resulting bindable state of a given key path.
+  ///
+  /// - Parameter keyPath: A key path to a specific bindable state.
+  /// - Returns: A new binding.
+  @_disfavoredOverload
+  public func binding<Value: Equatable>(
+    _ keyPath: WritableKeyPath<State, BindableState<Value>>,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> Binding<Value> {
+    self.binding(
+      get: { $0[keyPath: keyPath].wrappedValue },
+      send: { value in
+        #if DEBUG
           let debugger = BindableActionViewStoreDebugger(
             value: value, bindableActionType: Action.self, file: file, fileID: fileID, line: line
           )
@@ -293,7 +324,9 @@ extension ScopedViewStore where Action: BindableAction, Action.State == State {
         #else
           let set: (inout State) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
         #endif
-        return .binding(.init(keyPath: keyPath, set: set, value: value))
+        // TODO: Find map keyPath to StoreState.KeyPath
+        fatalError("TODO: Find how map State's keyPath to StoreState.KeyPath")
+//        return .binding(.init(keyPath: keyPath, set: set, value: value))
       }
     )
   }

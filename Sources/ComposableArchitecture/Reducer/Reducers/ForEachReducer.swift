@@ -11,7 +11,7 @@ public protocol ForEachStateProvider {
   func stateIdentifiers() -> IDs
   func state(id: IDs.Element) -> State?
   func states() -> States
-  mutating func yield<T>(id: IDs.Element, modify: (inout State) -> T) -> T
+  mutating func modify<T>(id: IDs.Element, _ body: (inout State) -> T) -> T
 }
 
 extension IdentifiedArray: ForEachStateProvider {
@@ -21,8 +21,8 @@ extension IdentifiedArray: ForEachStateProvider {
   public func state(id: ID) -> Element? {
     self[id: id]
   }
-  public mutating func yield<T>(id: ID, modify: (inout Element) -> T) -> T {
-    modify(&self[id: id]!)
+  public mutating func modify<T>(id: ID, _ body: (inout Element) -> T) -> T {
+    body(&self[id: id]!)
   }
   public func states() -> Self {
     self
@@ -37,8 +37,8 @@ extension OrderedDictionary: ForEachStateProvider {
   public func state(id: Key) -> Value? {
     self[id]
   }
-  public mutating func yield<T>(id: Key, modify: (inout Value) -> T) -> T {
-    modify(&self[id]!)
+  public mutating func modify<T>(id: Key, _ body: (inout Value) -> T) -> T {
+    body(&self[id]!)
   }
   public func states() -> OrderedDictionary<Key, Value>.Values {
     self.values
@@ -169,7 +169,7 @@ where StateProvider.State == Element.State {
       return .none
     }
     return state[keyPath: self.toElementsState]
-      .yield(id: id, modify: { self.element.reduce(into: &$0, action: elementAction) })
+      .modify(id: id, { self.element.reduce(into: &$0, action: elementAction) })
       .map { self.toElementAction.embed((id, $0)) }
   }
 }

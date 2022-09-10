@@ -1,12 +1,12 @@
 import OrderedCollections
 
 public protocol ForEachStateProvider {
-  associatedtype IDs: Collection
-  associatedtype States: Collection
-  
+  associatedtype IDs: Collection // Used in `SwiftUI.ForEach`
+  associatedtype States: Collection // Or even less constrained?
+
   typealias ID = IDs.Element
   typealias State = States.Element
-  
+
   // Should we use vars instead of functions?
   func stateIdentifiers() -> IDs
   func state(id: IDs.Element) -> State?
@@ -18,11 +18,9 @@ extension IdentifiedArray: ForEachStateProvider {
   public func stateIdentifiers() -> OrderedSet<ID> {
     self.ids
   }
-
   public func state(id: ID) -> Element? {
     self[id: id]
   }
-
   public mutating func yield<T>(id: ID, modify: (inout Element) -> T) -> T {
     modify(&self[id: id]!)
   }
@@ -36,15 +34,12 @@ extension OrderedDictionary: ForEachStateProvider {
   public func stateIdentifiers() -> OrderedSet<Key> {
     self.keys
   }
-
   public func state(id: Key) -> Value? {
     self[id]
   }
-
   public mutating func yield<T>(id: Key, modify: (inout Value) -> T) -> T {
     modify(&self[id]!)
   }
-  
   public func states() -> OrderedDictionary<Key, Value>.Values {
     self.values
   }
@@ -174,7 +169,7 @@ where StateProvider.State == Element.State {
       return .none
     }
     return state[keyPath: self.toElementsState]
-      .yield(id: id, modify: { self.element.reduce(into: &$0, action: elementAction)})
+      .yield(id: id, modify: { self.element.reduce(into: &$0, action: elementAction) })
       .map { self.toElementAction.embed((id, $0)) }
   }
 }

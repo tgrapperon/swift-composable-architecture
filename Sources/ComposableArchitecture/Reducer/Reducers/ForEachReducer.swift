@@ -16,10 +16,8 @@ public protocol ForEachStateProvider {
   var stateIdentifiers: IDs { get }
   var states: States { get }
   
-  func state(id: IDs.Element) -> State?
-
-  mutating func modify<T>(id: IDs.Element, _ body: (inout State) -> T) -> T
-  
+  func state(id: ID) -> State?
+  mutating func modify<T>(id: ID, _ body: (inout State) -> T) -> T
   static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool
 }
 
@@ -28,17 +26,6 @@ extension ForEachStateProvider where IDs: Equatable {
   public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool  {
     lhs == rhs
   }
-}
-
-// This should work for any CoW type, but only explicitly installed in `IdentifiedArray`
-// and `OrderedDictionary` for now
-fileprivate func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
-  var lhs = lhs
-  var rhs = rhs
-  if memcmp(&lhs, &rhs, MemoryLayout<IDs>.size) == 0 {
-    return true
-  }
-  return lhs == rhs
 }
 
 extension IdentifiedArray: ForEachStateProvider {
@@ -72,6 +59,17 @@ extension OrderedDictionary: ForEachStateProvider {
   public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool {
     areCoWIdentifiersEqual(lhs: lhs, rhs: rhs)
   }
+}
+
+// This should work for any CoW type, but only explicitly installed in `IdentifiedArray`
+// and `OrderedDictionary` for now
+fileprivate func areCoWIdentifiersEqual<IDs: Equatable>(lhs: IDs, rhs: IDs) -> Bool {
+  var lhs = lhs
+  var rhs = rhs
+  if memcmp(&lhs, &rhs, MemoryLayout<IDs>.size) == 0 {
+    return true
+  }
+  return lhs == rhs
 }
 
 extension ReducerProtocol {

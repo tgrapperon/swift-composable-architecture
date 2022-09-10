@@ -89,16 +89,16 @@ public struct ForEachStore<
   /// - Parameters:
   ///   - store: A store on an identified array of data and an identified action.
   ///   - content: A function that can generate content given a store of an element.
-  public init<States: ForEachStateProvider, EachContent>(
-    _ store: Store<States, (ID, EachAction)>,
+  public init<StatesCollection: IdentifiedStatesCollection, EachContent>(
+    _ store: Store<StatesCollection, (ID, EachAction)>,
     @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
   )
   where
-    States.State == EachState,
-    States.ID == ID,
-    Data == States.States,
+    StatesCollection.State == EachState,
+    StatesCollection.ID == ID,
+    Data == StatesCollection.States,
     Content == WithViewStore<
-      States.IDs, (ID, EachAction), ForEach<States.IDs, States.IDs.Element, EachContent>
+      StatesCollection.IDs, (ID, EachAction), ForEach<StatesCollection.IDs, StatesCollection.IDs.Element, EachContent>
     >
   {
     self.data = store.state.value.states
@@ -106,7 +106,7 @@ public struct ForEachStore<
       WithViewStore(
         store,
         observe: { $0.stateIdentifiers },
-        removeDuplicates: States.areIdentifiersEqual(lhs:rhs:)
+        removeDuplicates: StatesCollection.areIdentifiersEqual(lhs:rhs:)
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) { id -> EachContent in
           // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate

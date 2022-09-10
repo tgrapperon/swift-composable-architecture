@@ -1,7 +1,7 @@
 import OrderedCollections
 import Foundation
 
-public protocol ForEachStateProvider {
+public protocol IdentifiedStatesCollection {
   // Strangely, it was building even with `Collection` whereas `ForEach` used
   // in `ForEachStore` expects a `RandomAccessCollection`.
   associatedtype IDs: RandomAccessCollection
@@ -21,14 +21,14 @@ public protocol ForEachStateProvider {
   static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool
 }
 
-extension ForEachStateProvider where IDs: Equatable {
+extension IdentifiedStatesCollection where IDs: Equatable {
   // Default for `Equatable` `IDs`.
   public static func areIdentifiersEqual(lhs: IDs, rhs: IDs) -> Bool  {
     lhs == rhs
   }
 }
 
-extension IdentifiedArray: ForEachStateProvider {
+extension IdentifiedArray: IdentifiedStatesCollection {
   public var stateIdentifiers: OrderedSet<ID> { self.ids }
   public var states: Self { self }
 
@@ -44,7 +44,7 @@ extension IdentifiedArray: ForEachStateProvider {
   }
 }
 
-extension OrderedDictionary: ForEachStateProvider {
+extension OrderedDictionary: IdentifiedStatesCollection {
   public var stateIdentifiers: OrderedSet<Key> { self.keys }
   public var states: OrderedDictionary<Key, Value>.Values { self.values }
   
@@ -83,7 +83,7 @@ extension ReducerProtocol {
   ///     state.
   /// - Returns: A reducer that combines the child reducer with the parent reducer.
   @inlinable
-  public func forEach<StateProvider: ForEachStateProvider, Element: ReducerProtocol>(
+  public func forEach<StateProvider: IdentifiedStatesCollection, Element: ReducerProtocol>(
     _ toElementsState: WritableKeyPath<State, StateProvider>,
     action toElementAction: CasePath<Action, (StateProvider.ID, Element.Action)>,
     @ReducerBuilderOf<Element> _ element: () -> Element,
@@ -105,7 +105,7 @@ extension ReducerProtocol {
 
 public struct _ForEachReducer<
   Parent: ReducerProtocol,
-  StateProvider: ForEachStateProvider,
+  StateProvider: IdentifiedStatesCollection,
   Element: ReducerProtocol
 >: ReducerProtocol
 where StateProvider.State == Element.State {

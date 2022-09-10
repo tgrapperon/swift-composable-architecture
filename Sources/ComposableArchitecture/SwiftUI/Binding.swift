@@ -161,10 +161,16 @@ import SwiftUI
 public struct BindableState<Value> {
   /// The underlying value wrapped by the bindable state.
   public var wrappedValue: Value
-
+  public let id: String
   /// Creates bindable state from the value of another bindable state.
-  public init(wrappedValue: Value) {
+  public init(
+    wrappedValue: Value,
+    fileID: StaticString = #fileID,
+    line: UInt = #line,
+    column: UInt = #column
+  ) {
     self.wrappedValue = wrappedValue
+    self.id = "\(fileID)\(line)\(column)"
   }
 
   /// A projection that can be used to derive bindings from a view store.
@@ -360,16 +366,19 @@ extension ScopedViewStore where Action: BindableAction, Action.State == StoreSta
           let debugger = BindableActionViewStoreDebugger(
             value: value, bindableActionType: Action.self, file: file, fileID: fileID, line: line
           )
-          let set: (inout State) -> Void = {
-            $0[keyPath: keyPath].wrappedValue = value
+          let set: (inout StoreState, WritableKeyPath<StoreState, BindableState<Value>>) -> Void = {
+            $0[keyPath: $1].wrappedValue = value
             debugger.wasCalled = true
           }
         #else
-          let set: (inout State) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
+          let set: (inout StoreState, WritableKeyPath<StoreState, BindableState<Value>>) -> Void = { $0[keyPath: $1].wrappedValue = value }
         #endif
-        // TODO: Find map keyPath to StoreState.KeyPath
-        fatalError("TODO: Find how map State's keyPath to StoreState.KeyPath")
-//        return .binding(.init(keyPath: keyPath, set: set, value: value))
+        fatalError()
+//        return .binding(.init(
+//          finding: keyPath,
+//          set: set,
+//          value: value
+//        ))
       }
     )
   }

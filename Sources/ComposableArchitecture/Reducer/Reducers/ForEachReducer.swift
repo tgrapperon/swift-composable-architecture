@@ -7,6 +7,7 @@ public protocol ForEachStateProvider {
   typealias ID = IDs.Element
   typealias State = States.Element
   
+  // Should we use vars instead of functions?
   func stateIdentifiers() -> IDs
   func state(id: IDs.Element) -> State?
   func states() -> States

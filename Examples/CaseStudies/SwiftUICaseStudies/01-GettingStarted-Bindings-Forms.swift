@@ -50,64 +50,66 @@ let bindingFormReducer = Reducer<
 struct BindingFormView: View {
   let store: Store<BindingFormState, BindingFormAction>
   
-  struct ViewState: Equatable {
-    @BindableState var stepCount: Int
-    @BindableState var text: String
-    @BindableState var toggleIsOn: Bool
-    @BindableState var sliderValue: Double
+  struct ViewState: ViewStateProtocol {
+    typealias StoreState = BindingFormState
+    @BindableViewState var stepCount: Int
+    @BindableViewState var text: String
+    @BindableViewState var toggleIsOn: Bool
+    @BindableViewState var sliderValue: Double
     init(state: BindingFormState) {
-      self.stepCount = state.stepCount
-      self.text = state.text
-      self.toggleIsOn = state.toggleIsOn
-      self.sliderValue = state.sliderValue
+      self._stepCount = .init(state, \.$stepCount)
+      self._text = .init(state, \.$text)
+      self._toggleIsOn = .init(state, \.$toggleIsOn)
+      self._sliderValue = .init(state, \.$sliderValue)
     }
   }
   
   var body: some View {
-    WithViewStore(self.store, observe: ViewState.init) { viewStore in
-      Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
-
-        HStack {
-          TextField("Type here", text: viewStore.binding(\.$text, as: \.$text))
-            .disableAutocorrection(true)
-            .foregroundStyle(viewStore.toggleIsOn ? Color.secondary : .primary)
-          Text(alternate(viewStore.text))
-        }
-        .disabled(viewStore.toggleIsOn)
-
-        Toggle(
-          "Disable other controls",
-          isOn: viewStore.binding(\.$toggleIsOn, as: \.$toggleIsOn)
-            .resignFirstResponder()
-        )
-
-        Stepper(
-          "Max slider value: \(viewStore.stepCount)",
-          value: viewStore.binding(\.$stepCount, as: \.$stepCount),
-          in: 0...100
-        )
-        .disabled(viewStore.toggleIsOn)
-
-        HStack {
-          Text("Slider value: \(Int(viewStore.sliderValue))")
-
-          Slider(
-            value: viewStore.binding(\.$sliderValue, as: \.$sliderValue),
-            in: 0...Double(viewStore.stepCount)
-          )
-          .tint(.accentColor)
-        }
-        .disabled(viewStore.toggleIsOn)
-
-        Button("Reset") {
-          viewStore.send(.resetButtonTapped)
-        }
-        .tint(.red)
-      }
-    }
+    Color.clear
+//    WithViewStore(self.store, observe: ViewState.init) { viewStore in
+//      Form {
+//        Section {
+//          AboutView(readMe: readMe)
+//        }
+//
+//        HStack {
+//          TextField("Type here", text: viewStore.binding(\.$text, as: \.$text))
+//            .disableAutocorrection(true)
+//            .foregroundStyle(viewStore.toggleIsOn ? Color.secondary : .primary)
+//          Text(alternate(viewStore.text))
+//        }
+//        .disabled(viewStore.toggleIsOn)
+//
+//        Toggle(
+//          "Disable other controls",
+//          isOn: viewStore.binding(\.$toggleIsOn, as: \.$toggleIsOn)
+//            .resignFirstResponder()
+//        )
+//
+//        Stepper(
+//          "Max slider value: \(viewStore.stepCount)",
+//          value: viewStore.binding(\.$stepCount, as: \.$stepCount),
+//          in: 0...100
+//        )
+//        .disabled(viewStore.toggleIsOn)
+//
+//        HStack {
+//          Text("Slider value: \(Int(viewStore.sliderValue))")
+//
+//          Slider(
+//            value: viewStore.binding(\.$sliderValue, as: \.$sliderValue),
+//            in: 0...Double(viewStore.stepCount)
+//          )
+//          .tint(.accentColor)
+//        }
+//        .disabled(viewStore.toggleIsOn)
+//
+//        Button("Reset") {
+//          viewStore.send(.resetButtonTapped)
+//        }
+//        .tint(.red)
+//      }
+//    }
     .monospacedDigit()
     .navigationTitle("Bindings form")
   }

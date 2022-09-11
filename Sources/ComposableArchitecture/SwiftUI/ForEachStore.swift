@@ -89,11 +89,7 @@ public struct ForEachStore<
   where
     Data == IdentifiedArray<ID, EachState>,
     Content == WithViewStore<
-      IdentifiedArray<ID, EachState>,
-      (ID, EachAction),
-      OrderedSet<ID>,
-      (ID, EachAction),
-      ForEach<OrderedSet<ID>, ID, EachContent>
+      OrderedSet<ID>, (ID, EachAction), ForEach<OrderedSet<ID>, ID, EachContent>
     >
   {
     self.data = store.state.value
@@ -101,7 +97,6 @@ public struct ForEachStore<
       WithViewStore(
         store,
         observe: { $0.ids },
-        send: { $0 },
         removeDuplicates: areOrderedSetsDuplicates
       ) { viewStore in
         ForEach(viewStore.state, id: \.self) { id -> EachContent in

@@ -68,3 +68,7 @@ public class ScopedViewStore<StoreState, StoreAction, State, Action> {
 }
 
 extension ScopedViewStore: ObservableObject {}
+
+public protocol ViewStateProtocol: Equatable {
+  associatedtype StoreState
+}

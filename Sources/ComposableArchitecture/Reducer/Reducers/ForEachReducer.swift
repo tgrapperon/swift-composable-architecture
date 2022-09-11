@@ -17,8 +17,8 @@ extension ReducerProtocol {
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> _ForEachReducer<Self, StatesCollection, Element> {
-    _ForEachReducer<Self, StatesCollection, Element>(
+  ) -> _ForEachReducer<Self, ForEachAtKeyPath<State, StatesCollection>, Element> {
+    _ForEachReducer<Self, ForEachAtKeyPath<State, StatesCollection>, Element>(
       parent: self,
       toElementsState: toElementsState,
       toElementAction: toElementAction,
@@ -30,20 +30,100 @@ extension ReducerProtocol {
   }
 }
 
+public protocol ForEachConversion {
+  associatedtype Parent
+  associatedtype StatesCollection: IdentifiedStatesCollection
+  
+  typealias ID = StatesCollection.ID
+  typealias Element = StatesCollection.State
+  func canExtract(parent: Parent, id: ID) -> Bool
+  func extract(parent: Parent, id: ID) -> Element?
+  func embed(parent: inout Parent, id: ID, element: Element?)
+  
+  func modify<T>(parent: inout Parent, id: ID, block: (inout Element) -> T) -> T
+}
+
+extension ForEachConversion {
+  public func canExtract(parent: Parent, id: ID) -> Bool {
+    extract(parent: parent, id: id) != nil
+  }
+  
+  public func modify<T>(parent: inout Parent, id: ID, block: (inout Element) -> T) -> T {
+    var element = extract(parent: parent, id: id)!
+    defer {
+      embed(parent: &parent, id: id, element: element)
+    }
+    return block(&element)
+  }
+}
+
+public struct ForEachAtKeyPath<ParentState, Collection: IdentifiedStatesCollection>: ForEachConversion {
+  public typealias Parent = ParentState
+  public typealias StatesCollection = Collection
+  let keyPath: WritableKeyPath<ParentState, Collection>
+  
+  public init(keyPath: WritableKeyPath<ParentState, Collection>) {
+    self.keyPath = keyPath
+  }
+  
+  public func extract(parent: ParentState, id: ID) -> Element? {
+    parent[keyPath: keyPath][stateID: id]
+  }
+  
+  public func embed(parent: inout ParentState, id: ID, element: Element?) {
+    parent[keyPath: keyPath][stateID: id] = element
+  }
+  
+  public func modify<T>(parent: inout ParentState, id: ID, block: (inout Element) -> T) -> T {
+    block(&parent[keyPath: keyPath][stateID: id]!)
+  }
+}
+
+public struct LazyForEachConversion<ParentState, Collection: IdentifiedStatesCollection>: ForEachConversion {
+  public typealias Parent = ParentState
+  public typealias StatesCollection = Collection
+  
+  let keyPath: WritableKeyPath<ParentState, Collection>
+  let updateValue: (Parent, ID, inout Element) -> Void
+
+  public init(
+    keyPath: WritableKeyPath<ParentState, Collection>,
+    updateValue: @escaping (Parent, ID, inout Element) -> Void
+  ) {
+    self.keyPath = keyPath
+    self.updateValue = updateValue
+  }
+  
+  public func canExtract(parent: ParentState, id: ID) -> Bool {
+    parent[keyPath: keyPath][stateID: id] != nil
+  }
+  
+  public func extract(parent: ParentState, id: ID) -> Element? {
+    guard var element = parent[keyPath: keyPath][stateID: id]
+    else { return nil }
+    updateValue(parent, id, &element)
+    return element
+  }
+  
+  public func embed(parent: inout ParentState, id: ID, element: Element?) {
+    parent[keyPath: keyPath][stateID: id] = element
+  }
+}
+
 public struct _ForEachReducer<
   Parent: ReducerProtocol,
-  StatesCollection: IdentifiedStatesCollection,
+  ElementConversion: ForEachConversion,
   Element: ReducerProtocol
 >: ReducerProtocol
-where StatesCollection.State == Element.State {
+where ElementConversion.StatesCollection.State == Element.State, ElementConversion.Parent == Parent.State {
   @usableFromInline
   let parent: Parent
 
   @usableFromInline
-  let toElementsState: WritableKeyPath<Parent.State, StatesCollection>
+  let toElementsState: ElementConversion
 
   @usableFromInline
-  let toElementAction: CasePath<Parent.Action, (StatesCollection.ID, Element.Action)>
+  let toElementAction: CasePath<Parent.Action, (ElementConversion.StatesCollection.ID, Element.Action)>
 
   @usableFromInline
   let element: Element
@@ -58,24 +138,24 @@ where StatesCollection.State == Element.State {
   let line: UInt
 
   @inlinable
-  init(
+  init<States: IdentifiedStatesCollection>(
     parent: Parent,
-    toElementsState: WritableKeyPath<Parent.State, StatesCollection>,
-    toElementAction: CasePath<Parent.Action, (StatesCollection.ID, Element.Action)>,
+    toElementsState: WritableKeyPath<Parent.State, States>,
+    toElementAction: CasePath<Parent.Action, (States.ID, Element.Action)>,
     element: Element,
     file: StaticString,
     fileID: StaticString,
     line: UInt
-  ) {
+  ) where ElementConversion == ForEachAtKeyPath<Parent.State, States> {
     self.parent = parent
-    self.toElementsState = toElementsState
+    self.toElementsState = ForEachAtKeyPath<Parent.State, States>(keyPath: toElementsState)
     self.toElementAction = toElementAction
     self.element = element
     self.file = file
     self.fileID = fileID
     self.line = line
   }
-
+  
   @inlinable
   public func reduce(
     into state: inout Parent.State, action: Parent.Action
@@ -89,7 +169,7 @@ where StatesCollection.State == Element.State {
     into state: inout Parent.State, action: Parent.Action
   ) -> Effect<Parent.Action, Never> {
     guard let (id, elementAction) = self.toElementAction.extract(from: action) else { return .none }
-    if state[keyPath: self.toElementsState][stateID: id] == nil {
+    if self.toElementsState.canExtract(parent: state, id: id) {
       runtimeWarning(
         """
         A "forEach" at "%@:%d" received an action for a missing element.
@@ -121,8 +201,9 @@ where StatesCollection.State == Element.State {
       )
       return .none
     }
-    return self.element
-      .reduce(into: &state[keyPath: self.toElementsState][stateID: id]!, action: elementAction)
+    
+    return self.toElementsState
+      .modify(parent: &state, id: id, block: { self.element.reduce(into: &$0, action: elementAction)})
       .map { self.toElementAction.embed((id, $0)) }
   }
 }

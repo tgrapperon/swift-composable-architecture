@@ -13,7 +13,7 @@ struct AppState: Equatable {
   var todos: IdentifiedArrayOf<TodoState> = []
 
   var filteredTodos: IdentifiedArrayOf<TodoState> {
-    switch filter {
+    switch self.filter {
     case .active: return self.todos.filter { !$0.isComplete }
     case .all: return self.todos
     case .completed: return self.todos.filter(\.isComplete)
@@ -74,7 +74,7 @@ let appReducer = Reducer<AppState, AppAction, AppEnvironment>.combine(
         )
         destination =
           state.todos.index(id: state.filteredTodos[destination].id)
-          ?? destination
+            ?? destination
       }
 
       state.todos.move(fromOffsets: source, toOffset: destination)
@@ -134,8 +134,8 @@ struct AppView: View {
           .padding(.horizontal)
 
           List {
-            ForEach(store.scope(state: \.filteredTodos, action: AppAction.todo), id: \.0) { _, store in
-              TodoView(store: store)
+            ForEach(store.scope(state: \.filteredTodos, action: AppAction.todo)) {
+              TodoView(store: $0.wrappedValue)
             }
             .onDelete { store.send(.delete($0)) }
             .onMove { store.send(.move($0, $1)) }

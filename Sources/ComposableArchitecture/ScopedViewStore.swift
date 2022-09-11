@@ -95,6 +95,29 @@ public protocol ViewStateProtocol: Equatable {
   associatedtype StoreState
 }
 
+//@propertyWrapper
+public struct StoreValue<ID: Hashable, State, Action>: Identifiable, Hashable {
+  public let id: ID
+  final class Storage {
+    lazy var store: Store<State, Action> = initialValue()
+    var initialValue: (() -> Store<State, Action>)!
+  }
+  let storage = Storage()
+  init(id: ID, store: @autoclosure @escaping () -> Store<State, Action>) {
+    self.id = id
+    self.storage.initialValue = store
+  }
+  public var wrappedValue: Store<State, Action> {
+    storage.store
+  }
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.id == rhs.id
+  }
+  public func hash(into hasher: inout Hasher) {
+    id.hash(into: &hasher)
+  }
+}
+
 @MainActor
 public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewStore<
   StoreState, StoreAction, State, Action
@@ -124,7 +147,7 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
     )
 
     let accessoryChanges = store.state
-      .removeDuplicates  { [weak self] in self?.isAssessoryDuplicate($0, $1) ?? true }
+      .removeDuplicates { [weak self] in self?.isAssessoryDuplicate($0, $1) ?? true }
       .map(toViewState)
     let viewStateChanges = store.state
       .map(toViewState)
@@ -149,8 +172,10 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
       objectWillChange: viewStore.objectWillChange
     )
   }
-  
-  func observeAccessoryState(id: AnyHashable, isDuplicate: @escaping (StoreState, StoreState) -> Bool) {
+
+  func observeAccessoryState(
+    id: AnyHashable, isDuplicate: @escaping (StoreState, StoreState) -> Bool
+  ) {
     self.accessoryIsDuplicateChecks[id] = isDuplicate
   }
   func unobserveAccessoryState(id: AnyHashable) {
@@ -183,11 +208,11 @@ extension ObservedStore {
     column: UInt = #column
   ) -> Store<ChildState, ChildAction>? {
     let id = "\(file)\(line)\(column)"
-    
+
     self.observeAccessoryState(id: id) {
       (toChildState($0) == nil) == (toChildState($1) == nil)
     }
-    
+
     guard toChildState(store.state.value) != nil else {
       self.scopes[id] = nil
       self.unobserveAccessoryState(id: id)
@@ -215,18 +240,18 @@ extension ObservedStore {
     file: StaticString = #fileID,
     line: UInt = #line,
     column: UInt = #column
-  ) -> [(ID, Store<EachState, EachAction>)] {
+  ) -> IdentifiedArrayOf<StoreValue<ID, EachState, EachAction>> {
     let prefix = "\(file)\(line)\(column)"
 
     self.observeAccessoryState(id: prefix) {
       // TODO: restore memcmp
       toEachState($0).ids == toEachState($1).ids
     }
-    
+
     let ids = toEachState(self.store.state.value).ids
-    // This is still eager for now.
-    return ids.lazy.compactMap {
-      [weak store = self.store, weak self] localID -> (ID, Store<EachState, EachAction>)? in
+
+    let makeStore: (ID) -> (() -> Store<EachState, EachAction>)? = {
+      [weak store = self.store, weak self] localID -> (() -> Store<EachState, EachAction>)? in
       guard let store = store else { return nil }
       let id: [AnyHashable] = [prefix, localID]
       guard toEachState(store.state.value)[id: localID] != nil
@@ -236,7 +261,7 @@ extension ObservedStore {
         return nil
       }
       if let scoped = self?.scopes[id] as? Store<EachState, EachAction> {
-        return (localID, scoped)
+        return { scoped }
       }
       var lastNonNilEachState: EachState?
       let scoped: Store<EachState, EachAction> = store.scope(
@@ -249,8 +274,14 @@ extension ObservedStore {
         }, action: { fromEachAction(localID, $0) })
 
       self?.scopes[id] = scoped
-      return (localID, scoped)
+      return { scoped }
     }
+    return IdentifiedArrayOf<StoreValue<ID, EachState, EachAction>>(
+      uncheckedUniqueElements: ids.compactMap { id in
+        guard let makeStore = makeStore(id) else { return nil }
+        return StoreValue<ID, EachState, EachAction>(id: id, store: makeStore())
+      }
+    )
   }
 }
 

@@ -50,24 +50,10 @@ let bindingFormReducer = Reducer<
 struct BindingFormView: View {
   let store: Store<BindingFormState, BindingFormAction>
   
-  struct ViewState: ViewStateProtocol {
-    typealias StoreState = BindingFormState
-    @BindableViewState var stepCount: Int
-    @BindableViewState var text: String
-    @BindableViewState var toggleIsOn: Bool
-    @BindableViewState var sliderValue: Double
-    init(state: BindingFormState) {
-      self._stepCount = .init(state, \.$stepCount)
-      self._text = .init(state, \.$text)
-      self._toggleIsOn = .init(state, \.$toggleIsOn)
-      self._sliderValue = .init(state, \.$sliderValue)
-    }
-  }
-  
   var body: some View {
     Color.clear
-//    WithViewStore(self.store, observe: ViewState.init) { viewStore in
-//      Form {
+    WithViewStore(self.store, observe: { $0 }) { viewStore in
+      Form {
 //        Section {
 //          AboutView(readMe: readMe)
 //        }
@@ -103,13 +89,13 @@ struct BindingFormView: View {
 //          .tint(.accentColor)
 //        }
 //        .disabled(viewStore.toggleIsOn)
-//
-//        Button("Reset") {
-//          viewStore.send(.resetButtonTapped)
-//        }
-//        .tint(.red)
-//      }
-//    }
+
+        Button("Reset") {
+          viewStore.send(.resetButtonTapped)
+        }
+        .tint(.red)
+      }
+    }
     .monospacedDigit()
     .navigationTitle("Bindings form")
   }

@@ -1,6 +1,6 @@
 import Combine
-import SwiftUI
 import OrderedCollections
+import SwiftUI
 
 @dynamicMemberLookup
 public class ScopedViewStore<StoreState, StoreAction, State, Action> {
@@ -13,7 +13,7 @@ public class ScopedViewStore<StoreState, StoreAction, State, Action> {
   // Not used for now
   //  let toViewState: (StoreState) -> State
   //  let fromViewAction: (Action) -> StoreAction
-  private var viewCancellable: AnyCancellable?
+  internal var viewCancellable: AnyCancellable?
 
   /// Initializes a view store from a store.
   ///
@@ -66,6 +66,27 @@ public class ScopedViewStore<StoreState, StoreAction, State, Action> {
     self.viewCancellable = viewStore.viewCancellable
     self.objectWillChange = viewStore.objectWillChange
   }
+
+  internal init(
+    _send: @escaping (Action) -> Task<Void, Never>?,
+    _state: CurrentValueRelay<State>,
+    viewCancellable: AnyCancellable?
+  ) {
+    self._send = _send
+    self._state = _state
+    self.viewCancellable = viewCancellable
+  }
+  internal init(
+    _send: @escaping (Action) -> Task<Void, Never>?,
+    _state: CurrentValueRelay<State>,
+    viewCancellable: AnyCancellable?,
+    objectWillChange: ObservableObjectPublisher
+  ) {
+    self._send = _send
+    self._state = _state
+    self.viewCancellable = viewCancellable
+    self.objectWillChange = objectWillChange
+  }
 }
 
 extension ScopedViewStore: ObservableObject {}
@@ -74,12 +95,18 @@ public protocol ViewStateProtocol: Equatable {
   associatedtype StoreState
 }
 
+@MainActor
 public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewStore<
   StoreState, StoreAction, State, Action
 >
 {
   let store: Store<StoreState, StoreAction>
   var scopes: [AnyHashable: Any] = [:]
+  var accessoryIsDuplicateChecks: [AnyHashable: (StoreState, StoreState) -> Bool] = [:]
+
+  func isAssessoryDuplicate(_ lhs: StoreState, _ rhs: StoreState) -> Bool {
+    !self.accessoryIsDuplicateChecks.values.contains { $0(lhs, rhs) == false }
+  }
 
   public init(
     store: Store<StoreState, StoreAction>, observe toViewState: @escaping (StoreState) -> State,
@@ -87,7 +114,47 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
     removeDuplicates isDuplicate: @escaping (State, State) -> Bool
   ) {
     self.store = store
-    super.init(store, observe: toViewState, send: fromViewAction, removeDuplicates: isDuplicate)
+
+    //    self.toViewState = toViewState
+    //    self.fromViewAction = fromViewAction
+    super.init(
+      _send: { store.send(fromViewAction($0)) },
+      _state: CurrentValueRelay(toViewState(store.state.value)),
+      viewCancellable: nil
+    )
+
+    let accessoryChanges = store.state
+      .removeDuplicates  { [weak self] in self?.isAssessoryDuplicate($0, $1) ?? true }
+      .map(toViewState)
+    let viewStateChanges = store.state
+      .map(toViewState)
+      .removeDuplicates(by: isDuplicate)
+
+    self.viewCancellable = accessoryChanges.merge(with: viewStateChanges).sink {
+      [weak objectWillChange = self.objectWillChange, weak _state = self._state] in
+      guard let objectWillChange = objectWillChange, let _state = _state else { return }
+      objectWillChange.send()
+      _state.value = $0
+    }
+  }
+
+  init(_ viewStore: ObservedStore) {
+    self.store = viewStore.store
+    self.accessoryIsDuplicateChecks = viewStore.accessoryIsDuplicateChecks
+    self.scopes = viewStore.scopes
+    super.init(
+      _send: viewStore._send,
+      _state: viewStore._state,
+      viewCancellable: viewStore.viewCancellable,
+      objectWillChange: viewStore.objectWillChange
+    )
+  }
+  
+  func observeAccessoryState(isDuplicate: @escaping (StoreState, StoreState) -> Bool, id: AnyHashable) {
+    self.accessoryIsDuplicateChecks[id] = isDuplicate
+  }
+  func unobserveAccessoryState(id: AnyHashable) {
+    self.accessoryIsDuplicateChecks[id] = nil
   }
 }
 
@@ -116,8 +183,14 @@ extension ObservedStore {
     column: UInt = #column
   ) -> Store<ChildState, ChildAction>? {
     let id = "\(file)\(line)\(column)"
+    
+    self.observeAccessoryState(isDuplicate: {
+      (toChildState($0) == nil) == (toChildState($1) == nil)
+    }, id: id)
+    
     guard toChildState(store.state.value) != nil else {
       self.scopes[id] = nil
+      self.unobserveAccessoryState(id: id)
       return nil
     }
     if let scoped = scopes[id] as? Store<ChildState, ChildAction> {
@@ -144,15 +217,23 @@ extension ObservedStore {
     column: UInt = #column
   ) -> [(ID, Store<EachState, EachAction>)] {
     let prefix = "\(file)\(line)\(column)"
-    // Observe dynamically this
+
+    self.observeAccessoryState(isDuplicate: {
+      toEachState($0).ids == toEachState($1).ids
+    }, id: prefix)
+    
     let ids = toEachState(self.store.state.value).ids
-    return ids.lazy.compactMap { [weak store = self.store, weak self] localID -> (ID, Store<EachState, EachAction>)? in
+    // This is still eager for now.
+    return ids.lazy.compactMap {
+      [weak store = self.store, weak self] localID -> (ID, Store<EachState, EachAction>)? in
       guard let store = store else { return nil }
       let id: [AnyHashable] = [prefix, localID]
       guard toEachState(store.state.value)[id: localID] != nil
       else {
         self?.scopes[id] = nil
-        return nil }
+        self?.unobserveAccessoryState(id: id)
+        return nil
+      }
       if let scoped = self?.scopes[id] as? Store<EachState, EachAction> {
         return (localID, scoped)
       }
@@ -165,14 +246,12 @@ extension ObservedStore {
           }
           return lastNonNilEachState!
         }, action: { fromEachAction(localID, $0) })
-      
+
       self?.scopes[id] = scoped
       return (localID, scoped)
     }
   }
 }
-
-
 
 @propertyWrapper
 public struct LastNonNil<Value> {

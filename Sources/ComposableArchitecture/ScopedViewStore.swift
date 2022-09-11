@@ -150,7 +150,7 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
     )
   }
   
-  func observeAccessoryState(isDuplicate: @escaping (StoreState, StoreState) -> Bool, id: AnyHashable) {
+  func observeAccessoryState(id: AnyHashable, isDuplicate: @escaping (StoreState, StoreState) -> Bool) {
     self.accessoryIsDuplicateChecks[id] = isDuplicate
   }
   func unobserveAccessoryState(id: AnyHashable) {
@@ -184,9 +184,9 @@ extension ObservedStore {
   ) -> Store<ChildState, ChildAction>? {
     let id = "\(file)\(line)\(column)"
     
-    self.observeAccessoryState(isDuplicate: {
+    self.observeAccessoryState(id: id) {
       (toChildState($0) == nil) == (toChildState($1) == nil)
-    }, id: id)
+    }
     
     guard toChildState(store.state.value) != nil else {
       self.scopes[id] = nil
@@ -218,9 +218,10 @@ extension ObservedStore {
   ) -> [(ID, Store<EachState, EachAction>)] {
     let prefix = "\(file)\(line)\(column)"
 
-    self.observeAccessoryState(isDuplicate: {
+    self.observeAccessoryState(id: prefix) {
+      // TODO: restore memcmp
       toEachState($0).ids == toEachState($1).ids
-    }, id: prefix)
+    }
     
     let ids = toEachState(self.store.state.value).ids
     // This is still eager for now.

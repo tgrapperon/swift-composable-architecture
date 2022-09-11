@@ -77,15 +77,85 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
   StoreState, StoreAction, State, Action
 >
 {
+  let store: Store<StoreState, StoreAction>
+  var scopes: [AnyHashable: Any] = [:]
 
+  public init(
+    store: Store<StoreState, StoreAction>, observe toViewState: @escaping (StoreState) -> State,
+    send fromViewAction: @escaping (Action) -> StoreAction,
+    removeDuplicates isDuplicate: @escaping (State, State) -> Bool
+  ) {
+    self.store = store
+    super.init(store, observe: toViewState, send: fromViewAction, removeDuplicates: isDuplicate)
+  }
+
+  public func scope<ChildState, ChildAction>(
+    state toChildState: @escaping (StoreState) -> ChildState,
+    action fromChildAction: @escaping (ChildAction) -> StoreAction,
+    file: StaticString = #fileID,
+    line: UInt = #line,
+    column: UInt = #column
+  ) -> Store<ChildState, ChildAction> {
+    let id = "\(file)\(line)\(column)"
+    if let scoped = scopes[id] as? Store<ChildState, ChildAction> {
+      return scoped
+    }
+    let scoped = store.scope(state: toChildState, action: fromChildAction)
+    self.scopes[id] = scoped
+    return scoped
+  }
+
+  public func scope<ChildState, ChildAction>(
+    state toChildState: @escaping (StoreState) -> ChildState?,
+    action fromChildAction: @escaping (ChildAction) -> StoreAction,
+    file: StaticString = #fileID,
+    line: UInt = #line,
+    column: UInt = #column
+  ) -> Store<ChildState, ChildAction>? {
+    let id = "\(file)\(line)\(column)"
+    guard toChildState(store.state.value) != nil else {
+      self.scopes[id] = nil
+      return nil
+    }
+    if let scoped = scopes[id] as? Store<ChildState, ChildAction> {
+      return scoped
+    }
+    var lastNonNilChildState: ChildState?
+    let scoped = store.scope(
+      state: {
+        if let childState = toChildState($0) {
+          lastNonNilChildState = childState
+          return childState
+        }
+        return lastNonNilChildState!
+      }, action: fromChildAction)
+    self.scopes[id] = scoped
+    return scoped
+  }
+
+}
+
+@propertyWrapper
+public struct LastNonNil<Value> {
+  public init(wrappedValue: Value?) {
+    self._wrappedValue = wrappedValue
+  }
+  public var _wrappedValue: Value?
+
+  public var wrappedValue: Value? {
+    get { _wrappedValue }
+    set {
+      guard let newValue = newValue else { return }
+      _wrappedValue = newValue
+    }
+  }
 }
 
 @available(iOS 14.0, tvOS 14.0, watchOS 7.0, macOS 11.0, *)
 public struct WithObservedStore<StoreState, StoreAction, State, Action, Content: View>: View {
   @StateObject var observedStore: ObservedStore<StoreState, StoreAction, State, Action>
   let content: (ObservedStore<StoreState, StoreAction, State, Action>) -> Content
-  
-  
+
   public var body: some View {
     content(observedStore)
   }
@@ -98,26 +168,32 @@ extension WithObservedStore {
     observe toViewState: @escaping (StoreState) -> State,
     send fromViewAction: @escaping (Action) -> StoreAction,
     removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
-    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) -> Content
+    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) ->
+      Content
   ) {
     self._observedStore = .init(
       wrappedValue:
         ObservedStore(
-          store, observe: toViewState, send: fromViewAction, removeDuplicates: isDuplicate)
+          store: store,
+          observe: toViewState,
+          send: fromViewAction,
+          removeDuplicates: isDuplicate
+        )
     )
     self.content = content
   }
-  
+
   public init(
     _ store: Store<StoreState, StoreAction>,
     observe toViewState: @escaping (StoreState) -> State,
     send fromViewAction: @escaping (Action) -> StoreAction,
-    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) -> Content
+    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) ->
+      Content
   ) where State: Equatable {
     self._observedStore = .init(
       wrappedValue:
         ObservedStore(
-          store,
+          store: store,
           observe: toViewState,
           send: fromViewAction,
           removeDuplicates: ==
@@ -125,32 +201,38 @@ extension WithObservedStore {
     )
     self.content = content
   }
-  
+
   public init(
     _ store: Store<StoreState, StoreAction>,
     observe toViewState: @escaping (StoreState) -> State,
     removeDuplicates isDuplicate: @escaping (State, State) -> Bool,
-    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) -> Content
+    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) ->
+      Content
   ) where Action == StoreAction {
     self._observedStore = .init(
       wrappedValue:
         ObservedStore(
-          store, observe: toViewState, send: {$0}, removeDuplicates: isDuplicate)
+          store: store,
+          observe: toViewState,
+          send: { $0 },
+          removeDuplicates: isDuplicate
+        )
     )
     self.content = content
   }
-  
+
   public init(
     _ store: Store<StoreState, StoreAction>,
     observe toViewState: @escaping (StoreState) -> State,
-    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) -> Content
+    @ViewBuilder content: @escaping (ObservedStore<StoreState, StoreAction, State, Action>) ->
+      Content
   ) where State: Equatable, Action == StoreAction {
     self._observedStore = .init(
       wrappedValue:
         ObservedStore(
-          store,
+          store: store,
           observe: toViewState,
-          send: {$0},
+          send: { $0 },
           removeDuplicates: ==
         )
     )

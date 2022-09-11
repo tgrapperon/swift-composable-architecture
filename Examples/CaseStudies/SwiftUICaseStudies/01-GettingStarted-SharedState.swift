@@ -152,7 +152,7 @@ struct SharedStateView: View {
   let store: Store<SharedState, SharedStateAction>
 
   var body: some View {
-    WithViewStore(self.store, observe: \.currentTab) { viewStore in
+    WithObservedStore(self.store, observe: \.currentTab) { viewStore in
       VStack {
         Picker(
           "Tab",
@@ -168,12 +168,12 @@ struct SharedStateView: View {
 
         if viewStore.state == .counter {
           SharedStateCounterView(
-            store: self.store.scope(state: \.counter, action: SharedStateAction.counter))
+            store: viewStore.scope(state: \.counter, action: SharedStateAction.counter))
         }
 
         if viewStore.state == .profile {
           SharedStateProfileView(
-            store: self.store.scope(state: \.profile, action: SharedStateAction.profile))
+            store: viewStore.scope(state: \.profile, action: SharedStateAction.profile))
         }
 
         Spacer()

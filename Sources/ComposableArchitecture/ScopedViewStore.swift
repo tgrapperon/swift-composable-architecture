@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import OrderedCollections
 
 @dynamicMemberLookup
 public class ScopedViewStore<StoreState, StoreAction, State, Action> {
@@ -88,7 +89,9 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
     self.store = store
     super.init(store, observe: toViewState, send: fromViewAction, removeDuplicates: isDuplicate)
   }
+}
 
+extension ObservedStore {
   public func scope<ChildState, ChildAction>(
     state toChildState: @escaping (StoreState) -> ChildState,
     action fromChildAction: @escaping (ChildAction) -> StoreAction,
@@ -133,7 +136,43 @@ public class ObservedStore<StoreState, StoreAction, State, Action>: ScopedViewSt
     return scoped
   }
 
+  public func scope<EachState, EachAction, ID: Hashable>(
+    state toEachState: @escaping (StoreState) -> IdentifiedArray<ID, EachState>,
+    action fromEachAction: @escaping (ID, EachAction) -> StoreAction,
+    file: StaticString = #fileID,
+    line: UInt = #line,
+    column: UInt = #column
+  ) -> [(ID, Store<EachState, EachAction>)] {
+    let prefix = "\(file)\(line)\(column)"
+    // Observe dynamically this
+    let ids = toEachState(self.store.state.value).ids
+    return ids.lazy.compactMap { [weak store = self.store, weak self] localID -> (ID, Store<EachState, EachAction>)? in
+      guard let store = store else { return nil }
+      let id: [AnyHashable] = [prefix, localID]
+      guard toEachState(store.state.value)[id: localID] != nil
+      else {
+        self?.scopes[id] = nil
+        return nil }
+      if let scoped = self?.scopes[id] as? Store<EachState, EachAction> {
+        return (localID, scoped)
+      }
+      var lastNonNilEachState: EachState?
+      let scoped: Store<EachState, EachAction> = store.scope(
+        state: {
+          if let eachState = toEachState($0)[id: localID] {
+            lastNonNilEachState = eachState
+            return eachState
+          }
+          return lastNonNilEachState!
+        }, action: { fromEachAction(localID, $0) })
+      
+      self?.scopes[id] = scoped
+      return (localID, scoped)
+    }
+  }
 }
+
+
 
 @propertyWrapper
 public struct LastNonNil<Value> {

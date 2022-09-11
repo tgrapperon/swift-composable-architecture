@@ -28,6 +28,26 @@ extension ReducerProtocol {
       line: line
     )
   }
+  
+  @inlinable
+  public func forEach<StatesCollection: IdentifiedStatesCollection, Element: ReducerProtocol>(
+    update: ForEachModifiedAtKeyPath<State, StatesCollection>,
+    action toElementAction: CasePath<Action, (StatesCollection.ID, Element.Action)>,
+    @ReducerBuilderOf<Element> _ element: () -> Element,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> _ForEachReducer<Self, ForEachModifiedAtKeyPath<State, StatesCollection>, Element> {
+    _ForEachReducer<Self, ForEachModifiedAtKeyPath<State, StatesCollection>, Element>(
+      parent: self,
+      toElementsState: update,
+      toElementAction: toElementAction,
+      element: element(),
+      file: file,
+      fileID: fileID,
+      line: line
+    )
+  }
 }
 
 public protocol ForEachConversion {
@@ -62,7 +82,7 @@ public struct ForEachAtKeyPath<ParentState, Collection: IdentifiedStatesCollecti
   public typealias StatesCollection = Collection
   let keyPath: WritableKeyPath<ParentState, Collection>
   
-  public init(keyPath: WritableKeyPath<ParentState, Collection>) {
+  public init(_ keyPath: WritableKeyPath<ParentState, Collection>) {
     self.keyPath = keyPath
   }
   
@@ -79,19 +99,19 @@ public struct ForEachAtKeyPath<ParentState, Collection: IdentifiedStatesCollecti
   }
 }
 
-public struct LazyForEachConversion<ParentState, Collection: IdentifiedStatesCollection>: ForEachConversion {
+public struct ForEachModifiedAtKeyPath<ParentState, Collection: IdentifiedStatesCollection>: ForEachConversion {
   public typealias Parent = ParentState
   public typealias StatesCollection = Collection
   
   let keyPath: WritableKeyPath<ParentState, Collection>
-  let updateValue: (Parent, ID, inout Element) -> Void
+  let updateElement: (Parent, ID, inout Element) -> Void
 
   public init(
-    keyPath: WritableKeyPath<ParentState, Collection>,
-    updateValue: @escaping (Parent, ID, inout Element) -> Void
+    _ keyPath: WritableKeyPath<ParentState, Collection>,
+    updateElement: @escaping (Parent, ID, inout Element) -> Void
   ) {
     self.keyPath = keyPath
-    self.updateValue = updateValue
+    self.updateElement = updateElement
   }
   
   public func canExtract(parent: ParentState, id: ID) -> Bool {
@@ -101,7 +121,7 @@ public struct LazyForEachConversion<ParentState, Collection: IdentifiedStatesCol
   public func extract(parent: ParentState, id: ID) -> Element? {
     guard var element = parent[keyPath: keyPath][stateID: id]
     else { return nil }
-    updateValue(parent, id, &element)
+    updateElement(parent, id, &element)
     return element
   }
   
@@ -148,7 +168,26 @@ where ElementConversion.StatesCollection.State == Element.State, ElementConversi
     line: UInt
   ) where ElementConversion == ForEachAtKeyPath<Parent.State, States> {
     self.parent = parent
-    self.toElementsState = ForEachAtKeyPath<Parent.State, States>(keyPath: toElementsState)
+    self.toElementsState = ForEachAtKeyPath(toElementsState)
+    self.toElementAction = toElementAction
+    self.element = element
+    self.file = file
+    self.fileID = fileID
+    self.line = line
+  }
+  
+  @inlinable
+  init<States: IdentifiedStatesCollection>(
+    parent: Parent,
+    toElementsState: ElementConversion,
+    toElementAction: CasePath<Parent.Action, (States.ID, Element.Action)>,
+    element: Element,
+    file: StaticString,
+    fileID: StaticString,
+    line: UInt
+  ) where ElementConversion == ForEachModifiedAtKeyPath<Parent.State, States> {
+    self.parent = parent
+    self.toElementsState = toElementsState
     self.toElementAction = toElementAction
     self.element = element
     self.file = file
@@ -169,7 +208,7 @@ where ElementConversion.StatesCollection.State == Element.State, ElementConversi
     into state: inout Parent.State, action: Parent.Action
   ) -> Effect<Parent.Action, Never> {
     guard let (id, elementAction) = self.toElementAction.extract(from: action) else { return .none }
-    if self.toElementsState.canExtract(parent: state, id: id) {
+    if !self.toElementsState.canExtract(parent: state, id: id) {
       runtimeWarning(
         """
         A "forEach" at "%@:%d" received an action for a missing element.

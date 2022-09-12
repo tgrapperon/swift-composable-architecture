@@ -219,7 +219,13 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
   ) -> Effect<ParentAction, Never> {
     guard let childAction = self.domainScope.toChildAction(action)
     else { return .none }
-    guard var childState = domainScope.toChildState(state) else {
+    do {
+      return try domainScope.modify(&state) {
+        self.child.reduce(into: &$0, action: childAction)
+      }
+      .map(self.domainScope.fromChildAction)
+    } catch {
+      let error = error as! DomainExtractionFailed
       runtimeWarning(
         """
         A "Scope" at "%@:%d" received a child action when child state was set to a different \
@@ -248,22 +254,16 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
         case. In SwiftUI applications, use "SwitchStore".
         """,
         [
-          "\(domainScope.fileID)",
-          domainScope.line,
+          "\(error.fileID)",
+          error.line,
           debugCaseOutput(action),
           debugCaseOutput(state),
           typeName(ParentState.self),
         ],
-        file: domainScope.file,
-        line: domainScope.line
+        file: error.file,
+        line: error.line
       )
       return .none
     }
-    // TODO: Reimplement mutation in place
-    let effects = self.child
-      .reduce(into: &childState, action: childAction)
-      .map(self.domainScope.fromChildAction)
-    self.domainScope.fromChildState(&state, childState)
-    return effects
   }
 }

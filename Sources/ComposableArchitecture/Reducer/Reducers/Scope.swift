@@ -96,7 +96,6 @@
 /// For an alternative to using ``Scope`` with state case paths that enforces the order, check out
 /// the ``ifCaseLet(_:action:then:file:fileID:line:)`` operator.
 public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerProtocol {
-  // TODO: Try to make this any BidiDomainScope
   public let domainScope: WritableDirectDomainScope<ParentState, ParentAction, Child>
   public let child: Child
 

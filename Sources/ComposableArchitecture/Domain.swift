@@ -14,20 +14,14 @@ public protocol DomainScope {
   associatedtype ParentState
   associatedtype ParentAction
   associatedtype Child: Domain
-  // TODO: Convert to function requirements?
   func toChildState(_ parentState: ParentState) throws -> (Child.State)
   func fromChildAction(_ childAction: Child.Action) -> ParentAction
-//  var fromChildAction: (inout ParentAction, Child.Action) -> Void { get }
-//  var fromChildAction: (Child.Action) -> ParentAction { get }
 }
 
 public protocol WritableDomainScope: DomainScope {
   func fromChildState(_ parentState: inout ParentState, _ childState: Child.State)
   func toChildAction(_ parentAction: ParentAction) -> Child.Action?
-//  var fromChildState: (inout ParentState, Child.State) -> Void { get }
-//  var toChildAction: (ParentAction) -> Child.Action? { get }
   func modify<T>(_ parent: inout ParentState, body: (inout Child.State) -> T) throws -> T
-  // TODO: Modify in place
 }
 
 extension WritableDomainScope {
@@ -49,9 +43,7 @@ struct DomainExtractionFailed: Error {
 }
 
 public struct DirectDomainScope<ParentState, ParentAction, Child: Domain>: DomainScope {
-
   public let _toChildState: (ParentState) throws -> (Child.State)
-//  public let fromChildAction: (inout ParentAction, Child.Action) -> Void
   public let _fromChildAction: (Child.Action) -> (ParentAction)
   public init(
     state: @escaping (ParentState) throws -> (Child.State),
@@ -59,7 +51,6 @@ public struct DirectDomainScope<ParentState, ParentAction, Child: Domain>: Domai
   ) {
     self._toChildState = state
     self._fromChildAction = action
-//    self.fromChildAction = { $0 = action($1) }
   }
   public func toChildState(_ parentState: ParentState) throws -> (Child.State) {
     try _toChildState(parentState)

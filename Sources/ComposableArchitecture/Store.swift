@@ -129,7 +129,7 @@ public final class Store<State, Action> {
     private let reducer: any ReducerProtocol<State, Action>
   #else
     private let reducer: (inout State, Action) -> Effect<Action, Never>
-    fileprivate var _scope: AnyStoreScope?
+    fileprivate var scope: AnyStoreScope?
   #endif
   var state: CurrentValueSubject<State, Never>
   #if DEBUG
@@ -300,7 +300,7 @@ public final class Store<State, Action> {
     #if swift(>=5.7) && !DEBUG
       return self.reducer.rescope(self, state: toChildState, action: fromChildAction)
     #else
-      return (self._scope ?? StoreScope(root: self))
+      return (self.scope ?? StoreScope(root: self))
         .rescope(self, state: toChildState, action: fromChildAction)
     #endif
   }
@@ -716,7 +716,7 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
           guard !isSending else { return }
           rescopedStore?.state.value = toRescopedState(newValue)
         }
-      rescopedStore._scope = StoreScope<RootState, RootAction>(
+      rescopedStore.scope = StoreScope<RootState, RootAction>(
         root: self.root,
         fromScopedAction: { fromScopedAction(fromRescopedAction($0)) }
       )

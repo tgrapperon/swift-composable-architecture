@@ -18,6 +18,11 @@ public protocol DomainScope {
   func fromChildAction(_ childAction: Child.Action) -> ParentAction
 }
 
+extension Optional: Domain where Wrapped: Domain {
+  public typealias State = Wrapped.State?
+  public typealias Action = Wrapped.Action
+}
+
 public protocol WritableDomainScope: DomainScope {
   func fromChildState(_ parentState: inout ParentState, _ childState: Child.State)
   func toChildAction(_ parentAction: ParentAction) -> Child.Action?
@@ -64,16 +69,15 @@ public struct DirectDomainScope<ParentState, ParentAction, Child: Domain>: Domai
 // TODO: Find a shorter name
 public struct WritableDirectDomainScope<ParentState, ParentAction, Child: Domain>: WritableDomainScope {
   public enum StatePath {
-    case casePath(
-      CasePath<ParentState, Child.State>,
-      file: StaticString,
-      fileID: StaticString,
-      line: UInt
-    )
+    case casePath(CasePath<ParentState, Child.State>)
     case keyPath(WritableKeyPath<ParentState, Child.State>)
   }
   public let statePath: StatePath
   public let actionCasePath: CasePath<ParentAction, Child.Action>
+  
+  @usableFromInline let file: StaticString
+  @usableFromInline let fileID: StaticString
+  @usableFromInline let line: UInt
   
   public init(
     state keyPath: WritableKeyPath<ParentState, Child.State>,
@@ -84,13 +88,30 @@ public struct WritableDirectDomainScope<ParentState, ParentAction, Child: Domain
   ) {
     self.statePath = .keyPath(keyPath)
     self.actionCasePath = action
+    self.file = file
+    self.fileID = fileID
+    self.line = line
+  }
+  
+  public init<Wrapped>(
+    state keyPath: WritableKeyPath<ParentState, Wrapped.State?>,
+    action: CasePath<ParentAction, Wrapped.Action>,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) where Child == Wrapped? {
+    self.statePath = .keyPath(keyPath)
+    self.actionCasePath = action
+    self.file = file
+    self.fileID = fileID
+    self.line = line
   }
   
   public func toChildState(_ parentState: ParentState) throws -> (Child.State) {
     switch statePath {
     case let .keyPath(keyPath):
       return parentState[keyPath: keyPath]
-    case let .casePath(casePath, file: file, fileID: fileID, line: line):
+    case let .casePath(casePath):
       guard let childState = casePath.extract(from: parentState) else {
         throw DomainExtractionFailed(file: file, fileID: fileID, line: line)
       }
@@ -106,7 +127,7 @@ public struct WritableDirectDomainScope<ParentState, ParentAction, Child: Domain
     switch self.statePath {
     case let .keyPath(keyPath):
       parentState[keyPath: keyPath] = childState
-    case let .casePath(casePath, file: _, fileID: _, line: _):
+    case let .casePath(casePath):
       parentState = casePath.embed(childState)
     }
   }
@@ -119,7 +140,7 @@ public struct WritableDirectDomainScope<ParentState, ParentAction, Child: Domain
     switch statePath {
     case let .keyPath(keyPath):
       return body(&parent[keyPath: keyPath])
-    case let .casePath(casePath, file: _, fileID: _, line: _):
+    case let .casePath(casePath):
       return try casePath.modify(&parent, body)
     }
   }
@@ -133,7 +154,10 @@ extension WritableDirectDomainScope {
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) {
-    self.statePath = .casePath(casePath, file: file, fileID: fileID, line: line)
+    self.statePath = .casePath(casePath)
     self.actionCasePath = action
+    self.file = file
+    self.fileID = fileID
+    self.line = line
   }
 }

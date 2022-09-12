@@ -27,6 +27,21 @@ extension ReducerProtocol {
       line: line
     )
   }
+  
+  @inlinable
+  public func ifLet<Wrapped: ReducerProtocol>(
+    _ scope: WritableDirectDomainScope<State, Action, Wrapped?>,
+    @ReducerBuilderOf<Wrapped> then wrapped: () -> Wrapped,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> _IfLetReducer<Self, Wrapped> {
+    .init(
+      parent: self,
+      child: wrapped(),
+      scope: scope
+    )
+  }
 }
 
 public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
@@ -37,19 +52,7 @@ public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Re
   let child: Child
 
   @usableFromInline
-  let toChildState: WritableKeyPath<Parent.State, Child.State?>
-
-  @usableFromInline
-  let toChildAction: CasePath<Parent.Action, Child.Action>
-
-  @usableFromInline
-  let file: StaticString
-
-  @usableFromInline
-  let fileID: StaticString
-
-  @usableFromInline
-  let line: UInt
+  let domainScope: WritableDirectDomainScope<Parent.State, Parent.Action, Child?>
 
   @inlinable
   init(
@@ -63,11 +66,24 @@ public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Re
   ) {
     self.parent = parent
     self.child = child
-    self.toChildState = toChildState
-    self.toChildAction = toChildAction
-    self.file = file
-    self.fileID = fileID
-    self.line = line
+    self.domainScope = .init(
+      state: toChildState,
+      action: toChildAction,
+      file: file,
+      fileID: fileID,
+      line: line
+    )
+  }
+  
+  @inlinable
+  init(
+    parent: Parent,
+    child: Child,
+    scope: WritableDirectDomainScope<Parent.State, Parent.Action, Child?>
+  ) {
+    self.parent = parent
+    self.child = child
+    self.domainScope = scope
   }
 
   @inlinable
@@ -82,9 +98,9 @@ public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Re
   func reduceChild(
     into state: inout Parent.State, action: Parent.Action
   ) -> Effect<Parent.Action, Never> {
-    guard let childAction = self.toChildAction.extract(from: action)
+    guard let childAction = self.domainScope.toChildAction(action)
     else { return .none }
-    guard state[keyPath: self.toChildState] != nil else {
+    guard (try! self.domainScope.toChildState(state)) != nil else {
       runtimeWarning(
         """
         An "ifLet" at "%@:%d" received a child action when child state was "nil". …
@@ -107,17 +123,18 @@ public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Re
         applications, use "IfLetStore".
         """,
         [
-          "\(self.fileID)",
-          self.line,
+          "\(self.domainScope.fileID)",
+          self.domainScope.line,
           debugCaseOutput(action),
           typeName(Child.State.self),
         ],
-        file: self.file,
-        line: self.line
+        file: self.domainScope.file,
+        line: self.domainScope.line
       )
       return .none
     }
-    return self.child.reduce(into: &state[keyPath: self.toChildState]!, action: childAction)
-      .map(self.toChildAction.embed)
+    return try! self.domainScope.modify(&state) {
+      self.child.reduce(into: &$0!, action: childAction)
+    }.map(self.domainScope.fromChildAction)
   }
 }

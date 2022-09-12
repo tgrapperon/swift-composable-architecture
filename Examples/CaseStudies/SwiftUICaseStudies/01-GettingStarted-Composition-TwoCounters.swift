@@ -19,11 +19,14 @@ struct TwoCounters: ReducerProtocol {
     case counter2(Counter.Action)
   }
 
+  static let counter1 = DomainScope<Counter>(state: \.counter1, action: /Action.counter1)
+  static let counter2 = DomainScope<Counter>(state: \.counter2, action: /Action.counter2)
+
   var body: some ReducerProtocol<State, Action> {
-    Scope(state: \.counter1, action: /Action.counter1) {
+    Scope(Self.counter1) {
       Counter()
     }
-    Scope(state: \.counter2, action: /Action.counter2) {
+    Scope(Self.counter2) {
       Counter()
     }
   }
@@ -42,7 +45,7 @@ struct TwoCountersView: View {
         Text("Counter 1")
         Spacer()
         CounterView(
-          store: self.store.scope(state: \.counter1, action: TwoCounters.Action.counter1)
+          store: self.store.scope(TwoCounters.counter1)
         )
       }
 
@@ -50,7 +53,7 @@ struct TwoCountersView: View {
         Text("Counter 2")
         Spacer()
         CounterView(
-          store: self.store.scope(state: \.counter2, action: TwoCounters.Action.counter2)
+          store: self.store.scope(TwoCounters.counter2)
         )
       }
     }

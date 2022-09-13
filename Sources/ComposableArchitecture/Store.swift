@@ -305,6 +305,12 @@ public final class Store<State, Action> {
     #endif
   }
 
+  public func scope<S: DomainScope>(
+    _ scope: S
+  ) -> Store<S.Child.State, S.Child.Action> where S.ParentState == State, S.ParentAction == Action {
+    self.scope(state: { try! scope.toChildState($0) }, action: scope.fromChildAction)
+  }
+
   /// Scopes the store to one that exposes child state.
   ///
   /// A version of ``scope(state:action:)`` that leaves the action type unchanged.
@@ -565,8 +571,8 @@ public final class Store<State, Action> {
 public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
 
 #if swift(>=5.7) && !DEBUG
-  fileprivate extension ReducerProtocol {
-    func rescope<ChildState, ChildAction>(
+  extension ReducerProtocol {
+    fileprivate func rescope<ChildState, ChildAction>(
       _ store: Store<State, Action>,
       state toChildState: @escaping (State) -> ChildState,
       action fromChildAction: @escaping (ChildAction) -> Action

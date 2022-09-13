@@ -96,18 +96,7 @@
 /// For an alternative to using ``Scope`` with state case paths that enforces the order, check out
 /// the ``ifCaseLet(_:action:then:file:fileID:line:)`` operator.
 public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerProtocol {
-  public enum StatePath {
-    case casePath(
-      CasePath<ParentState, Child.State>,
-      file: StaticString,
-      fileID: StaticString,
-      line: UInt
-    )
-    case keyPath(WritableKeyPath<ParentState, Child.State>)
-  }
-
-  public let toChildState: StatePath
-  public let toChildAction: CasePath<ParentAction, Child.Action>
+  public let domainScope: WritableDirectDomainScope<ParentState, ParentAction, Child>
   public let child: Child
 
   /// Initializes a reducer that runs the given child reducer against a slice of parent state and
@@ -137,8 +126,17 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
     action toChildAction: CasePath<ParentAction, Child.Action>,
     @ReducerBuilderOf<Child> _ child: () -> Child
   ) {
-    self.toChildState = .keyPath(toChildState)
-    self.toChildAction = toChildAction
+    self.domainScope = .init(state: toChildState, action: toChildAction)
+    self.child = child()
+  }
+  
+  ///   - child: A reducer that will be invoked with child actions against child state.
+  @inlinable
+  public init(
+    _ scope: WritableDirectDomainScope<ParentState, ParentAction, Child>,
+    @ReducerBuilderOf<Child> _ child: () -> Child
+  ) {
+    self.domainScope = scope
     self.child = child()
   }
 
@@ -210,8 +208,7 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) {
-    self.toChildState = .casePath(toChildState, file: file, fileID: fileID, line: line)
-    self.toChildAction = toChildAction
+    self.domainScope = .init(state: toChildState, action: toChildAction)
     self.child = child()
   }
 
@@ -219,60 +216,53 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
   public func reduce(
     into state: inout ParentState, action: ParentAction
   ) -> Effect<ParentAction, Never> {
-    guard let childAction = self.toChildAction.extract(from: action)
-    else { return .ignored }
-    switch self.toChildState {
-    case let .casePath(toChildState, file, fileID, line):
-      guard var childState = toChildState.extract(from: state) else {
-        runtimeWarning(
-          """
-          A "Scope" at "%@:%d" received a child action when child state was set to a different \
-          case. …
-
-            Action:
-              %@
-            State:
-              %@
-
-          This is generally considered an application logic error, and can happen for a few \
-          reasons:
-
-          • A parent reducer set "%@" to a different case before the scoped reducer ran. Child \
-          reducers must run before any parent reducer sets child state to a different case. This \
-          ensures that child reducers can handle their actions while their state is still \
-          available. Consider using "ReducerProtocol.ifCaseLet" to embed this child reducer in the \
-          parent reducer that change its state to ensure the child reducer runs first.
-
-          • An in-flight effect emitted this action when child state was unavailable. While it may \
-          be perfectly reasonable to ignore this action, consider canceling the associated effect \
-          before child state changes to another case, especially if it is a long-living effect.
-
-          • This action was sent to the store while state was another case. Make sure that actions \
-          for this reducer can only be sent from a view store when state is set to the appropriate \
-          case. In SwiftUI applications, use "SwitchStore".
-          """,
-          [
-            "\(fileID)",
-            line,
-            debugCaseOutput(action),
-            debugCaseOutput(state),
-            typeName(ParentState.self),
-          ],
-          file: file,
-          line: line
-        )
-        return .none
+    guard let childAction = self.domainScope.toChildAction(action)
+    else { return .none }
+    do {
+      return try domainScope.modify(&state) {
+        self.child.reduce(into: &$0, action: childAction)
       }
-      defer { state = toChildState.embed(childState) }
+      .map(self.domainScope.fromChildAction)
+    } catch {
+      let error = error as! DomainExtractionFailed
+      runtimeWarning(
+        """
+        A "Scope" at "%@:%d" received a child action when child state was set to a different \
+        case. …
 
-      return self.child
-        .reduce(into: &childState, action: childAction)
-        .map(self.toChildAction.embed)
+          Action:
+            %@
+          State:
+            %@
 
-    case let .keyPath(toChildState):
-      return self.child
-        .reduce(into: &state[keyPath: toChildState], action: childAction)
-        .map(self.toChildAction.embed)
+        This is generally considered an application logic error, and can happen for a few \
+        reasons:
+
+        • A parent reducer set "%@" to a different case before the scoped reducer ran. Child \
+        reducers must run before any parent reducer sets child state to a different case. This \
+        ensures that child reducers can handle their actions while their state is still \
+        available. Consider using "ReducerProtocol.ifCaseLet" to embed this child reducer in the \
+        parent reducer that change its state to ensure the child reducer runs first.
+
+        • An in-flight effect emitted this action when child state was unavailable. While it may \
+        be perfectly reasonable to ignore this action, consider canceling the associated effect \
+        before child state changes to another case, especially if it is a long-living effect.
+
+        • This action was sent to the store while state was another case. Make sure that actions \
+        for this reducer can only be sent from a view store when state is set to the appropriate \
+        case. In SwiftUI applications, use "SwitchStore".
+        """,
+        [
+          "\(error.fileID)",
+          error.line,
+          debugCaseOutput(action),
+          debugCaseOutput(state),
+          typeName(ParentState.self),
+        ],
+        file: error.file,
+        line: error.line
+      )
+      return .none
     }
   }
 }

@@ -57,7 +57,7 @@
   ///   }
   /// }
   /// ```
-  public protocol ReducerProtocol<State, Action> {
+  public protocol ReducerProtocol<State, Action>: Domain {
     /// A type that holds the current state of the reducer.
     associatedtype State
 
@@ -166,7 +166,7 @@
   ///   }
   /// }
   /// ```
-  public protocol ReducerProtocol {
+  public protocol ReducerProtocol: Domain {
     /// A type that holds the current state of the reducer.
     associatedtype State
 
@@ -217,6 +217,10 @@
     var body: Body { get }
   }
 #endif
+
+extension ReducerProtocol {
+  public typealias DomainScope<Child: Domain> = WritableDirectDomainScope<State, Action, Child>
+}
 
 extension ReducerProtocol where Body == Never {
   /// A non-existent body.

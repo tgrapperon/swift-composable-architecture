@@ -21,6 +21,11 @@ struct OptionalBasics: ReducerProtocol {
     case optionalCounter(Counter.Action)
     case toggleCounterButtonTapped
   }
+  
+  static let optionalCounter = DomainScope<Counter?>(
+    state: \.optionalCounter,
+    action: /Action.optionalCounter
+  )
 
   var body: some ReducerProtocol<State, Action> {
     Reduce { state, action in
@@ -35,7 +40,7 @@ struct OptionalBasics: ReducerProtocol {
         return .none
       }
     }
-    .ifLet(\.optionalCounter, action: /Action.optionalCounter) {
+    .ifLet(Self.optionalCounter) {
       Counter()
     }
   }
@@ -56,10 +61,7 @@ struct OptionalBasicsView: View {
         }
 
         IfLetStore(
-          self.store.scope(
-            state: \.optionalCounter,
-            action: OptionalBasics.Action.optionalCounter
-          ),
+          self.store.scope(OptionalBasics.optionalCounter),
           then: { store in
             Text(template: "`CounterState` is non-`nil`")
             CounterView(store: store)

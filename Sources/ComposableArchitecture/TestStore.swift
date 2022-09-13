@@ -1046,7 +1046,7 @@
       }
 
       switch effects.operation {
-      case .none, .ignored:
+      case .none:
         self.effectDidSubscribe.continuation.yield()
         return .none
 

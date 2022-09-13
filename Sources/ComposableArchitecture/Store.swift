@@ -355,7 +355,7 @@ public final class Store<State, Action> {
       #endif
 
       switch effect.operation {
-      case .none, .ignored:
+      case .none:
         break
       case let .publisher(publisher):
         var didComplete = false

@@ -83,7 +83,7 @@ public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Re
     into state: inout Parent.State, action: Parent.Action
   ) -> Effect<Parent.Action, Never> {
     guard let childAction = self.toChildAction.extract(from: action)
-    else { return .none }
+    else { return .ignored }
     guard state[keyPath: self.toChildState] != nil else {
       runtimeWarning(
         """

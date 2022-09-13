@@ -21,7 +21,7 @@ extension Effect {
     latest: Bool
   ) -> Self {
     switch self.operation {
-    case .none:
+    case .none, .ignored:
       return .none
     case .publisher, .run:
       return self.receive(on: scheduler)

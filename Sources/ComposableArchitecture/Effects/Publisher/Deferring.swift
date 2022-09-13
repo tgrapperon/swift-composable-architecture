@@ -27,7 +27,7 @@ extension Effect {
     options: S.SchedulerOptions? = nil
   ) -> Self {
     switch self.operation {
-    case .none:
+    case .none, .ignored:
       return .none
     case .publisher, .run:
       return Self(

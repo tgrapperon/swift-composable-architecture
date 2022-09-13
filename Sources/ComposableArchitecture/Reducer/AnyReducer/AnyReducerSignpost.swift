@@ -91,7 +91,7 @@ extension Effect where Failure == Never {
     let sid = OSSignpostID(log: log)
 
     switch self.operation {
-    case .none:
+    case .none, .ignored:
       return self
     case let .publisher(publisher):
       return .init(

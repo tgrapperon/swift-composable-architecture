@@ -16,7 +16,7 @@ extension Effect {
   /// - Returns: A publisher.
   public func animation(_ animation: Animation? = .default) -> Self {
     switch self.operation {
-    case .none:
+    case .none, .ignored:
       return .none
     case let .publisher(publisher):
       return Self(

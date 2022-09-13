@@ -12,7 +12,7 @@ where Action: BindableAction, State == Action.State {
     into state: inout State, action: Action
   ) -> Effect<Action, Never> {
     guard let bindingAction = (/Action.binding).extract(from: action)
-    else { return .none }
+    else { return .ignored }
 
     bindingAction.set(&state)
     return .none

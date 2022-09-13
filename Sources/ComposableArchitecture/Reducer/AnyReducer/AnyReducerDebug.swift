@@ -208,7 +208,7 @@ extension AnyReducer {
         }
 
         switch effects.operation {
-        case .none:
+        case .none, .ignored:
           return .fireAndForget { print() }
         case .publisher:
           return .fireAndForget { print() }.merge(with: effects)

@@ -15,7 +15,7 @@ extension Effect: Publisher {
 
   var publisher: AnyPublisher<Action, Failure> {
     switch self.operation {
-    case .none:
+    case .none, .ignored:
       return Empty().eraseToAnyPublisher()
     case let .publisher(publisher):
       return publisher

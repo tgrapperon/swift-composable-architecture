@@ -35,7 +35,7 @@ import XCTestDynamicOverlay
 public struct Effect<Action, Failure: Error> {
   @usableFromInline
   enum Operation {
-    case none
+    case none(ignored: Bool)
     case publisher(AnyPublisher<Action, Failure>)
     case run(TaskPriority? = nil, @Sendable (Send<Action>) async -> Void)
   }
@@ -56,7 +56,12 @@ extension Effect {
   /// return an effect, but you don't need to do anything.
   @inlinable
   public static var none: Self {
-    Self(operation: .none)
+    Self(operation: .none(ignored: false))
+  }
+  
+  @inlinable
+  static var ignored: Self {
+    Self(operation: .none(ignored: true))
   }
 }
 
@@ -365,6 +370,10 @@ extension Effect {
   @inlinable
   public func merge(with other: Self) -> Self {
     switch (self.operation, other.operation) {
+    case (_, .none(true)):
+      return self
+    case(.none(true), _):
+      return self
     case (_, .none):
       return self
     case (.none, _):
@@ -417,6 +426,10 @@ extension Effect {
   @_disfavoredOverload
   public func concatenate(with other: Self) -> Self {
     switch (self.operation, other.operation) {
+    case (_, .none(true)):
+      return self
+    case(.none(true), _):
+      return self
     case (_, .none):
       return self
     case (.none, _):

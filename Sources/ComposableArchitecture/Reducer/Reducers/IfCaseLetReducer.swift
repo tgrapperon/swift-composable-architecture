@@ -82,7 +82,7 @@ public struct _IfCaseLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>
     into state: inout Parent.State, action: Parent.Action
   ) -> Effect<Parent.Action, Never> {
     guard let childAction = self.toChildAction.extract(from: action)
-    else { return .none }
+    else { return .ignored }
     guard var childState = self.toChildState.extract(from: state) else {
       runtimeWarning(
         """

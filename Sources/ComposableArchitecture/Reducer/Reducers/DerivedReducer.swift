@@ -30,7 +30,7 @@ where Base.State == State, Base.Action == Action {
 
   public func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
     // Which one is higher cost? Extract state or action?
-    //    let derived = DerivedStateUpdate { [parentState = state] childState in
+    //    let derived = DerivedDomainStateUpdate { [parentState = state] childState in
     //      self.update(parentState, &childState)
     //    }
     //    defer {
@@ -49,15 +49,15 @@ where Base.State == State, Base.Action == Action {
 
 enum DerivedState {
   @usableFromInline
-  @TaskLocal static var stateUpdates: [ObjectIdentifier: DerivedStateUpdate] = [:]
+  @TaskLocal static var stateUpdates: [ObjectIdentifier: DerivedDomainStateUpdate] = [:]
   @usableFromInline
-  static func derivedState<State>(for state: State.Type) -> DerivedStateUpdate? {
+  static func derivedState<State>(for state: State.Type) -> DerivedDomainStateUpdate? {
     stateUpdates[ObjectIdentifier(state)]
   }
 }
 
 @usableFromInline
-final class DerivedStateUpdate: @unchecked Sendable {
+final class DerivedDomainStateUpdate: @unchecked Sendable {
 
   //  @usableFromInline
   //  var state: Any?
@@ -95,7 +95,7 @@ final class DerivedStateUpdate: @unchecked Sendable {
   }
 }
 
-//extension Optional where Wrapped == DerivedStateUpdate {
+//extension Optional where Wrapped == DerivedDomainStateUpdate {
 //  func modify<Parent, Child, Result>(
 //    parent: inout Parent,
 //    body: (inout Child) -> Result) -> Result

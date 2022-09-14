@@ -125,7 +125,7 @@ public final class Store<State, Action> {
   var effectCancellables: [UUID: AnyCancellable] = [:]
   private var isSending = false
   var parentCancellable: AnyCancellable?
-  #if swift(>=5.7) && !DEBUG
+  #if swift(>=5.7) && !DEBUG && false
     private let reducer: any ReducerProtocol<State, Action>
   #else
     private let reducer: (inout State, Action) -> Effect<Action, Never>
@@ -297,7 +297,7 @@ public final class Store<State, Action> {
   ) -> Store<ChildState, ChildAction> {
     self.threadCheck(status: .scope)
 
-    #if swift(>=5.7) && !DEBUG
+    #if swift(>=5.7) && !DEBUG && false
       return self.reducer.rescope(self, state: toChildState, action: fromChildAction)
     #else
       return (self.scope ?? StoreScope(root: self))
@@ -348,7 +348,7 @@ public final class Store<State, Action> {
     while index < self.bufferedActions.endIndex {
       defer { index += 1 }
       let action = self.bufferedActions[index]
-      #if swift(>=5.7) && !DEBUG
+      #if swift(>=5.7) && !DEBUG && false
         let effect = self.reducer.reduce(into: &currentState, action: action)
       #else
         let effect = self.reducer(&currentState, action)
@@ -537,7 +537,7 @@ public final class Store<State, Action> {
     mainThreadChecksEnabled: Bool
   ) where R.State == State, R.Action == Action {
     self.state = CurrentValueSubject(initialState)
-    #if swift(>=5.7) && !DEBUG
+    #if swift(>=5.7) && !DEBUG && false
       self.reducer = reducer
     #else
       self.reducer = reducer.reduce
@@ -564,7 +564,7 @@ public final class Store<State, Action> {
 /// ```
 public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
 
-#if swift(>=5.7) && !DEBUG
+#if swift(>=5.7) && !DEBUG && false
   fileprivate extension ReducerProtocol {
     func rescope<ChildState, ChildAction>(
       _ store: Store<State, Action>,

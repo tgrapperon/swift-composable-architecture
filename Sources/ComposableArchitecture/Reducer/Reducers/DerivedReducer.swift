@@ -1,4 +1,4 @@
-public struct DerivedReducer<State, Action, ChildState, ChildAction, Base: ReducerProtocol>:
+public struct DerivedStateReducer<State, Action, ChildState, ChildAction, Base: ReducerProtocol>:
   ReducerProtocol
 where Base.State == State, Base.Action == Action {
   @usableFromInline
@@ -29,42 +29,29 @@ where Base.State == State, Base.Action == Action {
   }
 
   public func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
-    // Which one is higher cost? Extract state or action?
-    //    let derived = DerivedDomainStateUpdate { [parentState = state] childState in
-    //      self.update(parentState, &childState)
-    //    }
-    //    defer {
-    //      if let childState = derived.state as? ChildState {
-    //        embed(&state, childState)
-    //      }
-    //    }
-    //    var current = DerivedState.stateUpdates
-    //    current[ObjectIdentifier(ChildState.self)] = derived
-    //    return DerivedState.$stateUpdates.withValue(current) {
-    //      base.reduce(into: &state, action: action)
-    //    }
-    return .none
+    var stateUpdates = DerivedState.stateUpdates
+    stateUpdates[ObjectIdentifier(ChildState.self)] = DerivedDomainStateUpdate(
+      update: self.update,
+      embed: self.embed
+    )
+    return DerivedState.$stateUpdates.withValue(stateUpdates) {
+      base.reduce(into: &state, action: action)
+    }
   }
 }
 
+@usableFromInline
 enum DerivedState {
   @usableFromInline
   @TaskLocal static var stateUpdates: [ObjectIdentifier: DerivedDomainStateUpdate] = [:]
   @usableFromInline
-  static func derivedState<State>(for state: State.Type) -> DerivedDomainStateUpdate? {
+  static func `for`<State>(_ state: State.Type) -> DerivedDomainStateUpdate? {
     stateUpdates[ObjectIdentifier(state)]
   }
 }
 
 @usableFromInline
 final class DerivedDomainStateUpdate: @unchecked Sendable {
-
-  //  @usableFromInline
-  //  var state: Any?
-  //  @usableFromInline
-  //  func dispose(_ state: Any) {
-  //    self.state = state
-  //  }
   @usableFromInline
   var update: Any
   @usableFromInline

@@ -80,7 +80,9 @@ extension DerivedDomainScope: WritableDomainScope where Scope: WritableDomainSco
 
 extension WritableDomainScope {
   @usableFromInline
-  func derived(stateUpdate: DerivedDomainStateUpdate?) -> DerivedDomainScope<Self> {
+  func derived(
+    _ stateUpdate: DerivedDomainStateUpdate? = DerivedState.for(Child.State.self)
+  ) -> DerivedDomainScope<Self> {
     if let stateUpdate = stateUpdate,
        let update = stateUpdate.update as? (Self.ParentState, inout Self.Child.State) -> Void,
        let embed = stateUpdate.embed as? (inout Self.ParentState, Self.Child.State) -> Void
@@ -91,7 +93,11 @@ extension WritableDomainScope {
         embed: { embed(&$0, $1) }
       )
     } else {
-      return DerivedDomainScope(domainScope: self, update: { _, _ in () }, embed: { _, _ in () })
+      return DerivedDomainScope(
+        domainScope: self,
+        update: { _, _ in () },
+        embed: { _, _ in () }
+      )
     }
   }
 }

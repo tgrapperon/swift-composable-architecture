@@ -219,7 +219,7 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
     guard let childAction = self.domainScope.toChildAction(action)
     else { return .none }
     do {
-      return try domainScope.modify(&state) {
+      return try domainScope.derived().modify(&state) {
         self.child.reduce(into: &$0, action: childAction)
       }
       .map(self.domainScope.fromChildAction)

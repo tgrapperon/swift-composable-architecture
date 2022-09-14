@@ -100,7 +100,7 @@ public struct _IfLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: Re
   ) -> Effect<Parent.Action, Never> {
     guard let childAction = self.domainScope.toChildAction(action)
     else { return .none }
-    guard (try! self.domainScope.toChildState(state)) != nil else {
+    guard (try! self.domainScope.derived().toChildState(state)) != nil else {
       runtimeWarning(
         """
         An "ifLet" at "%@:%d" received a child action when child state was "nil". …

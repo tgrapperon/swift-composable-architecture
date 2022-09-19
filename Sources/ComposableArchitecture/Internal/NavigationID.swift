@@ -1,4 +1,3 @@
-import Foundation
 extension DependencyValues {
   var navigationID: NavigationID {
     get { self[NavigationIDKey.self] }
@@ -18,15 +17,10 @@ public struct NavigationID: @unchecked Sendable {
 
   public static let live = Self { UUID() }
   public static var incrementing: Self {
-    let next = _next()
-    return Self { next() }
-  }
-}
-
-func _next() -> () -> AnyHashable {
-  var count = 1
-  return {
-    defer { count += 1 }
-    return count
+    var count = 1
+    return Self {
+      defer { count += 1 }
+      return count
+    }
   }
 }

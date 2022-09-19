@@ -1,6 +1,5 @@
 import Combine
 import Dispatch
-import Foundation
 
 extension Effect {
   /// Throttles an effect so that it only publishes one output per given interval.

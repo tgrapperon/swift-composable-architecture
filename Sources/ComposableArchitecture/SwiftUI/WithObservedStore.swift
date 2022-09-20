@@ -30,7 +30,7 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState: Equatable, Vie
     self.viewStateCancellable = store.state
       .dropFirst()
       .map(toViewState)
-      .sink { [weak self] viewState in self?.viewState = viewState b}
+      .sink { [weak self] viewState in self?.viewState = viewState }
   }
   
   var observedStore: ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {

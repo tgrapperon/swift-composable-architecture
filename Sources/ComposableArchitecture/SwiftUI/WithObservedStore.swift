@@ -8,13 +8,18 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState, ViewAction>: V
 >
 {
   private let dynamicDeduplicator: DynamicDeduplicator<StoreState>
+  private let viewStateIsDuplicate: (ViewState, ViewState) -> Bool
   let store: Store<StoreState, StoreAction>
   private(set) var token: UInt = 0
   let toViewState: (StoreState) -> ViewState
   let fromViewAction: (ViewAction) -> StoreAction
   var viewStateCancellable: AnyCancellable?
   var viewState: ViewState
-
+  
+  lazy var viewViewStore = ViewStore(
+    store.scope(state: toViewState, action: fromViewAction),
+    removeDuplicates: viewStateIsDuplicate
+  )
   init(
     store: Store<StoreState, StoreAction>,
     observe toViewState: @escaping (StoreState) -> ViewState,
@@ -26,6 +31,7 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState, ViewAction>: V
       isDuplicate(toViewState(lhs), toViewState(rhs))
     }
     self.dynamicDeduplicator = dynamicDeduplicator
+    self.viewStateIsDuplicate = isDuplicate
     self.store = store
     self.viewState = toViewState(store.state.value)
     self.toViewState = toViewState
@@ -130,6 +136,7 @@ public struct WithObservedStore<StoreState, StoreAction, ViewState, ViewAction, 
 }
 
 @dynamicMemberLookup
+@propertyWrapper
 public struct ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {
   let state: StoreState
   let token: UInt
@@ -144,6 +151,12 @@ public struct ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {
   public subscript<Value>(dynamicMember keyPath: KeyPath<ViewState, Value>) -> Value {
     viewStore.viewState[keyPath: keyPath]
   }
+  
+  public var wrappedValue: ViewStore<ViewState, ViewAction> {
+    viewStore.viewViewStore
+  }
+  
+  public var projectedValue: Self { self }
 }
 
 extension ObservedStore {
@@ -153,14 +166,14 @@ extension ObservedStore {
 }
 
 extension ObservedStore {
-  @_disfavoredOverload
-  public func scope<ChildState, ChildAction>(
-    state toChildState: @escaping (StoreState) -> ChildState,
-    action fromChildAction: @escaping (ChildAction) -> StoreAction
-  ) -> Store<ChildState, ChildAction> {
-    self.viewStore.store.scope(state: toChildState, action: fromChildAction)
-  }
-  
+//  @_disfavoredOverload
+//  public func scope<ChildState, ChildAction>(
+//    state toChildState: @escaping (StoreState) -> ChildState,
+//    action fromChildAction: @escaping (ChildAction) -> StoreAction
+//  ) -> Store<ChildState, ChildAction> {
+//    self.viewStore.store.scope(state: toChildState, action: fromChildAction)
+//  }
+//  
   /// Test this approach
   @_disfavoredOverload
   public func scope<ChildState, ChildAction>(
@@ -196,11 +209,11 @@ extension ObservedStore {
       }, action: fromChildAction)
   }
   
-  public func scope<ID: Hashable, EachState, EachAction>(
-    state toEachState: @escaping (StoreState) -> IdentifiedArray<ID, EachState>,
-    action fromEachAction: @escaping (ID, EachAction) -> StoreAction
-  ) {
-    
-    let scoped = self.viewStore.store.scope(state: toEachState, action: fromEachAction)
-  }
+//  public func scope<ID: Hashable, EachState, EachAction>(
+//    state toEachState: @escaping (StoreState) -> IdentifiedArray<ID, EachState>,
+//    action fromEachAction: @escaping (ID, EachAction) -> StoreAction
+//  ) {
+//
+//    let scoped = self.viewStore.store.scope(state: toEachState, action: fromEachAction)
+//  }
 }

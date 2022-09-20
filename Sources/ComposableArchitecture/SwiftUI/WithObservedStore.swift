@@ -108,4 +108,15 @@ extension ObservedStore {
   ) -> Store<ChildState, ChildAction> {
     self.viewStore.store.scope(state: toChildState, action: fromChildAction)
   }
+  
+  public func scope<ChildState, ChildAction>(
+    state toChildState: @escaping (StoreState) -> ChildState?,
+    action fromChildAction: @escaping (ChildAction) -> StoreAction
+  ) -> Store<ChildState, ChildAction>? {
+    guard let optionalChildState = toChildState(self.state)
+    else { return nil }
+    return self.viewStore.store.scope(state: {
+      toChildState($0) ?? optionalChildState
+    }, action: fromChildAction)
+  }
 }

@@ -9,7 +9,7 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState, ViewAction>: V
 {
   private let dynamicDeduplicator: DynamicDeduplicator<StoreState>
   let store: Store<StoreState, StoreAction>
-  private var token: UInt = 0
+  private(set) var token: UInt = 0
   let toViewState: (StoreState) -> ViewState
   let fromViewAction: (ViewAction) -> StoreAction
   var viewStateCancellable: AnyCancellable?
@@ -134,7 +134,9 @@ public struct ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {
   let state: StoreState
   let token: UInt
   let viewStore: ObservedViewStore<StoreState, StoreAction, ViewState, ViewAction>
-
+  
+  public var store: Store<StoreState, StoreAction> { viewStore.store }
+  
   static func == (lhs: ObservedStore, rhs: ObservedStore) -> Bool {
     lhs.token == rhs.token
   }
@@ -158,16 +160,47 @@ extension ObservedStore {
   ) -> Store<ChildState, ChildAction> {
     self.viewStore.store.scope(state: toChildState, action: fromChildAction)
   }
+  
+  /// Test this approach
+  @_disfavoredOverload
+  public func scope<ChildState, ChildAction>(
+    state toChildState: @escaping (StoreState) -> ChildState,
+    action fromChildAction: @escaping (ChildAction) -> StoreAction
+  ) -> ObservedStore<ChildState, ChildAction, ChildState, ChildAction> {
+    let childStore = self.viewStore.store.scope(
+      state: toChildState,
+      action: fromChildAction
+    )
+    return ObservedStore<ChildState, ChildAction, ChildState, ChildAction>(
+      state: childStore.state.value,
+      token: self.viewStore.token,
+      viewStore: .init(
+        store: childStore,
+        observe: { $0 },
+        send: { $0 },
+        removeDuplicates: { _, _ in true }
+      )
+    )
+  }
 
   public func scope<ChildState, ChildAction>(
     state toChildState: @escaping (StoreState) -> ChildState?,
     action fromChildAction: @escaping (ChildAction) -> StoreAction
   ) -> Store<ChildState, ChildAction>? {
+    // TODO: Register for deduplication
     guard let optionalChildState = toChildState(self.state)
     else { return nil }
     return self.viewStore.store.scope(
       state: {
         toChildState($0) ?? optionalChildState
       }, action: fromChildAction)
+  }
+  
+  public func scope<ID: Hashable, EachState, EachAction>(
+    state toEachState: @escaping (StoreState) -> IdentifiedArray<ID, EachState>,
+    action fromEachAction: @escaping (ID, EachAction) -> StoreAction
+  ) {
+    
+    let scoped = self.viewStore.store.scope(state: toEachState, action: fromEachAction)
   }
 }

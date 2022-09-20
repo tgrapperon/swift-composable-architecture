@@ -7,6 +7,7 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState: Equatable, Vie
 : ViewStore<StoreState, StoreAction>
 {
   private let dynamicDeduplicator: DynamicDeduplicator<StoreState>
+  let store: Store<StoreState, StoreAction>
   private var token: UInt = 0
   private let toViewState: (StoreState) -> ViewState
   private let fromViewAction: (ViewAction) -> StoreAction
@@ -23,6 +24,7 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState: Equatable, Vie
       toViewState(lhs) == toViewState(rhs)
     }
     self.dynamicDeduplicator = dynamicDeduplicator
+    self.store = store
     self.viewState = toViewState(store.state.value)
     self.toViewState = toViewState
     self.fromViewAction = fromViewAction
@@ -36,6 +38,7 @@ final class ObservedViewStore<StoreState, StoreAction, ViewState: Equatable, Vie
   var observedStore: ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {
     defer { token += 1 }
     return ObservedStore(
+      state: self.state,
       token: self.token,
       viewStore: self
     )
@@ -85,6 +88,7 @@ public struct WithObservedStore<StoreState, StoreAction, ViewState: Equatable, V
 
 @dynamicMemberLookup
 public struct ObservedStore<StoreState, StoreAction, ViewState: Equatable, ViewAction> {
+  let state: StoreState
   let token: UInt
   let viewStore: ObservedViewStore<StoreState, StoreAction, ViewState, ViewAction>
   
@@ -94,5 +98,14 @@ public struct ObservedStore<StoreState, StoreAction, ViewState: Equatable, ViewA
   
   public subscript<Value>(dynamicMember keyPath: KeyPath<ViewState, Value>) -> Value {
     viewStore.viewState[keyPath: keyPath]
+  }
+}
+
+extension ObservedStore {
+  public func scope<ChildState, ChildAction>(
+    state toChildState: @escaping (StoreState) -> ChildState,
+    action fromChildAction: @escaping (ChildAction) -> StoreAction
+  ) -> Store<ChildState, ChildAction> {
+    self.viewStore.store.scope(state: toChildState, action: fromChildAction)
   }
 }

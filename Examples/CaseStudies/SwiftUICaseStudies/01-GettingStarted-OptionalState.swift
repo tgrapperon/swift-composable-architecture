@@ -52,31 +52,27 @@ struct OptionalBasicsView: View {
   let store: Store<OptionalBasicsState, OptionalBasicsAction>
 
   var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
+    WithObservedStore(self.store, observe: { $0 }) { observedStore in
       Form {
         Section {
           AboutView(readMe: readMe)
         }
 
         Button("Toggle counter state") {
-          viewStore.send(.toggleCounterButtonTapped)
+          observedStore.send(.toggleCounterButtonTapped)
         }
 
-        IfLetStore(
-          self.store.scope(
-            state: \.optionalCounter,
-            action: OptionalBasicsAction.optionalCounter
-          ),
-          then: { store in
-            Text(template: "`CounterState` is non-`nil`")
-            CounterView(store: store)
-              .buttonStyle(.borderless)
-              .frame(maxWidth: .infinity)
-          },
-          else: {
-            Text(template: "`CounterState` is `nil`")
-          }
-        )
+        if let counterStore = observedStore.scope(
+          state: \.optionalCounter,
+          action: OptionalBasicsAction.optionalCounter
+        ) {
+          Text(template: "`CounterState` is non-`nil`")
+          CounterView(store: counterStore)
+            .buttonStyle(.borderless)
+            .frame(maxWidth: .infinity)
+        } else {
+          Text(template: "`CounterState` is `nil`")
+        }
       }
     }
     .navigationTitle("Optional state")

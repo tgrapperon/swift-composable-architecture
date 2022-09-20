@@ -42,21 +42,22 @@ struct TwoCountersView: View {
       Section {
         AboutView(readMe: readMe)
       }
+      WithObservedStore(store) { observedStore in
+        HStack {
+          Text("Counter 1")
+          Spacer()
+          CounterView(
+            store: observedStore.scope(state: \.counter1, action: TwoCountersAction.counter1)
+          )
+        }
 
-      HStack {
-        Text("Counter 1")
-        Spacer()
-        CounterView(
-          store: self.store.scope(state: \.counter1, action: TwoCountersAction.counter1)
-        )
-      }
-
-      HStack {
-        Text("Counter 2")
-        Spacer()
-        CounterView(
-          store: self.store.scope(state: \.counter2, action: TwoCountersAction.counter2)
-        )
+        HStack {
+          Text("Counter 2")
+          Spacer()
+          CounterView(
+            store: observedStore.scope(state: \.counter2, action: TwoCountersAction.counter2)
+          )
+        }
       }
     }
     .buttonStyle(.borderless)

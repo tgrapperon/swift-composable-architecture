@@ -35,19 +35,19 @@ struct CounterView: View {
   let store: Store<CounterState, CounterAction>
 
   var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
+    WithObservedStore(self.store, observe: { $0 }) { observedStore in
       HStack {
         Button {
-          viewStore.send(.decrementButtonTapped)
+          observedStore.send(.decrementButtonTapped)
         } label: {
           Image(systemName: "minus")
         }
 
-        Text("\(viewStore.count)")
+        Text("\(observedStore.count)")
           .monospacedDigit()
 
         Button {
-          viewStore.send(.incrementButtonTapped)
+          observedStore.send(.incrementButtonTapped)
         } label: {
           Image(systemName: "plus")
         }

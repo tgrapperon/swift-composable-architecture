@@ -1,23 +1,36 @@
 import SwiftUI
+import Combine
 
-final class ObservedViewStore<StoreState, StoreAction, ViewState: Equatable, ViewAction>: ViewStore<
-  StoreState, StoreAction
->
+// TODO: Handle non `Equatable` `ViewState` and custom deduplication
+
+final class ObservedViewStore<StoreState, StoreAction, ViewState: Equatable, ViewAction>
+: ViewStore<StoreState, StoreAction>
 {
   private let dynamicDeduplicator: DynamicDeduplicator<StoreState>
   private var token: UInt = 0
-  
+  private let toViewState: (StoreState) -> ViewState
+  private let fromViewAction: (ViewAction) -> StoreAction
+  var viewStateCancellable: AnyCancellable?
+  var viewState: ViewState
+
   init(
     store: Store<StoreState, StoreAction>,
     observe toViewState : @escaping (StoreState) -> ViewState,
-    send: @escaping (ViewAction) -> StoreAction
+    send fromViewAction: @escaping (ViewAction) -> StoreAction
   ) {
 
     let dynamicDeduplicator: DynamicDeduplicator<StoreState> = .init { lhs, rhs in
       toViewState(lhs) == toViewState(rhs)
     }
     self.dynamicDeduplicator = dynamicDeduplicator
+    self.viewState = toViewState(store.state.value)
+    self.toViewState = toViewState
+    self.fromViewAction = fromViewAction
     super.init(store, removeDuplicates: dynamicDeduplicator.isDuplicate(lhs:rhs:))
+    self.viewStateCancellable = store.state
+      .dropFirst()
+      .map(toViewState)
+      .sink { [weak self] viewState in self?.viewState = viewState b}
   }
   
   var observedStore: ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {
@@ -39,6 +52,12 @@ final class DynamicDeduplicator<State> {
     if !baseline(lhs, rhs) { return false }
     if dynamicComparisons.isEmpty { return true }
     return !dynamicComparisons.values.contains { !$0(lhs, rhs) }
+  }
+  func register<ID: Hashable>(comparison: @escaping (State, State) -> Bool, id: ID) {
+    self.dynamicComparisons[id] = comparison
+  }
+  func disposeComparison<ID: Hashable>(id: ID) {
+    self.dynamicComparisons[id] = nil
   }
 }
 
@@ -64,7 +83,16 @@ public struct WithObservedStore<StoreState, StoreAction, ViewState: Equatable, V
   }
 }
 
-struct ObservedStore<StoreState, StoreAction, ViewState, ViewAction> {
+@dynamicMemberLookup
+public struct ObservedStore<StoreState, StoreAction, ViewState: Equatable, ViewAction> {
   let token: UInt
-  let viewStore: ViewStore<StoreState, StoreAction>
+  let viewStore: ObservedViewStore<StoreState, StoreAction, ViewState, ViewAction>
+  
+  static func == (lhs: ObservedStore, rhs: ObservedStore) -> Bool {
+    lhs.token == rhs.token
+  }
+  
+  public subscript<Value>(dynamicMember keyPath: KeyPath<ViewState, Value>) -> Value {
+    viewStore.viewState[keyPath: keyPath]
+  }
 }

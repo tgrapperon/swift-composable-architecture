@@ -580,6 +580,7 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
     RootState, RootAction, ScopedState, ScopedAction
   >: ReducerProtocol {
     let rootStore: Store<RootState, RootAction>
+    private var parentStores: [Any]
     let toScopedState: (RootState) -> ScopedState
     let fromScopedAction: (ScopedAction) -> RootAction
     private(set) var isSending = false
@@ -588,6 +589,7 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
     init(rootStore: Store<RootState, RootAction>)
     where RootState == ScopedState, RootAction == ScopedAction {
       self.rootStore = rootStore
+      self.parentStores = []
       self.toScopedState = { $0 }
       self.fromScopedAction = { $0 }
     }
@@ -595,10 +597,12 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
     @inlinable
     init(
       rootStore: Store<RootState, RootAction>,
+      parentStores: [Any],
       state toScopedState: @escaping (RootState) -> ScopedState,
       action fromScopedAction: @escaping (ScopedAction) -> RootAction
     ) {
       self.rootStore = rootStore
+      self.parentStores = parentStores
       self.toScopedState = toScopedState
       self.fromScopedAction = fromScopedAction
     }
@@ -640,6 +644,7 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
       let fromScopedAction = self.fromScopedAction as! (ScopedAction) -> RootAction
       let reducer = ScopedReducer<RootState, RootAction, RescopedState, RescopedAction>(
         rootStore: self.rootStore,
+        parentStores: self.parentStores + [store],
         state: { toRescopedState(toScopedState($0)) },
         action: { fromScopedAction(fromRescopedAction($0)) }
       )

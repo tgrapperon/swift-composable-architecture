@@ -36,7 +36,7 @@ struct VoiceMemo: ReducerProtocol {
     case titleTextFieldChanged(String)
   }
 
-  @Dependency(\.audioPlayer) var audioPlayer
+  @Dependency(AudioPlayerClient.self) var audioPlayer
   @Dependency(\.mainRunLoop) var mainRunLoop
   private enum PlayID {}
 

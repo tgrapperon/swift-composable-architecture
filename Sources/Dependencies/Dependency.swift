@@ -29,10 +29,8 @@
 /// properties of the ``DependencyValues`` structure. For information about creating custom
 /// dependency values, see the ``DependencyKey`` protocol.
 @propertyWrapper
-public struct Dependency<Value>: @unchecked Sendable {
-  // NB: Key paths do not conform to sendable and are instead diagnosed at the time of forming the
-  //     literal.
-  private let keyPath: KeyPath<DependencyValues, Value>
+public struct Dependency<Value>: Sendable {
+  private let value: @Sendable (DependencyValues) -> Value
   private let file: StaticString
   private let fileID: StaticString
   private let line: UInt
@@ -58,12 +56,26 @@ public struct Dependency<Value>: @unchecked Sendable {
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) {
-    self.keyPath = keyPath
+    // NB: Key paths do not conform to sendable and are instead diagnosed at the time of forming the
+    //     literal.
+    self.value = { $0[keyPath: keyPath] }
     self.file = file
     self.fileID = fileID
     self.line = line
   }
 
+  public init(
+    _ type: Value.Type,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) where Value: TestDependencyKey, Value.Value == Value {
+    self.value = { $0[Value.self] }
+    self.file = file
+    self.fileID = fileID
+    self.line = line
+  }
+  
   /// The current value of the dependency property.
   public var wrappedValue: Value {
     #if DEBUG
@@ -72,10 +84,10 @@ public struct Dependency<Value>: @unchecked Sendable {
       currentDependency.fileID = self.fileID
       currentDependency.line = self.line
       return DependencyValues.$currentDependency.withValue(currentDependency) {
-        DependencyValues.current[keyPath: self.keyPath]
+        self.value(DependencyValues.current)
       }
     #else
-      return DependencyValues.current[keyPath: self.keyPath]
+      return self.value(DependencyValues.current)
     #endif
   }
 }

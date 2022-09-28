@@ -18,10 +18,3 @@ extension AudioPlayerClient: TestDependencyKey {
     play: XCTUnimplemented("\(Self.self).play")
   ) 
 }
-
-extension DependencyValues {
-  var audioPlayer: AudioPlayerClient {
-    get { self[AudioPlayerClient.self] }
-    set { self[AudioPlayerClient.self] = newValue }
-  }
-}

@@ -332,13 +332,20 @@ struct ScreenB: ReducerProtocol {
   struct State: Codable, Equatable, Hashable {}
 
   enum Action: Equatable {
+    case dismissButtonTapped
     case screenAButtonTapped
     case screenBButtonTapped
     case screenCButtonTapped
   }
 
+  @Dependency(\.dismiss) var dismiss
+
   func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
     switch action {
+    case .dismissButtonTapped:
+      return .fireAndForget {
+        await self.dismiss()
+      }
     case .screenAButtonTapped:
       return .none
     case .screenBButtonTapped:
@@ -355,6 +362,9 @@ struct ScreenBView: View {
   var body: some View {
     WithViewStore(self.store) { viewStore in
       Form {
+        Button("Dismiss") {
+          viewStore.send(.dismissButtonTapped)
+        }
         Button("Decoupled navigation to screen A") {
           viewStore.send(.screenAButtonTapped)
         }
@@ -387,7 +397,7 @@ struct ScreenC: ReducerProtocol {
   @Dependency(\.mainQueue) var mainQueue
 
   func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
-    enum TimerId {}
+    enum TimerID {}
 
     switch action {
     case .startButtonTapped:
@@ -397,10 +407,11 @@ struct ScreenC: ReducerProtocol {
           await send(.timerTick)
         }
       }
+      .cancellable(id: TimerID.self)
 
     case .stopButtonTapped:
       state.isTimerRunning = false
-      return .cancel(id: TimerId.self)
+      return .cancel(id: TimerID.self)
 
     case .timerTick:
       state.count += 1

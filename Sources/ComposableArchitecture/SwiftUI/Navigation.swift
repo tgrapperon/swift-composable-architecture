@@ -1,8 +1,10 @@
+import OrderedCollections
 import SwiftUI
 
 // TODO: Other names? `NavigationPathState`? `NavigationStatePath`?
 // TODO: Should `NavigationState` flatten to just work on `Identifiable` elements?
 // TODO: `Sendable where Element: Sendable`
+// TODO: Get a better handle on how explicit `ID`s are handled for various navigation scenarios.
 @propertyWrapper
 public struct NavigationState<Element: Hashable>:
   MutableCollection,
@@ -15,82 +17,102 @@ public struct NavigationState<Element: Hashable>:
     public let id: ID
     public var element: Element
 
-    public init(id: ID? = nil, element: Element) {
-      self.id = id ?? DependencyValues.current.navigationID.next()
+    @usableFromInline
+    init(id: ID? = nil, element: Element) {
+      self.id = id ?? DependencyValues._current.navigationID.next()
       self.element = element
     }
   }
 
   // TODO: should this be an array of reference boxed values?
-  var destinations: [Destination] = []
+  // TODO: should this be publicly exposed?
+  @usableFromInline
+  var destinations: OrderedDictionary<ID, Element> = [:]
 
+  @inlinable
+  @inline(__always)
+  public var ids: OrderedSet<ID> {
+    self.destinations.keys
+  }
+
+  @inlinable
+  @inline(__always)
+  public var elements: [Element] {
+    self.destinations.values.elements
+  }
+
+  @inlinable
   public init() {}
 
+  @inlinable
   public subscript(id id: ID) -> Element? {
-    _read {
-      guard let index = self.destinations.firstIndex(where: { $0.id == id })
-      else {
-        yield nil
-        return
-      }
-      yield self.destinations[index].element
-    }
-    _modify {
-      guard let index = self.destinations.firstIndex(where: { $0.id == id })
-      else {
-        var element: Element? = nil
-        yield &element
-        return
-      }
-      var element: Element! = self.destinations[index].element
-      yield &element
-      self.destinations[index].element = element
-    }
-    set {
-      switch (self.destinations.firstIndex(where: { $0.id == id }), newValue) {
-      case let (.some(index), .some(newValue)):
-        self.destinations[index].element = newValue
-
-      case let (.some(index), .none):
-        self.destinations.remove(at: index)
-
-      case let (.none, .some(newValue)):
-        self.append(newValue)
-
-      case (.none, .none):
-        break
-      }
-    }
+    _read { yield self.destinations[id] }
+    _modify { yield &self.destinations[id] }
   }
 
   @discardableResult
+  @inlinable
   public mutating func append(_ element: Element) -> ID {
     let destination = Destination(element: element)
-    self.destinations.append(destination)
+    self.destinations[destination.id] = destination.element
     return destination.id
   }
 
+  @inlinable
+  @inline(__always)
   public var startIndex: Int {
-    self.destinations.startIndex
+    self.destinations.elements.startIndex
   }
 
+  @inlinable
+  @inline(__always)
   public var endIndex: Int {
-    self.destinations.endIndex
+    self.destinations.elements.endIndex
   }
 
+  @inlinable
+  @inline(__always)
   public func index(after i: Int) -> Int {
-    self.destinations.index(after: i)
+    self.destinations.elements.index(after: i)
   }
 
+  @inlinable
   public subscript(position: Int) -> Destination {
-    _read { yield self.destinations[position] }
-    _modify { yield &self.destinations[position] }
-    set { self.destinations[position] = newValue }
+    _read {
+      yield Destination(
+        id: self.destinations.keys[position], element: self.destinations.values[position]
+      )
+    }
+    _modify {
+      var destination = Destination(
+        id: self.destinations.keys[position], element: self.destinations.values[position]
+      )
+      yield &destination
+      self.destinations[destination.id] = destination.element
+    }
+    set {
+      let (_, index) = self.destinations.updateValue(
+        newValue.element, forKey: newValue.id, insertingAt: position
+      )
+      // TODO: Runtime warning finesse?
+      assert(index == position)
+    }
   }
 
+  @inlinable
   public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with newElements: C)
   where C.Element == Destination {
-    self.destinations.replaceSubrange(subrange, with: newElements)
+    self.destinations.removeSubrange(subrange)
+    for destination in newElements.reversed() {
+      self.destinations.updateValue(
+        destination.element, forKey: destination.id, insertingAt: subrange.startIndex
+      )
+    }
+  }
+
+  @inlinable
+  public mutating func swapAt(_ i: Int, _ j: Int) {
+    self.destinations.swapAt(i, j)
   }
 
   public struct Path:
@@ -98,46 +120,60 @@ public struct NavigationState<Element: Hashable>:
     RandomAccessCollection,
     RangeReplaceableCollection
   {
+    @usableFromInline
     var state: NavigationState
 
+    @inlinable
     init(state: NavigationState) {
       self.state = state
     }
 
+    @inlinable
     public init() { self.state = NavigationState() }
 
+    @inlinable
+    @inline(__always)
     public var startIndex: Int {
       self.state.startIndex
     }
 
+    @inlinable
+    @inline(__always)
     public var endIndex: Int {
       self.state.endIndex
     }
 
+    @inlinable
+    @inline(__always)
     public func index(after i: Int) -> Int {
       self.state.index(after: i)
     }
 
+    @inlinable
     public subscript(position: Int) -> Element {
       _read { yield self.state[position].element }
       _modify { yield &self.state[position].element }
       set { self.state[position].element = newValue }
     }
 
+    @inlinable
     public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with newElements: C)
     where C.Element == Element {
       self.state.replaceSubrange(subrange, with: newElements.map { Destination(element: $0) })
     }
 
+    @inlinable
     public mutating func swapAt(_ i: Int, _ j: Int) {
       self.state.swapAt(i, j)
     }
   }
 
+  @inlinable
   public init(wrappedValue: Path = []) {
     self = wrappedValue.state
   }
 
+  @inlinable
   public var wrappedValue: Path {
     _read { yield Path(state: self) }
     _modify {
@@ -147,6 +183,7 @@ public struct NavigationState<Element: Hashable>:
     }
   }
 
+  @inlinable
   public var projectedValue: Self {
     _read { yield self }
     _modify { yield &self }
@@ -158,7 +195,7 @@ where R.State: Hashable
 
 extension NavigationState: ExpressibleByDictionaryLiteral {
   public init(dictionaryLiteral elements: (ID, Element)...) {
-    self.destinations = .init(elements.map(Destination.init(id:element:)))
+    self.destinations = .init(uniqueKeysWithValues: elements)
   }
 }
 
@@ -180,7 +217,7 @@ extension NavigationState.Destination: Decodable where Element: Decodable {
     {
       self.id = id
     } else {
-      self.id = UUID()
+      self.id = DependencyValues._current.navigationID.next()
     }
     self.element = try container.decode(Element.self, forKey: .element)
   }
@@ -207,8 +244,16 @@ extension NavigationState.Destination: Hashable where Element: Hashable {}
 extension NavigationState: Equatable where Element: Equatable {}
 extension NavigationState: Hashable where Element: Hashable {}
 
-extension NavigationState: Decodable where Element: Decodable {}
-extension NavigationState: Encodable where Element: Encodable {}
+extension NavigationState: Decodable where Element: Decodable {
+  public init(from decoder: Decoder) throws {
+    try self.init([Destination](from: decoder))
+  }
+}
+extension NavigationState: Encodable where Element: Encodable {
+  public func encode(to encoder: Encoder) throws {
+    try Array(self).encode(to: encoder)
+  }
+}
 
 extension NavigationState.Path: ExpressibleByArrayLiteral {
   public init(arrayLiteral elements: Element...) {
@@ -217,6 +262,8 @@ extension NavigationState.Path: ExpressibleByArrayLiteral {
 }
 
 public enum NavigationAction<State: Hashable, Action> {
+  // TODO: Does it make sense to fold `dismiss` into `element`?
+  case dismiss(id: NavigationState.ID)
   case element(id: NavigationState.ID, Action)
   case setPath(NavigationState<State>)
 }
@@ -227,68 +274,193 @@ where R.State: Hashable
 extension NavigationAction: Equatable where Action: Equatable {}
 extension NavigationAction: Hashable where Action: Hashable {}
 
+// TODO: Decodable, Encodable, Sendable, ...?
+
 extension ReducerProtocol {
+  @inlinable
   public func navigationDestination<Destinations: ReducerProtocol>(
     _ toNavigationState: WritableKeyPath<State, NavigationStateOf<Destinations>>,
     action toNavigationAction: CasePath<Action, NavigationActionOf<Destinations>>,
-    @ReducerBuilderOf<Destinations> destinations: () -> Destinations
+    @ReducerBuilderOf<Destinations> destinations: () -> Destinations,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) -> _NavigationDestinationReducer<Self, Destinations> {
     .init(
-      upstream: self,
+      base: self,
       toNavigationState: toNavigationState,
       toNavigationAction: toNavigationAction,
-      destinations: destinations()
+      destinations: destinations(),
+      file: file,
+      fileID: fileID,
+      line: line
     )
   }
 }
 
 public struct _NavigationDestinationReducer<
-  Upstream: ReducerProtocol,
+  Base: ReducerProtocol,
   Destinations: ReducerProtocol
 >: ReducerProtocol
 where Destinations.State: Hashable {
-  let upstream: Upstream
-  let toNavigationState: WritableKeyPath<Upstream.State, NavigationStateOf<Destinations>>
-  let toNavigationAction: CasePath<Upstream.Action, NavigationActionOf<Destinations>>
+  @usableFromInline
+  let base: Base
+
+  @usableFromInline
+  let toNavigationState: WritableKeyPath<Base.State, NavigationStateOf<Destinations>>
+
+  @usableFromInline
+  let toNavigationAction: CasePath<Base.Action, NavigationActionOf<Destinations>>
+
+  @usableFromInline
   let destinations: Destinations
 
-  public var body: some ReducerProtocol<Upstream.State, Upstream.Action> {
-    Reduce { globalState, globalAction in
-      guard let navigationAction = toNavigationAction.extract(from: globalAction)
-      else { return .none }
+  @usableFromInline
+  let file: StaticString
 
-      switch navigationAction {
-      case let .element(id, localAction):
-        guard let index = globalState[keyPath: toNavigationState].firstIndex(where: { $0.id == id })
-        else {
-          // TODO: runtime warning
-          return .none
-        }
-        return self.destinations
+  @usableFromInline
+  let fileID: StaticString
+
+  @usableFromInline
+  let line: UInt
+
+  @usableFromInline
+  enum DismissID {}
+
+  @inlinable
+  init(
+    base: Base,
+    toNavigationState: WritableKeyPath<Base.State, NavigationStateOf<Destinations>>,
+    toNavigationAction: CasePath<Base.Action, NavigationActionOf<Destinations>>,
+    destinations: Destinations,
+    file: StaticString,
+    fileID: StaticString,
+    line: UInt
+  ) {
+    self.base = base
+    self.toNavigationState = toNavigationState
+    self.toNavigationAction = toNavigationAction
+    self.destinations = destinations
+    self.file = file
+    self.fileID = fileID
+    self.line = line
+  }
+
+  @inlinable
+  public func reduce(
+    into state: inout Base.State, action: Base.Action
+  ) -> Effect<Base.Action, Never> {
+    var effect: Effect<Base.Action, Never> = .none
+
+    switch self.toNavigationAction.extract(from: action) {
+    case let .dismiss(id):
+      guard let index = state[keyPath: self.toNavigationState].destinations.index(forKey: id)
+      else {
+        runtimeWarning(
+          """
+          A "navigationDestination" at "%@:%d" requested dismissal of a missing element.
+
+            ID:
+              %@
+
+          This is generally considered an application logic error, and can happen for a few \
+          reasons:
+
+          • TODO
+          """,
+          [
+            "\(self.fileID)",
+            self.line,
+            "\(id)",
+          ],
+          file: self.file,
+          line: self.line
+        )
+        break
+      }
+
+      // TODO:
+      //   Or should dismiss simply remove the element?
+      //   Or should dismiss warn/no-op if the element isn't _the_ presented element?
+      //     (Closest to SwiftUI behavior, which doesn't warn but ignores dismissal)
+      // TODO: Should this delegate to `setPath` instead for parents to listen to?
+      //   Or should parents have to listen to both of these actions or just have the option?
+      state[keyPath: self.toNavigationState].removeSubrange(index...)
+      break
+
+    case let .element(id, localAction):
+      guard let index = state[keyPath: self.toNavigationState].firstIndex(where: { $0.id == id })
+      else {
+        runtimeWarning(
+          """
+          A "navigationDestination" at "%@:%d" received an action for a missing element.
+
+            Action:
+              %@
+
+          This is generally considered an application logic error, and can happen for a few \
+          reasons:
+
+          • TODO
+          """,
+          [
+            "\(self.fileID)",
+            self.line,
+            debugCaseOutput(action),
+          ],
+          file: self.file,
+          line: self.line
+        )
+        break
+      }
+      effect = effect.merge(
+        with: self.destinations
           .dependency(\.navigationID.current, id)
+          .dependency(\.dismiss, DismissEffect { await Task.cancel(id: DismissID.self) })
           .reduce(
-            into: &globalState[keyPath: toNavigationState][index].element,
+            into: &state[keyPath: self.toNavigationState][index].element,
             action: localAction
           )
-          .map { toNavigationAction.embed(.element(id: id, $0)) }
+          .map { self.toNavigationAction.embed(.element(id: id, $0)) }
           .cancellable(id: id)
+      )
 
-      case let .setPath(path):
-        var removedIds: Set<AnyHashable> = []
-        for destination in globalState[keyPath: toNavigationState].destinations {
-          removedIds.insert(destination.id)
-        }
-        for destination in path {
-          removedIds.remove(destination.id)
-        }
-        globalState[keyPath: toNavigationState] = path
-        return .merge(removedIds.map { .cancel(id: $0) })
+    // TODO: Track insertions, removals in action for parent to listen to?
+    // .setPath(PathUpdate { newPath: Path, presented: [Element], dismissed: [Element] })
+    case let .setPath(newPath):
+      let oldPath = state[keyPath: self.toNavigationState]
+      let presentedIDs = newPath.ids.subtracting(oldPath.ids)
+      let dismissedIDs = oldPath.ids.subtracting(newPath.ids)
+
+      state[keyPath: self.toNavigationState] = newPath
+
+      for id in presentedIDs {
+        effect = effect.merge(
+          with: .task {
+            var dependencies = DependencyValues._current
+            dependencies.navigationID.current = id
+            return try await DependencyValues.$_current.withValue(dependencies) {
+              try await withTaskCancellation(id: DismissID.self) {
+                try await Task.never()
+              }
+            }
+          }
+          .concatenate(with: Effect(value: self.toNavigationAction.embed(.dismiss(id: id))))
+        )
       }
+      for id in dismissedIDs {
+        effect = effect.merge(with: .cancel(id: id))
+      }
+
+    case .none:
+      break
     }
 
-    self.upstream
+    effect = effect.merge(
+      with: self.base.reduce(into: &state, action: action)
+    )
 
-    // TODO: Run `upstream` before dismissal? See presentation for this behavior.
+    return effect
   }
 }
 

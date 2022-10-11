@@ -170,6 +170,9 @@ struct RootView: View {
                 action: Root.Action.navigateAndLoad
               )
             )
+            #if os(macOS)
+            .wrapInNavigationView()
+            #endif
           )
 
           NavigationLink(
@@ -180,6 +183,9 @@ struct RootView: View {
                 action: Root.Action.loadThenNavigate
               )
             )
+            #if os(macOS)
+            .wrapInNavigationView()
+            #endif
           )
 
           NavigationLink(
@@ -190,6 +196,9 @@ struct RootView: View {
                 action: Root.Action.navigateAndLoadList
               )
             )
+            #if os(macOS)
+            .wrapInNavigationView()
+            #endif
           )
 
           NavigationLink(
@@ -200,6 +209,9 @@ struct RootView: View {
                 action: Root.Action.loadThenNavigateList
               )
             )
+            #if os(macOS)
+            .wrapInNavigationView()
+            #endif
           )
 
           NavigationLink(
@@ -242,6 +254,9 @@ struct RootView: View {
                 action: Root.Action.map
               )
             )
+            #if os(macOS)
+            .wrapInNavigationView()
+            #endif
           )
 
           NavigationLink(

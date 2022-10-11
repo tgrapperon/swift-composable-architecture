@@ -54,7 +54,7 @@ struct NestedView: View {
 
   var body: some View {
     WithViewStore(self.store, observe: \.name) { viewStore in
-      Form {
+      List {
         AboutView(readMe: readMe)
 
         ForEachStore(
@@ -80,7 +80,7 @@ struct NestedView: View {
       }
       .navigationTitle(viewStore.state.isEmpty ? "Untitled" : viewStore.state)
       .toolbar {
-        ToolbarItem {
+        ToolbarItem(id: "AddRowID") {
           Button("Add row") { viewStore.send(.addRowButtonTapped) }
         }
       }

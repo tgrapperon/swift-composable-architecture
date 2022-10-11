@@ -73,7 +73,7 @@ struct NavigateAndLoadListView: View {
 
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
-      Form {
+      List {
         AboutView(readMe: readMe)
 
         ForEach(viewStore.rows) { row in

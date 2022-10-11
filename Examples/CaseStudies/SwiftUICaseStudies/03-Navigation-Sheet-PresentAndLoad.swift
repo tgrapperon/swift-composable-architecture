@@ -81,6 +81,17 @@ struct PresentAndLoadView: View {
         } else: {
           ProgressView()
         }
+        #if os(macOS)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Close") {
+              ViewStore(store.stateless).send(.setSheet(isPresented: false))
+            }
+          }
+        }
+        .frame(minWidth: 100)
+        .padding()
+        #endif
       }
       .navigationTitle("Present and load")
     }

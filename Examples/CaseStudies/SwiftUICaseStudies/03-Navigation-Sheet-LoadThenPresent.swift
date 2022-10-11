@@ -68,15 +68,18 @@ struct LoadThenPresentView: View {
       Form {
         AboutView(readMe: readMe)
 
-        Button(action: { viewStore.send(.setSheet(isPresented: true)) }) {
-          HStack {
+        HStack {
+          Button(action: { viewStore.send(.setSheet(isPresented: true)) }) {
             Text("Load optional counter")
-            if viewStore.isActivityIndicatorVisible {
-              Spacer()
-              ProgressView()
-            }
+          }
+          if viewStore.isActivityIndicatorVisible {
+            Spacer()
+            ProgressView()
           }
         }
+        #if os(macOS)
+        .fixedSize(horizontal: true, vertical: false)
+        #endif
       }
       .sheet(
         isPresented: viewStore.binding(
@@ -91,6 +94,16 @@ struct LoadThenPresentView: View {
           )
         ) {
           CounterView(store: $0)
+            #if os(macOS)
+            .toolbar {
+              ToolbarItem(placement: .cancellationAction) {
+                Button("Close") {
+                  ViewStore(store.stateless).send(.setSheet(isPresented: false))
+                }
+              }
+            }
+            .padding()
+            #endif
         }
       }
       .navigationTitle("Load and present")

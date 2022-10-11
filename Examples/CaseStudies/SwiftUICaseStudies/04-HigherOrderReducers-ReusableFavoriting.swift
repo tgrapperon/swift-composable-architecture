@@ -167,6 +167,9 @@ struct EpisodesView: View {
       }
       .buttonStyle(.borderless)
     }
+    #if os(macOS)
+    .padding(.horizontal)
+    #endif
     .navigationTitle("Favoriting")
   }
 }

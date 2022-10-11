@@ -65,7 +65,7 @@ struct LoadThenNavigateView: View {
 
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
-      Form {
+      List {
         AboutView(readMe: readMe)
 
         NavigationLink(

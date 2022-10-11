@@ -87,20 +87,21 @@ struct CityMapRowView: View {
           destination: CityMapDetailView(store: self.store)
         ) {
           HStack {
-            Image(systemName: "map")
-            Text(viewStore.download.title)
-          }
-          .layoutPriority(1)
+            Label(viewStore.download.title, systemImage: "map")
+              .foregroundStyle(.primary)
+            
+            Spacer()
 
-          Spacer()
-
-          DownloadComponentView(
-            store: self.store.scope(
-              state: \.downloadComponent,
-              action: CityMap.Action.downloadComponent
+            DownloadComponentView(
+              store: self.store.scope(
+                state: \.downloadComponent,
+                action: CityMap.Action.downloadComponent
+              )
             )
-          )
+          }
+          #if os(iOS)
           .padding(.trailing, 8)
+          #endif
         }
       }
     }
@@ -138,6 +139,9 @@ struct CityMapDetailView: View {
       }
       .navigationTitle(viewStore.download.title)
       .padding()
+      #if os(macOS)
+      .buttonStyle(.borderless)
+      #endif
     }
   }
 }
@@ -162,10 +166,9 @@ struct CitiesView: View {
   let store: StoreOf<MapApp>
 
   var body: some View {
-    Form {
-      Section {
-        AboutView(readMe: readMe)
-      }
+    List {
+      AboutView(readMe: readMe)
+
       ForEachStore(
         self.store.scope(state: \.cityMaps, action: MapApp.Action.cityMaps(id:action:))
       ) { cityMapStore in

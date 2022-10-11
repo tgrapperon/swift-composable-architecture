@@ -81,6 +81,7 @@
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
 		E95BEFF828F50EE700693625 /* PreviewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E95BEFF728F50EE700693625 /* PreviewContainer.swift */; };
+		E9C20CF928F5A8A5005B12F4 /* WrapInNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C20CF828F5A8A5005B12F4 /* WrapInNavigationView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -234,6 +235,7 @@
 		DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-Recursion.swift"; sourceTree = "<group>"; };
 		DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaseStudiesApp.swift; sourceTree = "<group>"; };
 		E95BEFF728F50EE700693625 /* PreviewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewContainer.swift; sourceTree = "<group>"; };
+		E9C20CF828F5A8A5005B12F4 /* WrapInNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrapInNavigationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -458,6 +460,7 @@
 				DCC68EDE2447BC810037F998 /* TemplateText.swift */,
 				DCD442C5286CA91F008B4EA7 /* AboutView.swift */,
 				E95BEFF728F50EE700693625 /* PreviewContainer.swift */,
+				E9C20CF828F5A8A5005B12F4 /* WrapInNavigationView.swift */,
 			);
 			path = Internal;
 			sourceTree = "<group>";
@@ -766,6 +769,7 @@
 				DCC68EDD2447A5B00037F998 /* 01-GettingStarted-OptionalState.swift in Sources */,
 				CABC4F3926AEE00C00D5FA2C /* 02-Effects-Refreshable.swift in Sources */,
 				DC85EBC3285A731E00431CF3 /* ResignFirstResponder.swift in Sources */,
+				E9C20CF928F5A8A5005B12F4 /* WrapInNavigationView.swift in Sources */,
 				DCC68EAB244666AF0037F998 /* 03-Navigation-Sheet-PresentAndLoad.swift in Sources */,
 				CAE962FD24A7F7BE00EFC025 /* 01-GettingStarted-AlertsAndConfirmationDialogs.swift in Sources */,
 				CA25E5D224463AD700DA666A /* 01-GettingStarted-Bindings-Basics.swift in Sources */,

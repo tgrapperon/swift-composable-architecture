@@ -7,7 +7,7 @@ struct RootView: View {
 
   var body: some View {
     NavigationView {
-      Form {
+      List {
         Section(header: Text("Getting started")) {
           NavigationLink(
             "Basics",
@@ -275,6 +275,7 @@ struct RootView: View {
           )
         }
       }
+      .listStyle(.sidebar)
       .navigationTitle("Case Studies")
       .onAppear { ViewStore(self.store).send(.onAppear) }
     }

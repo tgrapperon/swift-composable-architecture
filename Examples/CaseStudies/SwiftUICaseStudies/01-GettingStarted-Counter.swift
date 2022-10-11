@@ -52,6 +52,9 @@ struct CounterView: View {
           Image(systemName: "plus")
         }
       }
+      #if os(macOS)
+      .buttonStyle(.bordered)
+      #endif
     }
   }
 }
@@ -77,7 +80,7 @@ struct CounterDemoView: View {
 
 struct CounterView_Previews: PreviewProvider {
   static var previews: some View {
-    NavigationView {
+    PreviewContainer {
       CounterDemoView(
         store: Store(
           initialState: Counter.State(),
@@ -87,3 +90,4 @@ struct CounterView_Previews: PreviewProvider {
     }
   }
 }
+

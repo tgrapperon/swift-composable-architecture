@@ -66,9 +66,8 @@ struct LoadThenPresentView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
+
         Button(action: { viewStore.send(.setSheet(isPresented: true)) }) {
           HStack {
             Text("Load optional counter")

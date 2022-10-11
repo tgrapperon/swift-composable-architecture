@@ -114,7 +114,7 @@ struct AnimationsView: View {
                   x: viewStore.circleCenter?.x ?? proxy.size.width / 2,
                   y: viewStore.circleCenter?.y ?? proxy.size.height / 2
                 )
-                .offset(y: viewStore.circleCenter == nil ? 0 : -44)
+                .offset(y: viewStore.circleCenter == nil ? 0 : fingerOffset)
             }
             .allowsHitTesting(false)
           }
@@ -136,6 +136,13 @@ struct AnimationsView: View {
       .navigationBarTitleDisplayMode(.inline)
       #endif
     }
+  }
+  var fingerOffset: CGFloat {
+    #if os(iOS)
+    return -44
+    #else
+    return 0
+    #endif
   }
 }
 

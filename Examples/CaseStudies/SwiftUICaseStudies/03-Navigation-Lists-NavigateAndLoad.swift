@@ -74,9 +74,8 @@ struct NavigateAndLoadListView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
+
         ForEach(viewStore.rows) { row in
           NavigationLink(
             destination: IfLetStore(

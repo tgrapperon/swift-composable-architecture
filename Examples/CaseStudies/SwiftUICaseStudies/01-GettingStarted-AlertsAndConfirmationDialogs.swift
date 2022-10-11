@@ -85,9 +85,7 @@ struct AlertAndConfirmationDialogView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         Text("Count: \(viewStore.count)")
         Button("Alert") { viewStore.send(.alertButtonTapped) }

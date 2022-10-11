@@ -155,9 +155,8 @@ struct EpisodesView: View {
 
   var body: some View {
     Form {
-      Section {
-        AboutView(readMe: readMe)
-      }
+      AboutView(readMe: readMe)
+
       ForEachStore(
         self.store.scope(
           state: \.episodes,

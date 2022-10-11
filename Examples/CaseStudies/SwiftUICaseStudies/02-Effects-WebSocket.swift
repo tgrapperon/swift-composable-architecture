@@ -134,8 +134,9 @@ struct WebSocketView: View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       VStack(alignment: .leading) {
         AboutView(readMe: readMe)
-          .padding(.bottom)
 
+        .padding(.bottom)
+        
         HStack {
           TextField(
             "Message to send",

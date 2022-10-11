@@ -64,9 +64,7 @@ struct CounterDemoView: View {
 
   var body: some View {
     Form {
-      Section {
-        AboutView(readMe: readMe)
-      }
+      AboutView(readMe: readMe)
 
       Section {
         CounterView(store: self.store)

@@ -55,9 +55,7 @@ struct NestedView: View {
   var body: some View {
     WithViewStore(self.store, observe: \.name) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         ForEachStore(
           self.store.scope(state: \.rows, action: Nested.Action.row(id:action:))

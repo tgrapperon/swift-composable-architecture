@@ -98,9 +98,7 @@ struct LifecycleDemoView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         Button("Toggle Timer") { viewStore.send(.toggleTimerButtonTapped) }
 

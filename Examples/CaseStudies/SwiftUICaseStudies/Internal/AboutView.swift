@@ -8,8 +8,10 @@ struct AboutView: View {
   
   var body: some View {
     #if os(iOS)
-    DisclosureGroup("About this case study") {
-      Text(template: self.readMe)
+    Section {
+      DisclosureGroup("About this case study") {
+        Text(template: self.readMe)
+      }
     }
     #elseif os(macOS)
     Color.clear
@@ -20,6 +22,7 @@ struct AboutView: View {
       } label: {
         Label("About this case study", systemImage: "info.circle.fill")
       }
+      .imageScale(.large)
       .sheet(isPresented: $isPresented) {
         VStack(alignment: .leading, spacing: 20) {
           Text("About this case study")

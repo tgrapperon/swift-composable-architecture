@@ -64,6 +64,9 @@ struct FocusDemoView: View {
         .textFieldStyle(.roundedBorder)
       }
       .synchronize(viewStore.binding(\.$focusedField), self.$focusedField)
+      #if os(macOS)
+      .padding(.horizontal)
+      #endif
     }
     .navigationTitle("Focus demo")
   }

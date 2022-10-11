@@ -68,9 +68,7 @@ struct RefreshableView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       List {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         HStack {
           Button {
@@ -89,7 +87,10 @@ struct RefreshableView: View {
           }
         }
         .frame(maxWidth: .infinity)
+        #if os(iOS)
         .buttonStyle(.borderless)
+        #endif
+
 
         if let fact = viewStore.fact {
           Text(fact)

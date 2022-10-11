@@ -47,9 +47,7 @@ struct OptionalBasicsView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         Button("Toggle counter state") {
           viewStore.send(.toggleCounterButtonTapped)
@@ -64,7 +62,9 @@ struct OptionalBasicsView: View {
             Text(template: "`CounterState` is non-`nil`")
             CounterView(store: store)
               .buttonStyle(.borderless)
+              #if os(iOS)
               .frame(maxWidth: .infinity)
+              #endif
           },
           else: {
             Text(template: "`CounterState` is `nil`")

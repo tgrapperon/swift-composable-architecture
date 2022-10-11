@@ -51,9 +51,7 @@ struct BindingFormView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         HStack {
           TextField("Type here", text: viewStore.binding(\.$text))

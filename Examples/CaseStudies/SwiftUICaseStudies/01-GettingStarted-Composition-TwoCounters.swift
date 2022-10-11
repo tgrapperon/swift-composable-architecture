@@ -34,9 +34,7 @@ struct TwoCountersView: View {
 
   var body: some View {
     Form {
-      Section {
-        AboutView(readMe: readMe)
-      }
+      AboutView(readMe: readMe)
 
       HStack {
         Text("Counter 1")

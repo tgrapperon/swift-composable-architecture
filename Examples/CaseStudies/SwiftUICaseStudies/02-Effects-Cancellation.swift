@@ -74,9 +74,7 @@ struct EffectsCancellationView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         Section {
           Stepper(
@@ -109,9 +107,15 @@ struct EffectsCancellationView: View {
           }
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity)
+          .buttonStyle(.borderless)
         }
       }
+      #if os(iOS)
       .buttonStyle(.borderless)
+      #endif
+      #if os(macOS)
+      .fixedSize(horizontal: true, vertical: false)
+      #endif
     }
     .navigationTitle("Effect cancellation")
   }

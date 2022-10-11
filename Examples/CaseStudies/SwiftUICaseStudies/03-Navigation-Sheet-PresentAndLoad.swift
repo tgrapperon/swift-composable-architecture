@@ -59,9 +59,8 @@ struct PresentAndLoadView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
+
         Button("Load optional counter") {
           viewStore.send(.setSheet(isPresented: true))
         }

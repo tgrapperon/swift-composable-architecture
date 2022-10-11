@@ -98,9 +98,7 @@ struct EffectsBasicsView: View {
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
-        Section {
-          AboutView(readMe: readMe)
-        }
+        AboutView(readMe: readMe)
 
         Section {
           HStack {
@@ -143,9 +141,15 @@ struct EffectsBasicsView: View {
           }
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity)
+          .buttonStyle(.borderless)
         }
       }
+      #if os(iOS)
       .buttonStyle(.borderless)
+      #endif
+      #if os(macOS)
+      .fixedSize(horizontal: true, vertical: false)
+      #endif
     }
     .navigationTitle("Effects")
   }

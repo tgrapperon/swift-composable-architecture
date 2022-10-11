@@ -132,7 +132,9 @@ struct AnimationsView: View {
           .padding([.horizontal, .bottom])
       }
       .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
+      #if os(iOS)
       .navigationBarTitleDisplayMode(.inline)
+      #endif
     }
   }
 }

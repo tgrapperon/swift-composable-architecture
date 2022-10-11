@@ -108,6 +108,8 @@ struct LoadThenNavigateView_Previews: PreviewProvider {
         )
       )
     }
+    #if os(iOS)
     .navigationViewStyle(.stack)
+    #endif  
   }
 }

@@ -82,7 +82,7 @@ struct NestedView: View {
       }
       .navigationTitle(viewStore.state.isEmpty ? "Untitled" : viewStore.state)
       .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
+        ToolbarItem {
           Button("Add row") { viewStore.send(.addRowButtonTapped) }
         }
       }

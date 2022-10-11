@@ -11,9 +11,16 @@ extension Binding {
     Self(
       get: { self.wrappedValue },
       set: { newValue, transaction in
+        #if os(iOS)
         UIApplication.shared.sendAction(
           #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
         )
+        #elseif os(macOS)
+        NSApplication.shared.sendAction(
+          #selector(NSResponder.resignFirstResponder), to: nil, from: nil
+        )
+        #endif
+
         self.transaction(transaction).wrappedValue = newValue
       }
     )

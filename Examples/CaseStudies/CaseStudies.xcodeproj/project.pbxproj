@@ -71,7 +71,6 @@
 		DC89C45124462DE7006900B9 /* 03-Navigation-Lists-LoadThenNavigate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC89C45024462DE7006900B9 /* 03-Navigation-Lists-LoadThenNavigate.swift */; };
 		DC89C45324465452006900B9 /* 03-Navigation-Lists-NavigateAndLoad.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC89C45224465451006900B9 /* 03-Navigation-Lists-NavigateAndLoad.swift */; };
 		DC89C45524465C44006900B9 /* 02-Effects-Timers.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC89C45424465C44006900B9 /* 02-Effects-Timers.swift */; };
-		DC9EB4172450CBD2005F413B /* UIViewRepresented.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9EB4162450CBD2005F413B /* UIViewRepresented.swift */; };
 		DCAC2A4F2452352E0094DEF5 /* 04-HigherOrderReducers-ElmLikeSubscriptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAC2A4E2452352E0094DEF5 /* 04-HigherOrderReducers-ElmLikeSubscriptions.swift */; };
 		DCC68EAB244666AF0037F998 /* 03-Navigation-Sheet-PresentAndLoad.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC68EAA244666AF0037F998 /* 03-Navigation-Sheet-PresentAndLoad.swift */; };
 		DCC68EDD2447A5B00037F998 /* 01-GettingStarted-OptionalState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC68EDC2447A5B00037F998 /* 01-GettingStarted-OptionalState.swift */; };
@@ -224,7 +223,6 @@
 		DC89C45024462DE7006900B9 /* 03-Navigation-Lists-LoadThenNavigate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "03-Navigation-Lists-LoadThenNavigate.swift"; sourceTree = "<group>"; };
 		DC89C45224465451006900B9 /* 03-Navigation-Lists-NavigateAndLoad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "03-Navigation-Lists-NavigateAndLoad.swift"; sourceTree = "<group>"; };
 		DC89C45424465C44006900B9 /* 02-Effects-Timers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "02-Effects-Timers.swift"; sourceTree = "<group>"; };
-		DC9EB4162450CBD2005F413B /* UIViewRepresented.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIViewRepresented.swift; sourceTree = "<group>"; };
 		DCAC2A4E2452352E0094DEF5 /* 04-HigherOrderReducers-ElmLikeSubscriptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-ElmLikeSubscriptions.swift"; sourceTree = "<group>"; };
 		DCC68EAA244666AF0037F998 /* 03-Navigation-Sheet-PresentAndLoad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "03-Navigation-Sheet-PresentAndLoad.swift"; sourceTree = "<group>"; };
 		DCC68EDC2447A5B00037F998 /* 01-GettingStarted-OptionalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "01-GettingStarted-OptionalState.swift"; sourceTree = "<group>"; };
@@ -456,7 +454,6 @@
 				CA6AC2612451135C00C71CB3 /* CircularProgressView.swift */,
 				DC85EBC2285A731E00431CF3 /* ResignFirstResponder.swift */,
 				DCC68EDE2447BC810037F998 /* TemplateText.swift */,
-				DC9EB4162450CBD2005F413B /* UIViewRepresented.swift */,
 				DCD442C5286CA91F008B4EA7 /* AboutView.swift */,
 			);
 			path = Internal;
@@ -753,7 +750,6 @@
 				CA6AC2672451135C00C71CB3 /* DownloadClient.swift in Sources */,
 				CAA9ADC624465C810003A984 /* 02-Effects-Cancellation.swift in Sources */,
 				CA5ECF92267A79F0002067FF /* FactClient.swift in Sources */,
-				DC9EB4172450CBD2005F413B /* UIViewRepresented.swift in Sources */,
 				CA6AC2652451135C00C71CB3 /* CircularProgressView.swift in Sources */,
 				CA6AC2642451135C00C71CB3 /* ReusableComponents-Download.swift in Sources */,
 				DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */,
@@ -1126,6 +1122,9 @@
 				OTHER_SWIFT_FLAGS = "-Xfrontend -warn-concurrency -Xfrontend -enable-actor-data-race-checks";
 				PRODUCT_BUNDLE_IDENTIFIER = co.pointfree.SwiftUICaseStudies;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1145,6 +1144,9 @@
 				OTHER_SWIFT_FLAGS = "-Xfrontend -warn-concurrency -Xfrontend -enable-actor-data-race-checks";
 				PRODUCT_BUNDLE_IDENTIFIER = co.pointfree.SwiftUICaseStudies;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

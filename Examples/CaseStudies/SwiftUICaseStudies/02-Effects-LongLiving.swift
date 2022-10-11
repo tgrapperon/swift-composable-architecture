@@ -56,11 +56,15 @@ extension DependencyValues {
 
 private enum ScreenshotsKey: DependencyKey {
   static let liveValue: @Sendable () async -> AsyncStream<Void> = {
+    #if os(iOS)
     await AsyncStream(
       NotificationCenter.default
         .notifications(named: UIApplication.userDidTakeScreenshotNotification)
         .map { _ in }
     )
+    #else
+    AsyncStream { nil }
+    #endif
   }
   static let testValue: @Sendable () async -> AsyncStream<Void> = XCTUnimplemented(
     #"@Dependency(\.screenshots)"#, placeholder: .finished
@@ -101,7 +105,9 @@ struct LongLivingEffectsView: View {
       """
     )
     .padding(.horizontal, 64)
+    #if os(iOS)
     .navigationBarTitleDisplayMode(.inline)
+    #endif
   }
 }
 

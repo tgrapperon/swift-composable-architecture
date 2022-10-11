@@ -16,8 +16,8 @@ extension Binding {
           #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
         )
         #elseif os(macOS)
-        NSApplication.shared.sendAction(
-          #selector(NSResponder.resignFirstResponder), to: nil, from: nil
+        NSApplication.shared.keyWindow?.makeFirstResponder(
+          NSApplication.shared.keyWindow?.firstResponder?.nextResponder
         )
         #endif
 

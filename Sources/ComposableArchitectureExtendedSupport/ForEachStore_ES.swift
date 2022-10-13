@@ -1,5 +1,6 @@
 import OrderedCollections
 import SwiftUI
+@_spi(ExtentedSupport) import ComposableArchitecture
 
 /// A Composable Architecture-friendly wrapper around `ForEach` that simplifies working with
 /// collections of state.
@@ -76,61 +77,61 @@ import SwiftUI
 ///   TodoView(store: todoStore)
 /// }
 /// ```
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-public struct ForEachStore<
-  EachState, EachAction, Data: Collection, ID: Hashable, Content: View
->: DynamicViewContent {
-  public let data: Data
-  let content: () -> Content
+extension Legacy {
+  public struct ForEachStore<
+    EachState, EachAction, Data: Collection, ID: Hashable, Content: View
+  >: DynamicViewContent {
+    public let data: Data
+    let content: () -> Content
 
-  /// Initializes a structure that computes views on demand from a store on a collection of data and
-  /// an identified action.
-  ///
-  /// - Parameters:
-  ///   - store: A store on an identified array of data and an identified action.
-  ///   - content: A function that can generate content given a store of an element.
-  public init<EachContent>(
-    _ store: Store<IdentifiedArray<ID, EachState>, (ID, EachAction)>,
-    @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
-  )
-  where
-    Data == IdentifiedArray<ID, EachState>,
-    Content == WithViewStore<
-      OrderedSet<ID>, (ID, EachAction), ForEach<OrderedSet<ID>, ID, EachContent>
-    >
-  {
-    self.data = store.state.value
-    self.content = {
-      WithViewStore(
-        store,
-        observe: { $0.ids },
-        removeDuplicates: areOrderedSetsDuplicates
-      ) { viewStore in
-        ForEach(viewStore.state, id: \.self) { id -> EachContent in
-          // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
-          //     views for elements no longer in the collection.
-          //
-          // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
-          var element = store.state.value[id: id]!
-          return content(
-            store.scope(
-              state: {
-                element = $0[id: id] ?? element
-                return element
-              },
-              action: { (id, $0) }
+    /// Initializes a structure that computes views on demand from a store on a collection of data and
+    /// an identified action.
+    ///
+    /// - Parameters:
+    ///   - store: A store on an identified array of data and an identified action.
+    ///   - content: A function that can generate content given a store of an element.
+    public init<EachContent>(
+      _ store: Store<IdentifiedArray<ID, EachState>, (ID, EachAction)>,
+      @ViewBuilder content: @escaping (Store<EachState, EachAction>) -> EachContent
+    )
+    where
+      Data == IdentifiedArray<ID, EachState>,
+      Content == WithViewStore<
+        OrderedSet<ID>, (ID, EachAction), ForEach<OrderedSet<ID>, ID, EachContent>
+      >
+    {
+      self.data = store.state.value
+      self.content = {
+        Legacy.WithViewStore(
+          store,
+          observe: { $0.ids },
+          removeDuplicates: areOrderedSetsDuplicates
+        ) { viewStore in
+          ForEach(viewStore.state, id: \.self) { id -> EachContent in
+            // NB: We cache elements here to avoid a potential crash where SwiftUI may re-evaluate
+            //     views for elements no longer in the collection.
+            //
+            // Feedback filed: https://gist.github.com/stephencelis/cdf85ae8dab437adc998fb0204ed9a6b
+            var element = store.state.value[id: id]!
+            return content(
+              store.scope(
+                state: {
+                  element = $0[id: id] ?? element
+                  return element
+                },
+                action: { (id, $0) }
+              )
             )
-          )
+          }
         }
       }
     }
-  }
 
-  public var body: some View {
-    self.content()
+    public var body: some View {
+      self.content()
+    }
   }
 }
-
 private func areOrderedSetsDuplicates<ID: Hashable>(lhs: OrderedSet<ID>, rhs: OrderedSet<ID>)
   -> Bool
 {

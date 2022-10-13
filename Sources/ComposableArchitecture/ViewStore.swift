@@ -211,7 +211,8 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
       }
   }
 
-  init(_ viewStore: ViewStore<ViewState, ViewAction>) {
+  @_spi(ExtentedSupport)
+  public init(_ viewStore: ViewStore<ViewState, ViewAction>) {
     self._send = viewStore._send
     self._state = viewStore._state
     self.objectWillChange = viewStore.objectWillChange

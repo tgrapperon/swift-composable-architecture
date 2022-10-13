@@ -447,7 +447,7 @@ extension WithViewStore where ViewState == Void, Content: ToolbarContent {
 }
 
 // MARK: - Deprecated after 0.39.1:
-
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension WithViewStore {
   @available(*, deprecated, renamed: "ViewState")
   public typealias State = ViewState
@@ -457,7 +457,7 @@ extension WithViewStore {
 }
 
 // MARK: - Deprecated after 0.39.0:
-
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension CaseLet {
   @available(*, deprecated, renamed: "EnumState")
   public typealias GlobalState = EnumState
@@ -857,20 +857,6 @@ extension AlertState.Button {
 @available(*, deprecated, renamed: "ConfirmationDialogState")
 public typealias ActionSheetState = ConfirmationDialogState
 
-extension View {
-  @available(iOS 13, *)
-  @available(macOS 12, *)
-  @available(tvOS 13, *)
-  @available(watchOS 6, *)
-  @available(*, deprecated, renamed: "confirmationDialog")
-  public func actionSheet<Action>(
-    _ store: Store<ConfirmationDialogState<Action>?, Action>,
-    dismiss: Action
-  ) -> some View {
-    self.confirmationDialog(store, dismiss: dismiss)
-  }
-}
-
 extension Store {
   @available(
     *, deprecated,
@@ -1134,6 +1120,7 @@ extension AnyReducer {
   }
 }
 
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension ForEachStore {
   @available(*, deprecated, message: "Use the 'IdentifiedArray'-based version, instead.")
   public init<EachContent>(

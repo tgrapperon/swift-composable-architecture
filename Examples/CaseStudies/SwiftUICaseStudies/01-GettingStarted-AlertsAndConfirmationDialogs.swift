@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import ComposableArchitectureExtendedSupport
 import SwiftUI
 
 private let readMe = """
@@ -83,7 +84,7 @@ struct AlertAndConfirmationDialogView: View {
   let store: StoreOf<AlertAndConfirmationDialog>
 
   var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
+    Legacy.WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
         Section {
           AboutView(readMe: readMe)
@@ -95,11 +96,11 @@ struct AlertAndConfirmationDialogView: View {
       }
     }
     .navigationTitle("Alerts & Dialogs")
-    .alert(
+    .legacy.alert(
       self.store.scope(state: \.alert),
       dismiss: .alertDismissed
     )
-    .confirmationDialog(
+    .legacy.confirmationDialog(
       self.store.scope(state: \.confirmationDialog),
       dismiss: .confirmationDialogDismissed
     )

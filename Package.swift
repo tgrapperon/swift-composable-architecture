@@ -16,6 +16,10 @@ let package = Package(
       targets: ["ComposableArchitecture"]
     ),
     .library(
+      name: "ComposableArchitectureExtendedSupport",
+      targets: ["ComposableArchitectureExtendedSupport"]
+    ),
+    .library(
       name: "Dependencies",
       targets: ["Dependencies"]
     ),
@@ -58,6 +62,12 @@ let package = Package(
       dependencies: [
         "ComposableArchitecture",
         "Dependencies",
+      ]
+    ),
+    .target(
+      name: "ComposableArchitectureExtendedSupport",
+      dependencies: [
+        "ComposableArchitecture"
       ]
     ),
     .executableTarget(

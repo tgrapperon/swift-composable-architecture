@@ -1,5 +1,6 @@
 import CustomDump
 import SwiftUI
+@_spi(ExtentedSupport) import ComposableArchitecture
 
 /// A view helper that transforms a ``Store`` into a ``ViewStore`` so that its state can be observed
 /// by a view builder.
@@ -109,84 +110,85 @@ import SwiftUI
 ///   ViewStore(self.store).send(.buttonTapped)
 /// }
 /// ```
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-public struct WithViewStore<ViewState, ViewAction, Content> {
-  private let content: (ViewStore<ViewState, ViewAction>) -> Content
-  #if DEBUG
-    private let file: StaticString
-    private let line: UInt
-    private var prefix: String?
-    private var previousState: (ViewState) -> ViewState?
-  #endif
-  @StateObject private var viewStore: ViewStore<ViewState, ViewAction>
-
-  init(
-    store: Store<ViewState, ViewAction>,
-    removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
-    content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
-    file: StaticString = #fileID,
-    line: UInt = #line
-  ) {
-    self.content = content
+extension Legacy {
+  public struct WithViewStore<ViewState, ViewAction, Content> {
+    private let content: (ViewStore<ViewState, ViewAction>) -> Content
     #if DEBUG
-      self.file = file
-      self.line = line
-      var previousState: ViewState? = nil
-      self.previousState = { currentState in
-        defer { previousState = currentState }
-        return previousState
-      }
+      private let file: StaticString
+      private let line: UInt
+      private var prefix: String?
+      private var previousState: (ViewState) -> ViewState?
     #endif
-    self._viewStore = .init(wrappedValue: ViewStore(store, removeDuplicates: isDuplicate))
-  }
+    @ObservedObject private var viewStore: ViewStore<ViewState, ViewAction>
 
-  /// Prints debug information to the console whenever the view is computed.
-  ///
-  /// - Parameter prefix: A string with which to prefix all debug messages.
-  /// - Returns: A structure that prints debug messages for all computations.
-  public func debug(_ prefix: String = "") -> Self {
-    var view = self
-    #if DEBUG
-      view.prefix = prefix
-    #endif
-    return view
-  }
-
-  public var body: Content {
-    #if DEBUG
-      if let prefix = self.prefix {
-        var stateDump = ""
-        customDump(self.viewStore.state, to: &stateDump, indent: 2)
-        let difference =
-          self.previousState(self.viewStore.state)
-          .map {
-            diff($0, self.viewStore.state).map { "(Changed state)\n\($0)" }
-              ?? "(No difference in state detected)"
-          }
-          ?? "(Initial state)\n\(stateDump)"
-        func typeName(_ type: Any.Type) -> String {
-          var name = String(reflecting: type)
-          if let index = name.firstIndex(of: ".") {
-            name.removeSubrange(...index)
-          }
-          return name
+    init(
+      store: Store<ViewState, ViewAction>,
+      removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
+      content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+      file: StaticString = #fileID,
+      line: UInt = #line
+    ) {
+      self.content = content
+      #if DEBUG
+        self.file = file
+        self.line = line
+        var previousState: ViewState? = nil
+        self.previousState = { currentState in
+          defer { previousState = currentState }
+          return previousState
         }
-        print(
-          """
-          \(prefix.isEmpty ? "" : "\(prefix): ")\
-          WithViewStore<\(typeName(ViewState.self)), \(typeName(ViewAction.self)), _>\
-          @\(self.file):\(self.line) \(difference)
-          """
-        )
-      }
-    #endif
-    return self.content(ViewStore(self.viewStore))
+      #endif
+      self.viewStore = ViewStore(store, removeDuplicates: isDuplicate)
+    }
+
+    /// Prints debug information to the console whenever the view is computed.
+    ///
+    /// - Parameter prefix: A string with which to prefix all debug messages.
+    /// - Returns: A structure that prints debug messages for all computations.
+    public func debug(_ prefix: String = "") -> Self {
+      var view = self
+      #if DEBUG
+        view.prefix = prefix
+      #endif
+      return view
+    }
+
+    public var body: Content {
+      #if DEBUG
+        if let prefix = self.prefix {
+          var stateDump = ""
+          customDump(self.viewStore.state, to: &stateDump, indent: 2)
+          let difference =
+            self.previousState(self.viewStore.state)
+            .map {
+              diff($0, self.viewStore.state).map { "(Changed state)\n\($0)" }
+                ?? "(No difference in state detected)"
+            }
+            ?? "(Initial state)\n\(stateDump)"
+          func typeName(_ type: Any.Type) -> String {
+            var name = String(reflecting: type)
+            if let index = name.firstIndex(of: ".") {
+              name.removeSubrange(...index)
+            }
+            return name
+          }
+          print(
+            """
+            \(prefix.isEmpty ? "" : "\(prefix): ")\
+            WithViewStore<\(typeName(ViewState.self)), \(typeName(ViewAction.self)), _>\
+            @\(self.file):\(self.line) \(difference)
+            """
+          )
+        }
+      #endif
+      return self.content(ViewStore(self.viewStore))
+    }
   }
 }
 
 // MARK: - View
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension WithViewStore: View where Content: View {
+
+extension Legacy.WithViewStore: View where Content: View {
   /// Initializes a structure that transforms a ``Store`` into an observable ``ViewStore`` in order
   /// to compute views from state.
   ///
@@ -440,8 +442,7 @@ extension WithViewStore: View where Content: View {
   }
 }
 
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension WithViewStore where ViewState: Equatable, Content: View {
+extension Legacy.WithViewStore where ViewState: Equatable, Content: View {
   /// Initializes a structure that transforms a ``Store`` into an observable ``ViewStore`` in order
   /// to compute views from state.
   ///
@@ -683,8 +684,8 @@ extension WithViewStore where ViewState: Equatable, Content: View {
     self.init(store, removeDuplicates: ==, content: content, file: file, line: line)
   }
 }
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension WithViewStore where ViewState == Void, Content: View {
+
+extension Legacy.WithViewStore where ViewState == Void, Content: View {
   /// Initializes a structure that transforms a store into an observable view store in order to
   /// compute views from void store state.
   ///
@@ -721,8 +722,7 @@ extension WithViewStore where ViewState == Void, Content: View {
   }
 }
 
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension WithViewStore: DynamicViewContent
+extension Legacy.WithViewStore: DynamicViewContent
 where
   ViewState: Collection,
   Content: DynamicViewContent

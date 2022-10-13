@@ -33,7 +33,7 @@ import SwiftUI
 ///   }
 /// }
 /// ```
-///
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 public struct IfLetStore<State, Action, Content: View>: View {
   private let content: (ViewStore<State?, Action>) -> Content
   private let store: Store<State?, Action>

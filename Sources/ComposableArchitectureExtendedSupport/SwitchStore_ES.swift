@@ -1,4 +1,5 @@
 import SwiftUI
+@_spi(ExtentedSupport) import ComposableArchitecture
 
 /// A view that can switch over a store of enum state and handle each case.
 ///
@@ -53,65 +54,66 @@ import SwiftUI
 /// See ``ReducerProtocol/ifCaseLet(_:action:then:file:fileID:line:)`` and
 /// ``Scope/init(state:action:_:file:fileID:line:)`` for embedding reducers that operate on each
 /// case of an enum in reducers that operate on the entire enum.
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-public struct SwitchStore<State, Action, Content: View>: View {
-  public let store: Store<State, Action>
-  public let content: () -> Content
+extension Legacy {
+  public struct SwitchStore<State, Action, Content: View>: View {
+    public let store: Store<State, Action>
+    public let content: () -> Content
 
-  init(
-    store: Store<State, Action>,
-    @ViewBuilder content: @escaping () -> Content
-  ) {
-    self.store = store
-    self.content = content
-  }
+    init(
+      store: Store<State, Action>,
+      @ViewBuilder content: @escaping () -> Content
+    ) {
+      self.store = store
+      self.content = content
+    }
 
-  public var body: some View {
-    self.content()
-      .environmentObject(StoreObservableObject(store: self.store))
-  }
-}
-
-/// A view that handles a specific case of enum state in a ``SwitchStore``.
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-public struct CaseLet<EnumState, EnumAction, CaseState, CaseAction, Content: View>: View {
-  @EnvironmentObject private var store: StoreObservableObject<EnumState, EnumAction>
-  public let toCaseState: (EnumState) -> CaseState?
-  public let fromCaseAction: (CaseAction) -> EnumAction
-  public let content: (Store<CaseState, CaseAction>) -> Content
-
-  /// Initializes a ``CaseLet`` view that computes content depending on if a store of enum state
-  /// matches a particular case.
-  ///
-  /// - Parameters:
-  ///   - toCaseState: A function that can extract a case of switch store state, which can be
-  ///     specified using case path literal syntax, _e.g._ `/State.case`.
-  ///   - fromCaseAction: A function that can embed a case action in a switch store action.
-  ///   - content: A function that is given a store of the given case's state and returns a view
-  ///     that is visible only when the switch store's state matches.
-  public init(
-    state toCaseState: @escaping (EnumState) -> CaseState?,
-    action fromCaseAction: @escaping (CaseAction) -> EnumAction,
-    @ViewBuilder then content: @escaping (Store<CaseState, CaseAction>) -> Content
-  ) {
-    self.toCaseState = toCaseState
-    self.fromCaseAction = fromCaseAction
-    self.content = content
-  }
-
-  public var body: some View {
-    IfLetStore(
-      self.store.wrappedValue.scope(
-        state: self.toCaseState,
-        action: self.fromCaseAction
-      ),
-      then: self.content
-    )
+    public var body: some View {
+      self.content()
+        .environmentObject(StoreObservableObject(store: self.store))
+    }
   }
 }
 
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension CaseLet where EnumAction == CaseAction {
+extension Legacy {
+  /// A view that handles a specific case of enum state in a ``SwitchStore``.
+  public struct CaseLet<EnumState, EnumAction, CaseState, CaseAction, Content: View>: View {
+    @EnvironmentObject private var store: StoreObservableObject<EnumState, EnumAction>
+    public let toCaseState: (EnumState) -> CaseState?
+    public let fromCaseAction: (CaseAction) -> EnumAction
+    public let content: (Store<CaseState, CaseAction>) -> Content
+
+    /// Initializes a ``CaseLet`` view that computes content depending on if a store of enum state
+    /// matches a particular case.
+    ///
+    /// - Parameters:
+    ///   - toCaseState: A function that can extract a case of switch store state, which can be
+    ///     specified using case path literal syntax, _e.g._ `/State.case`.
+    ///   - fromCaseAction: A function that can embed a case action in a switch store action.
+    ///   - content: A function that is given a store of the given case's state and returns a view
+    ///     that is visible only when the switch store's state matches.
+    public init(
+      state toCaseState: @escaping (EnumState) -> CaseState?,
+      action fromCaseAction: @escaping (CaseAction) -> EnumAction,
+      @ViewBuilder then content: @escaping (Store<CaseState, CaseAction>) -> Content
+    ) {
+      self.toCaseState = toCaseState
+      self.fromCaseAction = fromCaseAction
+      self.content = content
+    }
+
+    public var body: some View {
+      Legacy.IfLetStore(
+        self.store.wrappedValue.scope(
+          state: self.toCaseState,
+          action: self.fromCaseAction
+        ),
+        then: self.content
+      )
+    }
+  }
+}
+
+extension Legacy.CaseLet where EnumAction == CaseAction {
   /// Initializes a ``CaseLet`` view that computes content depending on if a store of enum state
   /// matches a particular case.
   ///
@@ -132,29 +134,9 @@ extension CaseLet where EnumAction == CaseAction {
   }
 }
 
-/// A view that covers any cases that aren't addressed in a ``SwitchStore``.
-///
-/// If you wish to use ``SwitchStore`` in a non-exhaustive manner (i.e. you do not want to provide
-/// a ``CaseLet`` for each case of the enum), then you must insert a ``Default`` view at the end of
-/// the ``SwitchStore``'s body.
-public struct Default<Content: View>: View {
-  private let content: () -> Content
-
-  /// Initializes a ``Default`` view that computes content depending on if a store of enum state
-  /// does not match a particular case.
-  ///
-  /// - Parameter content: A function that returns a view that is visible only when the switch
-  ///   store's state does not match a preceding ``CaseLet`` view.
-  public init(@ViewBuilder content: @escaping () -> Content) {
-    self.content = content
-  }
-
-  public var body: some View {
-    self.content()
-  }
-}
-@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension SwitchStore {
+extension Legacy.SwitchStore {
+  public typealias CaseLet = Legacy.CaseLet
+  
   public init<State1, Action1, Content1, DefaultContent>(
     _ store: Store<State, Action>,
     @ViewBuilder content: @escaping () -> TupleView<
@@ -165,7 +147,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -176,7 +158,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else {
@@ -194,7 +176,7 @@ extension SwitchStore {
     @ViewBuilder content: @escaping () -> CaseLet<State, Action, State1, Action1, Content1>
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -220,7 +202,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -234,7 +216,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -259,7 +241,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -296,7 +278,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -313,7 +295,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -341,7 +323,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -384,7 +366,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -404,7 +386,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -440,7 +422,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -489,7 +471,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -512,7 +494,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -552,7 +534,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -607,7 +589,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+    Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -633,7 +615,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -677,7 +659,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -738,7 +720,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -767,7 +749,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -815,7 +797,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -882,7 +864,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -914,7 +896,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -966,7 +948,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -1039,7 +1021,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -1074,7 +1056,7 @@ extension SwitchStore {
   {
     self.init(store: store) {
       let content = content().value
-      return WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
+      return Legacy.WithViewStore(store, removeDuplicates: { enumTag($0) == enumTag($1) }) { viewStore in
         if content.0.toCaseState(viewStore.state) != nil {
           content.0
         } else if content.1.toCaseState(viewStore.state) != nil {
@@ -1130,7 +1112,7 @@ extension SwitchStore {
     >
   )
   where
-    Content == WithViewStore<
+  Content == Legacy.WithViewStore<
       State,
       Action,
       _ConditionalContent<
@@ -1186,48 +1168,8 @@ public struct _ExhaustivityCheckView<State, Action>: View {
   let line: UInt
 
   public var body: some View {
-    #if DEBUG
-      let message = """
-        Warning: SwitchStore.body@\(self.file):\(self.line)
-
-        "\(debugCaseOutput(self.store.wrappedValue.state.value))" was encountered by a \
-        "SwitchStore" that does not handle this case.
-
-        Make sure that you exhaustively provide a "CaseLet" view for each case in "\(State.self)", \
-        or provide a "Default" view at the end of the "SwitchStore".
-        """
-      return VStack(spacing: 17) {
-        #if os(macOS)
-          Text("⚠️")
-        #else
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.largeTitle)
-        #endif
-
-        Text(message)
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .foregroundColor(.white)
-      .padding()
-      .background(Color.red.edgesIgnoringSafeArea(.all))
-      .onAppear {
-        runtimeWarn(
-          """
-          A "SwitchStore" at "\(self.fileID):\(self.line)" does not handle the current case. …
-
-            Unhandled case:
-              \(debugCaseOutput(self.store.wrappedValue.state.value))
-
-          Make sure that you exhaustively provide a "CaseLet" view for each case in your state, \
-          or provide a "Default" view at the end of the "SwitchStore".
-          """,
-          file: self.file,
-          line: self.line
-        )
-      }
-    #else
-      return EmptyView()
-    #endif
+    #warning("Removed runtime warning for proof of concept")
+    return EmptyView()
   }
 }
 

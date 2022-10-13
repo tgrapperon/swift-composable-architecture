@@ -184,7 +184,8 @@ public struct AlertState<Action> {
     case destructive
 
     @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-    var toSwiftUI: SwiftUI.ButtonRole {
+    @_spi(ExtentedSupport)
+    public var toSwiftUI: SwiftUI.ButtonRole {
       switch self {
       case .cancel:
         return .cancel
@@ -204,25 +205,17 @@ extension View {
   ///   - dismissal: An action to send when the alert is dismissed through non-user actions, such
   ///     as when an alert is automatically dismissed by the system. Use this action to `nil` out
   ///     the associated alert state.
+  @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   @ViewBuilder public func alert<Action>(
     _ store: Store<AlertState<Action>?, Action>,
     dismiss: Action
   ) -> some View {
-    if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
-      self.modifier(
-        NewAlertModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
-          dismiss: dismiss
-        )
+    self.modifier(
+      NewAlertModifier(
+        viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
+        dismiss: dismiss
       )
-    } else {
-      self.modifier(
-        OldAlertModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
-          dismiss: dismiss
-        )
-      )
-    }
+    )
   }
 }
 
@@ -240,17 +233,6 @@ private struct NewAlertModifier<Action>: ViewModifier {
       actions: { $0.toSwiftUIActions(send: { viewStore.send($0) }) },
       message: { $0.message.map { Text($0) } }
     )
-  }
-}
-
-private struct OldAlertModifier<Action>: ViewModifier {
-  @ObservedObject var viewStore: ViewStore<AlertState<Action>?, Action>
-  let dismiss: Action
-
-  func body(content: Content) -> some View {
-    content.alert(item: viewStore.binding(send: dismiss)) { state in
-      state.toSwiftUIAlert(send: { viewStore.send($0) })
-    }
   }
 }
 

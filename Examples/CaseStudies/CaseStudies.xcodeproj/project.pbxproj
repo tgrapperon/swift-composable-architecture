@@ -81,6 +81,7 @@
 		DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD442C5286CA91F008B4EA7 /* AboutView.swift */; };
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
+		E9C60CDD28F8CA880024EA55 /* ComposableArchitectureExtendedSupport in Frameworks */ = {isa = PBXBuildFile; productRef = E9C60CDC28F8CA880024EA55 /* ComposableArchitectureExtendedSupport */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -272,6 +273,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DC13940E2469E25C00EE1157 /* ComposableArchitecture in Frameworks */,
+				E9C60CDD28F8CA880024EA55 /* ComposableArchitectureExtendedSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -373,6 +375,7 @@
 				CAF88E8624B8E26E00539345 /* tvOSCaseStudiesTests */,
 				DC4C6EA82450DD380066A05D /* UIKitCaseStudies */,
 				DC4C6EBF2450DD390066A05D /* UIKitCaseStudiesTests */,
+				E9C60CDB28F8CA880024EA55 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -460,6 +463,13 @@
 				DCD442C5286CA91F008B4EA7 /* AboutView.swift */,
 			);
 			path = Internal;
+			sourceTree = "<group>";
+		};
+		E9C60CDB28F8CA880024EA55 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -561,6 +571,7 @@
 			name = SwiftUICaseStudies;
 			packageProductDependencies = (
 				DC13940D2469E25C00EE1157 /* ComposableArchitecture */,
+				E9C60CDC28F8CA880024EA55 /* ComposableArchitectureExtendedSupport */,
 			);
 			productName = CaseStudies;
 			productReference = DC89C41324460F95006900B9 /* SwiftUICaseStudies.app */;
@@ -1270,6 +1281,10 @@
 		DC13940F2469E27300EE1157 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ComposableArchitecture;
+		};
+		E9C60CDC28F8CA880024EA55 /* ComposableArchitectureExtendedSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ComposableArchitectureExtendedSupport;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -20,6 +20,15 @@ struct TwoCounters: ReducerProtocol {
   }
 
   var body: some ReducerProtocol<State, Action> {
+    TransformAction { action in
+      action
+    } content: {
+      EmptyReducer()
+    }
+    StateReader { state in
+      EmptyReducer()
+    }
+
     Scope(state: \.counter1, action: /Action.counter1) {
       Counter()
     }

@@ -354,9 +354,9 @@ extension TestDependencyKey {
 
   static var checkedPreviewValue: Value {
     #if DEBUG
-    self.checkedDefaultValue(for: .preview, default: self.previewValue)
+      self.checkedDefaultValue(for: .preview, default: self.previewValue)
     #else
-    self.previewValue
+      self.previewValue
     #endif
   }
 
@@ -371,7 +371,8 @@ extension TestDependencyKey {
       let previousValue = value as! V
       let newValue = `default`()
       if !isEqual(previousValue, newValue) {
-        runtimeWarn("""
+        runtimeWarn(
+          """
           Warning, \(Self.self) Dependency default value did change…
           
           [TODO: Explain issue & fixes]
@@ -395,10 +396,13 @@ private var defaultValueStorage: [DefaultValueID: Any] = [:]
 private let defaultValueStorageLock = NSRecursiveLock()
 
 func isEqual<Value>(_ v1: Value, _ v2: Value) -> Bool {
+  var _v1 = v1
+  var _v2 = v2
+  if memcmp(&_v1, &_v2, MemoryLayout<Value>.size) == 0 {
+    return true
+  }
   if let isEqual = _isEqual(v1, v2) {
     return isEqual
   }
-  var v1 = v1
-  var v2 = v2
-  return memcmp(&v1, &v2, MemoryLayout<Value>.size) == 0
+  return false
 }

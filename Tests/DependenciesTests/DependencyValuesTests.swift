@@ -91,18 +91,18 @@ final class DependencyValuesTests: XCTestCase {
       XCTAssertNotEqual(DependencyValues._current.date.now, someDate)
     }
   }
-  
-  @Dependency(\.reusedDependency) var reusedDependency
-  func testDependencyDefaultIsReused() {
-    // Accessing `testValue` from `reusedDependency` returns `reusedDependencyDefaultValue` and
-    // increments this value by 1.
-    reusedDependencyDefaultValue = 42
-    XCTAssertEqual(self.reusedDependency, 42)
-    XCTAssertEqual(reusedDependencyDefaultValue, 43)
-    // Access again. This shouldn't activate `testValue`.
-    XCTAssertEqual(self.reusedDependency, 42)
-    XCTAssertEqual(reusedDependencyDefaultValue, 43)
-  }
+  #warning("Reimplement a test to check if a runtime warning is presented")
+//  @Dependency(\.reusedDependency) var reusedDependency
+//  func testDependencyDefaultIsReused() {
+//    // Accessing `testValue` from `reusedDependency` returns `reusedDependencyDefaultValue` and
+//    // increments this value by 1.
+//    reusedDependencyDefaultValue = 42
+//    XCTAssertEqual(self.reusedDependency, 42)
+//    XCTAssertEqual(reusedDependencyDefaultValue, 43)
+//    // Access again. This shouldn't activate `testValue`.
+//    XCTAssertEqual(self.reusedDependency, 42)
+//    XCTAssertEqual(reusedDependencyDefaultValue, 43)
+//  }
 }
 
 private let someDate = Date(timeIntervalSince1970: 1_234_567_890)

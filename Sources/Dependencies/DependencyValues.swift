@@ -241,7 +241,7 @@ public struct DependencyValues: Sendable {
 
         switch context {
         case .live:
-          guard let value = Key.stableOpenedLiveValue
+          guard let value = Key.checkedOpenedLiveValue
           else {
             // TODO: add test coverage to this logic
             if !Self.isSetting {
@@ -289,16 +289,16 @@ public struct DependencyValues: Sendable {
                 line: Self.currentDependency.line ?? line
               )
             }
-            return Key.stableTestValue
+            return Key.checkedTestValue
           }
           return value
         case .preview:
-          return Key.stablePreviewValue
+          return Key.checkedPreviewValue
         case .test:
           var currentDependency = Self.currentDependency
           currentDependency.name = function
           return Self.$currentDependency.withValue(currentDependency) {
-            Key.stableTestValue
+            Key.checkedTestValue
           }
         }
       }
@@ -336,26 +336,50 @@ private let defaultContext: DependencyContext = {
 }()
 
 extension TestDependencyKey {
-  static var stableOpenedLiveValue: Value? {
-    self.stableDefaultValue(for: .live, default: _liveValue(Self.self) as? Value)
+  static var checkedOpenedLiveValue: Value? {
+    #if DEBUG
+      self.checkedDefaultValue(for: .live, default: _liveValue(Self.self) as? Value)
+    #else
+      _liveValue(Self.self) as? Value
+    #endif
   }
 
-  static var stableTestValue: Value {
-    self.stableDefaultValue(for: .test, default: self.testValue)
+  static var checkedTestValue: Value {
+    #if DEBUG
+      self.checkedDefaultValue(for: .test, default: self.testValue)
+    #else
+      self.testValue
+    #endif
   }
 
-  static var stablePreviewValue: Value {
-    self.stableDefaultValue(for: .preview, default: self.previewValue)
+  static var checkedPreviewValue: Value {
+    #if DEBUG
+    self.checkedDefaultValue(for: .preview, default: self.previewValue)
+    #else
+    self.previewValue
+    #endif
   }
 
-  static func stableDefaultValue<V>(
+  static func checkedDefaultValue<V>(
     for context: DependencyContext,
     default: @autoclosure () -> V
   ) -> V {
     let id = DefaultValueID(key: ObjectIdentifier(self), context: context)
     defaultValueStorageLock.lock()
     defer { defaultValueStorageLock.unlock() }
-    if let value = defaultValueStorage[id] as? Value { return value as! V }
+    if let value = defaultValueStorage[id] as? Value {
+      let previousValue = value as! V
+      let newValue = `default`()
+      if !isEqual(previousValue, newValue) {
+        runtimeWarn("""
+          Warning, \(Self.self) Dependency default value did change…
+          
+          [TODO: Explain issue & fixes]
+          """)
+      }
+      defaultValueStorage[id] = newValue
+      return newValue
+    }
     let value = `default`()
     defaultValueStorage[id] = value
     return value
@@ -370,4 +394,11 @@ private struct DefaultValueID: Hashable {
 private var defaultValueStorage: [DefaultValueID: Any] = [:]
 private let defaultValueStorageLock = NSRecursiveLock()
 
-
+func isEqual<Value>(_ v1: Value, _ v2: Value) -> Bool {
+  if let isEqual = _isEqual(v1, v2) {
+    return isEqual
+  }
+  var v1 = v1
+  var v2 = v2
+  return memcmp(&v1, &v2, MemoryLayout<Value>.size) == 0
+}

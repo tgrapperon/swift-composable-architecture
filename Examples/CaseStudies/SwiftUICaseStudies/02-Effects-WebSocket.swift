@@ -154,9 +154,13 @@ struct WebSocketView: View {
             ) {
               viewStore.send(.connectButtonTapped)
             }
-            .buttonStyle(.bordered)
             .tint(viewStore.connectivityState == .connected ? .red : .green)
-
+            #if os(iOS)
+            .buttonStyle(.bordered)
+            #else
+            .buttonStyle(.borderedProminent)
+            #endif
+            
             HStack {
               TextField(
                 "Type message here",
@@ -168,7 +172,9 @@ struct WebSocketView: View {
               Button("Send") {
                 viewStore.send(.sendButtonTapped)
               }
+              #if os(iOS)
               .buttonStyle(.borderless)
+              #endif
             }
           }
         }

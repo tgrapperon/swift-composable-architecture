@@ -1,4 +1,3 @@
-import Combine
 import ComposableArchitecture
 import SwiftUI
 
@@ -13,7 +12,7 @@ private let readMe = """
   request is in-flight will also cancel it.
   """
 
-// MARK: - Demo app domain
+// MARK: - Feature domain
 
 struct EffectsCancellation: ReducerProtocol {
   struct State: Equatable {
@@ -32,7 +31,7 @@ struct EffectsCancellation: ReducerProtocol {
   @Dependency(\.factClient) var factClient
   private enum NumberFactRequestID {}
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .cancelButtonTapped:
       state.isFactRequestInFlight = false
@@ -65,7 +64,7 @@ struct EffectsCancellation: ReducerProtocol {
   }
 }
 
-// MARK: - Application view
+// MARK: - Feature view
 
 struct EffectsCancellationView: View {
   let store: StoreOf<EffectsCancellation>
@@ -103,7 +102,7 @@ struct EffectsCancellationView: View {
 
         Section {
           Button("Number facts provided by numbersapi.com") {
-            openURL(URL(string: "http://numbersapi.com")!)
+            self.openURL(URL(string: "http://numbersapi.com")!)
           }
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity)

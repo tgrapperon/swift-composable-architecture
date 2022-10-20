@@ -6,18 +6,44 @@ final class DependencyKeyWritingReducerTests: XCTestCase {
   func testWritingFusion() async {
     let reducer: _DependencyKeyWritingReducer<Feature> = Feature()
       .dependency(\.myValue, 42)
-    let _: _DependencyKeyWritingReducer<Feature> =
-      reducer
       .dependency(\.myValue, 1729)
       .dependency(\.myValue, 1)
       .dependency(\.myValue, 2)
       .dependency(\.myValue, 3)
+
+    XCTAssertTrue((reducer as Any) is _DependencyKeyWritingReducer<Feature>)
+  }
+
+  func testTransformFusion() async {
+    let reducer: _DependencyKeyWritingReducer<Feature> = Feature()
+      .transformDependency(\.myValue) { $0 = 42 }
+      .transformDependency(\.myValue) { $0 = 1729 }
+      .transformDependency(\.myValue) { $0 = 1 }
+      .transformDependency(\.myValue) { $0 = 2 }
+      .transformDependency(\.myValue) { $0 = 3 }
+
+    XCTAssertTrue((reducer as Any) is _DependencyKeyWritingReducer<Feature>)
   }
 
   func testWritingFusionOrder() async {
     let reducer = Feature()
       .dependency(\.myValue, 42)
       .dependency(\.myValue, 1729)
+
+    let store = TestStore(
+      initialState: Feature.State(),
+      reducer: reducer
+    )
+
+    await store.send(.tap) {
+      $0.value = 42
+    }
+  }
+
+  func testTransformFusionOrder() async {
+    let reducer = Feature()
+      .transformDependency(\.myValue) { $0 = 42 }
+      .transformDependency(\.myValue) { $0 = 1729 }
 
     let store = TestStore(
       initialState: Feature.State(),
@@ -46,6 +72,23 @@ final class DependencyKeyWritingReducerTests: XCTestCase {
     }
   }
 
+  func testTransformOrder() async {
+    let reducer = CombineReducers {
+      Feature()
+        .transformDependency(\.myValue) { $0 = 42 }
+    }
+    .transformDependency(\.myValue) { $0 = 1729 }
+
+    let store = TestStore(
+      initialState: Feature.State(),
+      reducer: reducer
+    )
+
+    await store.send(.tap) {
+      $0.value = 42
+    }
+  }
+
   func testDependency_EffectOfEffect() async {
     struct Feature: ReducerProtocol {
       struct State: Equatable { var count = 0 }
@@ -56,7 +99,7 @@ final class DependencyKeyWritingReducerTests: XCTestCase {
       }
       @Dependency(\.myValue) var myValue
 
-      func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+      func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
         switch action {
         case .tap:
           state.count += 1
@@ -93,7 +136,7 @@ private struct Feature: ReducerProtocol {
   @Dependency(\.myValue) var myValue
   struct State: Equatable { var value = 0 }
   enum Action { case tap }
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .tap:
       state.value = self.myValue

@@ -19,6 +19,8 @@ private let readMe = """
   alerts and dialogs in your application
   """
 
+// MARK: - Feature domain
+
 struct AlertAndConfirmationDialog: ReducerProtocol {
   struct State: Equatable {
     var alert: AlertState<Action>?
@@ -35,7 +37,7 @@ struct AlertAndConfirmationDialog: ReducerProtocol {
     case incrementButtonTapped
   }
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .alertButtonTapped:
       state.alert = AlertState(
@@ -79,6 +81,8 @@ struct AlertAndConfirmationDialog: ReducerProtocol {
   }
 }
 
+// MARK: - Feature view
+
 struct AlertAndConfirmationDialogView: View {
   let store: StoreOf<AlertAndConfirmationDialog>
 
@@ -103,6 +107,8 @@ struct AlertAndConfirmationDialogView: View {
     )
   }
 }
+
+// MARK: - SwiftUI previews
 
 struct AlertAndConfirmationDialog_Previews: PreviewProvider {
   static var previews: some View {

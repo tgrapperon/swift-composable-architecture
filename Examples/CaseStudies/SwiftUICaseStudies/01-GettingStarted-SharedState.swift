@@ -14,6 +14,8 @@ private let readMe = """
   can be reset from the other tab.
   """
 
+// MARK: - Feature domain
+
 struct SharedState: ReducerProtocol {
   enum Tab { case counter, profile }
 
@@ -86,7 +88,7 @@ struct SharedState: ReducerProtocol {
       case isPrimeButtonTapped
     }
 
-    func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+    func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
       switch action {
       case .alertDismissed:
         state.alert = nil
@@ -138,7 +140,7 @@ struct SharedState: ReducerProtocol {
       case resetCounterButtonTapped
     }
 
-    func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+    func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
       switch action {
       case .resetCounterButtonTapped:
         state.resetCount()
@@ -147,6 +149,8 @@ struct SharedState: ReducerProtocol {
     }
   }
 }
+
+// MARK: - Feature view
 
 struct SharedStateView: View {
   let store: StoreOf<SharedState>

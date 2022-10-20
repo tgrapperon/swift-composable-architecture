@@ -8,6 +8,8 @@ private let readMe = """
   state and fires off an effect that will load this state a second later.
   """
 
+// MARK: - Feature domain
+
 struct PresentAndLoad: ReducerProtocol {
   struct State: Equatable {
     var optionalCounter: Counter.State?
@@ -53,6 +55,8 @@ struct PresentAndLoad: ReducerProtocol {
   }
 }
 
+// MARK: - Feature view
+
 struct PresentAndLoadView: View {
   let store: StoreOf<PresentAndLoad>
 
@@ -97,6 +101,8 @@ struct PresentAndLoadView: View {
     }
   }
 }
+
+// MARK: - SwiftUI previews
 
 struct PresentAndLoadView_Previews: PreviewProvider {
   static var previews: some View {

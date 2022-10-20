@@ -9,6 +9,8 @@ private let readMe = """
   depends on this data.
   """
 
+// MARK: - Feature domain
+
 struct LoadThenPresent: ReducerProtocol {
   struct State: Equatable {
     var optionalCounter: Counter.State?
@@ -59,6 +61,8 @@ struct LoadThenPresent: ReducerProtocol {
     }
   }
 }
+
+// MARK: - Feature view
 
 struct LoadThenPresentView: View {
   let store: StoreOf<LoadThenPresent>
@@ -111,6 +115,8 @@ struct LoadThenPresentView: View {
     }
   }
 }
+
+// MARK: - SwiftUI previews
 
 struct LoadThenPresentView_Previews: PreviewProvider {
   static var previews: some View {

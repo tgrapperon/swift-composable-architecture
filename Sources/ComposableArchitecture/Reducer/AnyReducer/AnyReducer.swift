@@ -4,66 +4,16 @@ import Combine
 /// This API has been soft-deprecated in favor of ``ReducerProtocol``.
 /// Read <doc:MigratingToTheReducerProtocol> for more information.
 ///
-/// A type alias to ``AnyReducer`` for source compatibility. This alias will be removed.
-@available(
-  iOS,
-  deprecated: 9999.0,
-  renamed: "AnyReducer",
-  message:
-    """
-    'Reducer' has been deprecated in favor of 'ReducerProtocol'.
-
-    See the migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/reducerprotocol
-    """
-)
-@available(
-  macOS,
-  deprecated: 9999.0,
-  renamed: "AnyReducer",
-  message:
-    """
-    'Reducer' has been deprecated in favor of 'ReducerProtocol'.
-
-    See the migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/reducerprotocol
-    """
-)
-@available(
-  tvOS,
-  deprecated: 9999.0,
-  renamed: "AnyReducer",
-  message:
-    """
-    'Reducer' has been deprecated in favor of 'ReducerProtocol'.
-
-    See the migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/reducerprotocol
-    """
-)
-@available(
-  watchOS,
-  deprecated: 9999.0,
-  renamed: "AnyReducer",
-  message:
-    """
-    'Reducer' has been deprecated in favor of 'ReducerProtocol'.
-
-    See the migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/reducerprotocol
-    """
-)
-public typealias Reducer = AnyReducer
-
-/// This API has been soft-deprecated in favor of ``ReducerProtocol``.
-/// Read <doc:MigratingToTheReducerProtocol> for more information.
-///
 /// A reducer describes how to evolve the current state of an application to the next state, given
-/// an action, and describes what ``Effect``s should be executed later by the store, if any.
+/// an action, and describes what ``EffectTask``s should be executed later by the store, if any.
 ///
 /// Reducers have 3 generics:
 ///
 ///   * `State`: A type that holds the current state of the application.
 ///   * `Action`: A type that holds all possible actions that cause the state of the application to
 ///     change.
-///   * `Environment`: A type that holds all dependencies needed in order to produce ``Effect``s,
-///     such as API clients, analytics clients, random number generators, etc.
+///   * `Environment`: A type that holds all dependencies needed in order to produce
+///     ``EffectTask``s, such as API clients, analytics clients, random number generators, etc.
 ///
 /// > Important: The thread on which effects output is important. An effect's output is immediately
 ///   sent back into the store, and ``Store`` is not thread safe. This means all effects must
@@ -71,9 +21,10 @@ public typealias Reducer = AnyReducer
 ///   output must be on the main thread. You can use the `Publisher` method `receive(on:)` for make
 ///   the effect output its values on the thread of your choice.
 /// >
-/// > This is only an issue if using the Combine interface of ``Effect`` as mentioned above. If you
-///   you are only using Swift's concurrency tools and the `.task`, `.run` and `.fireAndForget`
-///   functions on ``Effect``, then the threading is automatically handled for you.
+/// > This is only an issue if using the Combine interface of ``EffectPublisher`` as mentioned
+///   above. If you are only using Swift's concurrency tools and the `.task`, `.run` and
+///   `.fireAndForget` functions on ``EffectTask``, then the threading is automatically handled for
+///   you.
 @available(
   iOS,
   deprecated: 9999.0,
@@ -107,7 +58,7 @@ public typealias Reducer = AnyReducer
     """
 )
 public struct AnyReducer<State, Action, Environment> {
-  private let reducer: (inout State, Action, Environment) -> Effect<Action, Never>
+  private let reducer: (inout State, Action, Environment) -> EffectTask<Action>
 
   /// > This API has been soft-deprecated in favor of ``ReducerProtocol``.
   /// Read <doc:MigratingToTheReducerProtocol> for more information.
@@ -117,7 +68,7 @@ public struct AnyReducer<State, Action, Environment> {
   /// The reducer takes three arguments: state, action and environment. The state is `inout` so that
   /// you can make any changes to it directly inline. The reducer must return an effect, which
   /// typically would be constructed by using the dependencies inside the `environment` value. If
-  /// no effect needs to be executed, a ``Effect/none`` effect can be returned.
+  /// no effect needs to be executed, a ``EffectPublisher/none`` effect can be returned.
   ///
   /// For example:
   ///
@@ -173,7 +124,7 @@ public struct AnyReducer<State, Action, Environment> {
       This API has been soft-deprecated in favor of 'ReducerProtocol'. Read the migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/reducerprotocol
       """
   )
-  public init(_ reducer: @escaping (inout State, Action, Environment) -> Effect<Action, Never>) {
+  public init(_ reducer: @escaping (inout State, Action, Environment) -> EffectTask<Action>) {
     self.reducer = reducer
   }
 
@@ -716,22 +667,22 @@ public struct AnyReducer<State, Action, Environment> {
       guard let childAction = toChildAction.extract(from: parentAction) else { return .none }
 
       guard var childState = toChildState.extract(from: parentState) else {
-        runtimeWarning(
+        runtimeWarn(
           """
-          A reducer pulled back from "%@:%d" received an action when child state was \
+          A reducer pulled back from "\(fileID):\(line)" received an action when child state was \
           unavailable. …
 
             Action:
-              %@
+              \(debugCaseOutput(childAction))
 
           This is generally considered an application logic error, and can happen for a few \
           reasons:
 
           • The reducer for a particular case of state was combined with or run from another \
-          reducer that set "%@" to another case before the reducer ran. Combine or run \
-          case-specific reducers before reducers that may set their state to another case. This \
-          ensures that case-specific reducers can handle their actions while their state is \
-          available.
+          reducer that set "\(typeName(State.self))" to another case before the reducer ran. \
+          Combine or run case-specific reducers before reducers that may set their state to \
+          another case. This ensures that case-specific reducers can handle their actions while \
+          their state is available.
 
           • An in-flight effect emitted this action when state was unavailable. While it may be \
           perfectly reasonable to ignore this action, you may want to cancel the associated \
@@ -741,12 +692,6 @@ public struct AnyReducer<State, Action, Environment> {
           actions for this reducer can only be sent to a view store when state is non-"nil". \
           In SwiftUI applications, use "SwitchStore".
           """,
-          [
-            "\(fileID)",
-            line,
-            debugCaseOutput(childAction),
-            typeName(State.self),
-          ],
           file: file,
           line: line
         )
@@ -964,20 +909,20 @@ public struct AnyReducer<State, Action, Environment> {
   > {
     .init { state, action, environment in
       guard state != nil else {
-        runtimeWarning(
+        runtimeWarn(
           """
-          An "optional" reducer at "%@:%d" received an action when state was "nil". …
+          An "optional" reducer at "\(fileID):\(line)" received an action when state was "nil". …
 
             Action:
-              %@
+              \(debugCaseOutput(action))
 
           This is generally considered an application logic error, and can happen for a few \
           reasons:
 
-          • The optional reducer was combined with or run from another reducer that set "%@" to \
-          "nil" before the optional reducer ran. Combine or run optional reducers before \
-          reducers that can set their state to "nil". This ensures that optional reducers can \
-          handle their actions while their state is still non-"nil".
+          • The optional reducer was combined with or run from another reducer that set \
+          "\(typeName(State.self))" to "nil" before the optional reducer ran. Combine or run \
+          optional reducers before reducers that can set their state to "nil". This ensures that \
+          optional reducers can handle their actions while their state is still non-"nil".
 
           • An in-flight effect emitted this action while state was "nil". While it may be \
           perfectly reasonable to ignore this action, you may want to cancel the associated \
@@ -987,12 +932,6 @@ public struct AnyReducer<State, Action, Environment> {
           this reducer can only be sent to a view store when state is non-"nil". In SwiftUI \
           applications, use "IfLetStore".
           """,
-          [
-            "\(fileID)",
-            line,
-            debugCaseOutput(action),
-            typeName(State.self),
-          ],
           file: file,
           line: line
         )
@@ -1085,15 +1024,15 @@ public struct AnyReducer<State, Action, Environment> {
       else { return .none }
 
       if parentState[keyPath: toElementsState][id: id] == nil {
-        runtimeWarning(
+        runtimeWarn(
           """
-          A "forEach" reducer at "%@:%d" received an action when state contained no element with \
-          that id. …
+          A "forEach" reducer at "\(fileID):\(line)" received an action when state contained no \
+          element with that id. …
 
             Action:
-              %@
+              \(debugCaseOutput(action))
             ID:
-              %@
+              \(id)
 
           This is generally considered an application logic error, and can happen for a few \
           reasons:
@@ -1114,12 +1053,6 @@ public struct AnyReducer<State, Action, Environment> {
           when its state contains an element at this id. In SwiftUI applications, use \
           "ForEachStore".
           """,
-          [
-            "\(fileID)",
-            line,
-            debugCaseOutput(action),
-            "\(id)",
-          ],
           file: file,
           line: line
         )
@@ -1160,15 +1093,15 @@ public struct AnyReducer<State, Action, Environment> {
       guard let (key, action) = toKeyedAction.extract(from: parentAction) else { return .none }
 
       if parentState[keyPath: toDictionaryState][key] == nil {
-        runtimeWarning(
+        runtimeWarn(
           """
-          A "forEach" reducer at "%@:%d" received an action when state contained no value at \
-          that key. …
+          A "forEach" reducer at "\(fileID):\(line)" received an action when state contained no \
+          value at that key. …
 
             Action:
-              %@
+              \(debugCaseOutput(action))
             Key:
-              %@
+              \(key)
 
           This is generally considered an application logic error, and can happen for a few \
           reasons:
@@ -1188,12 +1121,6 @@ public struct AnyReducer<State, Action, Environment> {
           key. To fix this make sure that actions for this reducer can only be sent to a view \
           store when its state contains an element at this key.
           """,
-          [
-            "\(fileID)",
-            line,
-            debugCaseOutput(action),
-            "\(key)",
-          ],
           file: file,
           line: line
         )
@@ -1208,7 +1135,7 @@ public struct AnyReducer<State, Action, Environment> {
     }
   }
 
-  /// This API has been soft-deprecated in favor of ``ReducerProtocol/reduce(into:action:)-4nzr2``.
+  /// This API has been soft-deprecated in favor of ``ReducerProtocol/reduce(into:action:)-8yinq``.
   /// Read <doc:MigratingToTheReducerProtocol> for more information.
   ///
   /// Runs the reducer.
@@ -1254,11 +1181,11 @@ public struct AnyReducer<State, Action, Environment> {
     _ state: inout State,
     _ action: Action,
     _ environment: Environment
-  ) -> Effect<Action, Never> {
+  ) -> EffectTask<Action> {
     self.reducer(&state, action, environment)
   }
 
-  /// This API has been soft-deprecated in favor of ``ReducerProtocol/reduce(into:action:)-4nzr2``.
+  /// This API has been soft-deprecated in favor of ``ReducerProtocol/reduce(into:action:)-8yinq``.
   /// Read <doc:MigratingToTheReducerProtocol> for more information.
   @available(
     iOS,
@@ -1296,7 +1223,7 @@ public struct AnyReducer<State, Action, Environment> {
     _ state: inout State,
     _ action: Action,
     _ environment: Environment
-  ) -> Effect<Action, Never> {
+  ) -> EffectTask<Action> {
     self.reducer(&state, action, environment)
   }
 }

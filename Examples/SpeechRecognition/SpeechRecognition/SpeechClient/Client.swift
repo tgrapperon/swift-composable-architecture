@@ -1,4 +1,3 @@
-import Combine
 import ComposableArchitecture
 import Dependencies
 import Speech
@@ -20,7 +19,7 @@ struct SpeechClient {
 }
 
 extension SpeechClient: TestDependencyKey {
-  static let previewValue = {
+  static var previewValue: Self {
     let isRecording = ActorIsolated(false)
 
     return Self(
@@ -65,14 +64,14 @@ extension SpeechClient: TestDependencyKey {
         }
       }
     )
-  }()
+  }
 
   static let testValue = Self(
-    finishTask: XCTUnimplemented("\(Self.self).finishTask"),
-    requestAuthorization: XCTUnimplemented(
+    finishTask: unimplemented("\(Self.self).finishTask"),
+    requestAuthorization: unimplemented(
       "\(Self.self).requestAuthorization", placeholder: .notDetermined
     ),
-    startTask: XCTUnimplemented("\(Self.self).recognitionTask", placeholder: .never)
+    startTask: unimplemented("\(Self.self).recognitionTask", placeholder: .never)
   )
 }
 

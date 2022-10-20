@@ -9,6 +9,8 @@ private let readMe = """
   state of the application and any actions that can affect that state or the outside world.
   """
 
+// MARK: - Feature domain
+
 struct Counter: ReducerProtocol {
   struct State: Equatable {
     var count = 0
@@ -19,7 +21,7 @@ struct Counter: ReducerProtocol {
     case incrementButtonTapped
   }
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .decrementButtonTapped:
       state.count -= 1
@@ -30,6 +32,8 @@ struct Counter: ReducerProtocol {
     }
   }
 }
+
+// MARK: - Feature view
 
 struct CounterView: View {
   let store: StoreOf<Counter>
@@ -75,6 +79,8 @@ struct CounterDemoView: View {
     .navigationTitle("Counter demo")
   }
 }
+
+// MARK: - SwiftUI previews
 
 struct CounterView_Previews: PreviewProvider {
   static var previews: some View {

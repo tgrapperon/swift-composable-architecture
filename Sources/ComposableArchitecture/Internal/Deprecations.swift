@@ -3,6 +3,24 @@ import Combine
 import SwiftUI
 import XCTestDynamicOverlay
 
+// MARK: - Deprecated after 0.42.0:
+
+/// This API has been deprecated in favor of ``ReducerProtocol``.
+/// Read <doc:MigratingToTheReducerProtocol> for more information.
+///
+/// A type alias to ``AnyReducer`` for source compatibility. This alias will be removed.
+@available(
+  *,
+  renamed: "AnyReducer",
+  message:
+    """
+    'Reducer' has been deprecated in favor of 'ReducerProtocol'.
+
+    See the migration guide for more information: https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture/reducerprotocol
+    """
+)
+public typealias Reducer = AnyReducer
+
 // MARK: - Deprecated after 0.41.0:
 
 extension ViewStore {
@@ -15,8 +33,8 @@ extension ViewStore {
 
 extension ReducerProtocol {
   @available(*, deprecated, renamed: "_printChanges")
-  public func debug() -> _PrintChangesReducer<Self, _CustomDumpPrinter> {
-    _PrintChangesReducer(base: self, printer: .customDump)
+  public func debug() -> _PrintChangesReducer<Self> {
+    self._printChanges()
   }
 }
 
@@ -464,19 +482,19 @@ extension TestStore {
 
 // MARK: - Deprecated after 0.38.2:
 
-extension Effect {
+extension EffectPublisher {
   @available(*, deprecated)
   public var upstream: AnyPublisher<Action, Failure> {
     self.publisher
   }
 }
 
-extension Effect where Failure == Error {
+extension EffectPublisher where Failure == Error {
   @_disfavoredOverload
   @available(
     *,
     deprecated,
-    message: "Use the non-failing version of 'Effect.task'"
+    message: "Use the non-failing version of 'EffectTask.task'"
   )
   public static func task(
     priority: TaskPriority? = nil,
@@ -534,7 +552,7 @@ extension Store {
 
 // MARK: - Deprecated after 0.38.0:
 
-extension Effect {
+extension EffectPublisher {
   @available(iOS, deprecated: 9999.0, renamed: "unimplemented")
   @available(macOS, deprecated: 9999.0, renamed: "unimplemented")
   @available(tvOS, deprecated: 9999.0, renamed: "unimplemented")
@@ -556,7 +574,7 @@ extension ViewStore {
 
 // MARK: - Deprecated after 0.34.0:
 
-extension Effect {
+extension EffectPublisher {
   @available(
     *,
     deprecated,
@@ -1071,15 +1089,15 @@ extension AnyReducer {
         return .none
       }
       if index >= parentState[keyPath: toElementsState].endIndex {
-        runtimeWarning(
+        runtimeWarn(
           """
-          A "forEach" reducer at "%@:%d" received an action when state contained no element at \
-          that index. …
+          A "forEach" reducer at "\(fileID):\(line)" received an action when state contained no \
+          element at that index. …
 
             Action:
-              %@
+              \(debugCaseOutput(action))
             Index:
-              %d
+              \(index)
 
           This is generally considered an application logic error, and can happen for a few \
           reasons:
@@ -1101,12 +1119,6 @@ extension AnyReducer {
           when its state contains an element at this index. In SwiftUI applications, use \
           "ForEachStore".
           """,
-          [
-            "\(fileID)",
-            line,
-            debugCaseOutput(action),
-            index,
-          ],
           file: file,
           line: line
         )
@@ -1137,16 +1149,14 @@ extension ForEachStore {
   {
     let data = store.state.value
     self.data = data
-    self.content = {
-      WithViewStore(store.scope(state: { $0.map { $0[keyPath: id] } })) { viewStore in
-        ForEach(Array(viewStore.state.enumerated()), id: \.element) { index, _ in
-          content(
-            store.scope(
-              state: { index < $0.endIndex ? $0[index] : data[index] },
-              action: { (index, $0) }
-            )
+    self.content = WithViewStore(store.scope(state: { $0.map { $0[keyPath: id] } })) { viewStore in
+      ForEach(Array(viewStore.state.enumerated()), id: \.element) { index, _ in
+        content(
+          store.scope(
+            state: { index < $0.endIndex ? $0[index] : data[index] },
+            action: { (index, $0) }
           )
-        }
+        )
       }
     }
   }

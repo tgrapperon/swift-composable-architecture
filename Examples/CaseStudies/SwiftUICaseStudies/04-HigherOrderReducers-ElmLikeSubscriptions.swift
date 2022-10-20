@@ -11,9 +11,9 @@ private let readMe = """
 
 extension AnyReducer {
   static func subscriptions(
-    _ subscriptions: @escaping (State, Environment) -> [AnyHashable: Effect<Action, Never>]
+    _ subscriptions: @escaping (State, Environment) -> [AnyHashable: EffectTask<Action>]
   ) -> Self {
-    var activeSubscriptions: [AnyHashable: Effect<Action, Never>] = [:]
+    var activeSubscriptions: [AnyHashable: EffectTask<Action>] = [:]
 
     return AnyReducer { state, _, environment in
       let currentSubscriptions = subscriptions(state, environment)
@@ -33,6 +33,8 @@ extension AnyReducer {
     }
   }
 }
+
+// MARK: - Feature domain
 
 struct ClockState: Equatable {
   var isTimerActive = false
@@ -71,6 +73,8 @@ let clockReducer = AnyReducer<ClockState, ClockAction, ClockEnvironment>.combine
     ]
   }
 )
+
+// MARK: - Feature view
 
 struct ClockView: View {
   let store: Store<ClockState, ClockAction>
@@ -132,6 +136,8 @@ struct ClockView: View {
     }
   }
 }
+
+// MARK: - SwiftUI previews
 
 struct Subscriptions_Previews: PreviewProvider {
   static var previews: some View {

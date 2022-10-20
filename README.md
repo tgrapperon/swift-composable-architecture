@@ -82,6 +82,8 @@ As a basic example, consider a UI that shows a number along with "+" and "−" b
 To implement this feature we create a new type that will house the domain and behavior of the feature by conforming to `ReducerProtocol`:
 
 ```swift
+import ComposableArchitecture
+
 struct Feature: ReducerProtocol {
 }
 ```
@@ -119,7 +121,7 @@ struct Feature: ReducerProtocol {
   struct State: Equatable { … }
   enum Action: Equatable { … }
   
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
       case .factAlertDismissed:
         state.numberFactAlert = nil
@@ -134,13 +136,13 @@ struct Feature: ReducerProtocol {
         return .none
 
       case .numberFactButtonTapped:
-        return .task { [count = state.count] in 
+        return .task { [count = state.count] in
           await .numberFactResponse(
-            TaskResult { 
+            TaskResult {
               String(
                 decoding: try await URLSession.shared
-                  .data(from: URL(string: "http://numbersapi.com/\(number)/trivia")!).0,
-                using: UTF8.self
+                  .data(from: URL(string: "http://numbersapi.com/\(count)/trivia")!).0,
+                as: UTF8.self
               )
             }
           )
@@ -153,7 +155,6 @@ struct Feature: ReducerProtocol {
       case .numberFactResponse(.failure):
         state.numberFactAlert = "Could not load a number fact :("
         return .none
-      } 
     }
   }
 }
@@ -257,18 +258,22 @@ It is also straightforward to have a UIKit controller driven off of this store. 
   ```
 </details>
 
-Once we are ready to display this view, for example in the app's entry point, we can construct a store. This can be done by specify the initial state to start the application in, as well as the reducer that will power the application:
+Once we are ready to display this view, for example in the app's entry point, we can construct a store. This can be done by specifying the initial state to start the application in, as well as the reducer that will power the application:
 
 ```swift
+import ComposableArchitecture
+
 @main
 struct MyApp: App {
   var body: some Scene {
-    FeatureView(
-      store: Store(
-        initialState: Feature.State(),
-        reducer: Feature()
+    WindowGroup {
+      FeatureView(
+        store: Store(
+          initialState: Feature.State(),
+          reducer: Feature()
+        )
       )
-    )
+    }
   }
 }
 ```
@@ -315,7 +320,7 @@ await store.receive(.numberFactResponse(.success(???))) {
 
 However, how do we know what fact is going to be sent back to us?
 
-Currently our reducer is using an effect that reaches out into the real world to hit an API server, and that means we have no way to control its behavior. We are at the whims of our internet connectivity and the availabilty of the API server in order to write this test.
+Currently our reducer is using an effect that reaches out into the real world to hit an API server, and that means we have no way to control its behavior. We are at the whims of our internet connectivity and the availability of the API server in order to write this test.
 
 It would be better for this dependency to be passed to the reducer so that we can use a live dependency when running the application on a device, but use a mocked dependency for tests. We can do this by adding a property to the `Feature` reducer:
 
@@ -331,7 +336,7 @@ Then we can use it in the `reduce` implementation:
 ```swift
 case .numberFactButtonTapped:
   return .task { [count = state.count] in 
-    await .numberFactResponse(TaskResult { try wait self.numberFact(count) })
+    await .numberFactResponse(TaskResult { try await self.numberFact(count) })
   }
 ```
 
@@ -357,7 +362,7 @@ struct MyApp: App {
 }
 ```
 
-But in tests we can use a mock dependency that immediately returns a determinstic, predictable fact: 
+But in tests we can use a mock dependency that immediately returns a deterministic, predictable fact: 
 
 ```swift
 @MainActor
@@ -404,10 +409,10 @@ application in simulators or devices:
 ```swift
 extension NumberFactClient: DependencyKey {
   static let liveValue = Self(
-    fetch: {
+    fetch: { number in
       let (data, _) = try await URLSession.shared
         .data(from: .init(string: "http://numbersapi.com/\(number)")!)
-      return String(decoding: data, using: UTF8.self)
+      return String(decoding: data, as: UTF8.self)
     }
   )
 }
@@ -469,16 +474,16 @@ That is the basics of building and testing a feature in the Composable Architect
 The documentation for releases and `main` are available here:
 
 * [`main`](https://pointfreeco.github.io/swift-composable-architecture/main/documentation/composablearchitecture)
-* [0.41.0](https://pointfreeco.github.io/swift-composable-architecture/0.41.0/documentation/composablearchitecture/)
+* [0.42.0](https://pointfreeco.github.io/swift-composable-architecture/0.42.0/documentation/composablearchitecture/)
 <details>
   <summary>
   Other versions
   </summary>
 
-  * [0.40.2](https://pointfreeco.github.io/swift-composable-architecture/0.40.2/documentation/composablearchitecture/)
+  * [0.41.2](https://pointfreeco.github.io/swift-composable-architecture/0.41.0/documentation/composablearchitecture/)
+  * [0.40.2](https://pointfreeco.github.io/swift-composable-architecture/0.40.0/documentation/composablearchitecture/)
   * [0.39.0](https://pointfreeco.github.io/swift-composable-architecture/0.39.0/documentation/composablearchitecture/)
   * [0.38.0](https://pointfreeco.github.io/swift-composable-architecture/0.38.0/documentation/composablearchitecture/)
-  </summary>
 </details>
 
 <br>
@@ -501,7 +506,7 @@ You can add ComposableArchitecture to an Xcode project by adding it as a package
   2. Enter "https://github.com/pointfreeco/swift-composable-architecture" into the package repository URL text field
   3. Depending on how your project is structured:
       - If you have a single application target that needs access to the library, then add **ComposableArchitecture** directly to your application.
-      - If you want to use this library from multiple Xcode targets, or mixing Xcode targets and SPM targets, you must create a shared framework that depends on **ComposableArchitecture** and then depend on that framework in all of your targets. For an example of this, check out the [Tic-Tac-Toe](./Examples/TicTacToe) demo application, which splits lots of features into modules and consumes the static library in this fashion using the **tic-tac-toe** Swift package.
+      - If you want to use this library from multiple Xcode targets, or mix Xcode targets and SPM targets, you must create a shared framework that depends on **ComposableArchitecture** and then depend on that framework in all of your targets. For an example of this, check out the [Tic-Tac-Toe](./Examples/TicTacToe) demo application, which splits lots of features into modules and consumes the static library in this fashion using the **tic-tac-toe** Swift package.
 
 ## Help
 

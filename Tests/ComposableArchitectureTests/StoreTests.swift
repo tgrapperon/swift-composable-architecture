@@ -1,58 +1,49 @@
 import Combine
+@_spi(Internals) import ComposableArchitecture
 import XCTest
-
-#if DEBUG
-  @testable import ComposableArchitecture
-#else
-  import ComposableArchitecture
-#endif
 
 @MainActor
 final class StoreTests: XCTestCase {
   var cancellables: Set<AnyCancellable> = []
 
-  #if DEBUG
-    func testCancellableIsRemovedOnImmediatelyCompletingEffect() {
-      let store = Store(initialState: (), reducer: EmptyReducer<Void, Void>())
+  func testCancellableIsRemovedOnImmediatelyCompletingEffect() {
+    let store = Store(initialState: (), reducer: EmptyReducer<Void, Void>())
 
-      XCTAssertEqual(store.effectCancellables.count, 0)
+    XCTAssertEqual(store.effectCancellables.count, 0)
 
-      _ = store.send(())
+    _ = store.send(())
 
-      XCTAssertEqual(store.effectCancellables.count, 0)
-    }
-  #endif
+    XCTAssertEqual(store.effectCancellables.count, 0)
+  }
 
-  #if DEBUG
-    func testCancellableIsRemovedWhenEffectCompletes() {
-      let mainQueue = DispatchQueue.test
-      let effect = Effect<Void, Never>(value: ())
-        .delay(for: 1, scheduler: mainQueue)
-        .eraseToEffect()
+  func testCancellableIsRemovedWhenEffectCompletes() {
+    let mainQueue = DispatchQueue.test
+    let effect = EffectTask<Void>(value: ())
+      .delay(for: 1, scheduler: mainQueue)
+      .eraseToEffect()
 
-      enum Action { case start, end }
+    enum Action { case start, end }
 
-      let reducer = Reduce<Void, Action>({ _, action in
-        switch action {
-        case .start:
-          return effect.map { .end }
-        case .end:
-          return .none
-        }
-      })
-      let store = Store(initialState: (), reducer: reducer)
+    let reducer = Reduce<Void, Action>({ _, action in
+      switch action {
+      case .start:
+        return effect.map { .end }
+      case .end:
+        return .none
+      }
+    })
+    let store = Store(initialState: (), reducer: reducer)
 
-      XCTAssertEqual(store.effectCancellables.count, 0)
+    XCTAssertEqual(store.effectCancellables.count, 0)
 
-      _ = store.send(.start)
+    _ = store.send(.start)
 
-      XCTAssertEqual(store.effectCancellables.count, 1)
+    XCTAssertEqual(store.effectCancellables.count, 1)
 
-      mainQueue.advance(by: 2)
+    mainQueue.advance(by: 2)
 
-      XCTAssertEqual(store.effectCancellables.count, 0)
-    }
-  #endif
+    XCTAssertEqual(store.effectCancellables.count, 0)
+  }
 
   func testScopedStoreReceivesUpdatesFromParent() {
     let counterReducer = Reduce<Int, Void>({ state, _ in
@@ -194,13 +185,13 @@ final class StoreTests: XCTestCase {
       switch action {
       case .tap:
         return .merge(
-          Effect(value: .next1),
-          Effect(value: .next2),
+          EffectTask(value: .next1),
+          EffectTask(value: .next2),
           .fireAndForget { values.append(1) }
         )
       case .next1:
         return .merge(
-          Effect(value: .end),
+          EffectTask(value: .end),
           .fireAndForget { values.append(2) }
         )
       case .next2:
@@ -223,7 +214,7 @@ final class StoreTests: XCTestCase {
       switch action {
       case .incr:
         state += 1
-        return state >= 100_000 ? Effect(value: .noop) : Effect(value: .incr)
+        return state >= 100_000 ? EffectTask(value: .noop) : EffectTask(value: .incr)
       case .noop:
         return .none
       }
@@ -364,9 +355,9 @@ final class StoreTests: XCTestCase {
         switch action {
         case 0:
           return .merge(
-            Effect(value: 1),
-            Effect(value: 2),
-            Effect(value: 3)
+            EffectTask(value: 1),
+            EffectTask(value: 2),
+            EffectTask(value: 3)
           )
         default:
           state = action
@@ -499,26 +490,24 @@ final class StoreTests: XCTestCase {
     await store.send(.task).cancel()
   }
 
-  #if DEBUG
-    func testScopeCancellation() async throws {
-      let neverEndingTask = Task<Void, Error> { try await Task.never() }
+  func testScopeCancellation() async throws {
+    let neverEndingTask = Task<Void, Error> { try await Task.never() }
 
-      let store = Store(
-        initialState: (),
-        reducer: Reduce<Void, Void>({ _, _ in
-          .fireAndForget {
-            try await neverEndingTask.value
-          }
-        })
-      )
-      let scopedStore = store.scope(state: { $0 })
+    let store = Store(
+      initialState: (),
+      reducer: Reduce<Void, Void>({ _, _ in
+        .fireAndForget {
+          try await neverEndingTask.value
+        }
+      })
+    )
+    let scopedStore = store.scope(state: { $0 })
 
-      let sendTask = scopedStore.send(())
-      await Task.yield()
-      neverEndingTask.cancel()
-      try await XCTUnwrap(sendTask).value
-      XCTAssertEqual(store.effectCancellables.count, 0)
-      XCTAssertEqual(scopedStore.effectCancellables.count, 0)
-    }
-  #endif
+    let sendTask = scopedStore.send(())
+    await Task.yield()
+    neverEndingTask.cancel()
+    try await XCTUnwrap(sendTask).value
+    XCTAssertEqual(store.effectCancellables.count, 0)
+    XCTAssertEqual(scopedStore.effectCancellables.count, 0)
+  }
 }

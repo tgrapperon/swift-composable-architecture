@@ -135,6 +135,7 @@ struct AnimationsView: View {
           .padding([.horizontal, .bottom])
       }
       .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
+      .navigationTitle("Animations")
       #if os(iOS)
       .navigationBarTitleDisplayMode(.inline)
       #endif

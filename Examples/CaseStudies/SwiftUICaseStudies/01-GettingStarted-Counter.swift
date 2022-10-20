@@ -69,7 +69,6 @@ struct CounterDemoView: View {
   var body: some View {
     Form {
       AboutView(readMe: readMe)
-
       Section {
         CounterView(store: self.store)
           .frame(maxWidth: .infinity)

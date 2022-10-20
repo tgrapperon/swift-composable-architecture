@@ -291,6 +291,9 @@ struct RootView: View {
       }
       .listStyle(.sidebar)
       .navigationTitle("Case Studies")
+      #if os(iOS)
+      .navigationBarTitleDisplayMode(.large)
+      #endif
     } detail: {
       ZStack {
         Text("SwiftUI Case Studies")
@@ -305,6 +308,9 @@ struct RootView: View {
               .textCase(.uppercase)
           }
       }
+      #if os(iOS)
+      .navigationBarTitleDisplayMode(.large)
+      #endif
     }
     .onAppear { ViewStore(self.store).send(.onAppear) }
   }

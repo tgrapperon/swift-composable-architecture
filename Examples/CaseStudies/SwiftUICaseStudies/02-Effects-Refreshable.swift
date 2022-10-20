@@ -111,6 +111,7 @@ struct RefreshableView: View {
         defer { self.isLoading = false }
         await viewStore.send(.refresh).finish()
       }
+      .navigationTitle("Refreshable")
     }
   }
 }

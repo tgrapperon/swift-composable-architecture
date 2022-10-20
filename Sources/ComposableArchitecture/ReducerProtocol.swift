@@ -209,7 +209,12 @@
     /// > instead, either with ``Reduce``, or with a separate, dedicated conformance.
     @ReducerBuilder<State, Action>
     var body: Body { get }
+    
+    /// An hidden requirement that creates a SwiftUI view of this value.
+//    @_spi(Internal)
+    var _view: AnyView { get }
   }
+import SwiftUI
 #else
   /// A protocol that describes how to evolve the current state of an application to the next state,
   /// given an action, and describes what ``EffectTask``s should be executed later by the store, if
@@ -319,6 +324,9 @@
     /// > instead, either with ``Reduce``, or with a separate, dedicated conformance.
     @ReducerBuilder<State, Action>
     var body: Body { get }
+    
+    /// An hidden requirement that creates a SwiftUI view of this value.
+    @_spi(Internal) var _view: Any { get }
   }
 #endif
 

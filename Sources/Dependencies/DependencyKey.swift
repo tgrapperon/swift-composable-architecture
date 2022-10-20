@@ -263,7 +263,7 @@ public struct UnimplementedDependency<Dependency: TestDependencyKey> {
   }
 }
 
-// Used to allow a `placeholder` that a curried function at the dynamic member level wouldn't hallow
+// Used to allow a `placeholder` that a curried function at the dynamic member level wouldn't allow
 public struct UnimplementedWithPlaceholder<Value> {
   let description: String
   public func callAsFunction<A>(placeholder: @autoclosure @escaping @Sendable () -> Value) -> @Sendable (A) -> Value {

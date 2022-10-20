@@ -1,4 +1,3 @@
-import Combine
 import ComposableArchitecture
 import Speech
 @preconcurrency import SwiftUI
@@ -25,7 +24,7 @@ struct SpeechRecognition: ReducerProtocol {
 
   @Dependency(\.speechClient) var speechClient
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .authorizationStateAlertDismissed:
       state.alert = nil
@@ -153,7 +152,6 @@ struct SpeechRecognitionView_Previews: PreviewProvider {
       store: Store(
         initialState: SpeechRecognition.State(transcribedText: "Test test 123"),
         reducer: SpeechRecognition()
-          .dependency(\.speechClient, .liveValue)
       )
     )
   }

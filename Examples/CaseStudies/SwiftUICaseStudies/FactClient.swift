@@ -1,4 +1,3 @@
-import Combine
 import ComposableArchitecture
 import Foundation
 import XCTestDynamicOverlay
@@ -30,6 +29,6 @@ extension FactClient: DependencyKey {
   /// This is the "unimplemented" fact dependency that is useful to plug into tests that you want
   /// to prove do not need the dependency.
   static let testValue = Self(
-    fetch: XCTUnimplemented("\(Self.self).fetch")
+    fetch: unimplemented("\(Self.self).fetch")
   )
 }

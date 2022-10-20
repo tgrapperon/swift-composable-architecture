@@ -1,4 +1,3 @@
-import Combine
 import ComposableArchitecture
 import Foundation
 import XCTestDynamicOverlay
@@ -48,6 +47,6 @@ extension DownloadClient: DependencyKey {
   )
 
   static let testValue = Self(
-    download: XCTUnimplemented("\(Self.self).download")
+    download: unimplemented("\(Self.self).download")
   )
 }

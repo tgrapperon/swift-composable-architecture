@@ -1,4 +1,3 @@
-import Combine
 import ComposableArchitecture
 import SwiftUI
 
@@ -40,7 +39,7 @@ struct EffectsBasics: ReducerProtocol {
   @Dependency(\.mainQueue) var mainQueue
   private enum DelayID {}
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .decrementButtonTapped:
       state.count -= 1
@@ -94,7 +93,7 @@ struct EffectsBasics: ReducerProtocol {
 struct EffectsBasicsView: View {
   let store: StoreOf<EffectsBasics>
   @Environment(\.openURL) var openURL
-  
+
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       Form {
@@ -137,7 +136,7 @@ struct EffectsBasicsView: View {
 
         Section {
           Button("Number facts provided by numbersapi.com") {
-            openURL(URL(string: "http://numbersapi.com")!)
+            self.openURL(URL(string: "http://numbersapi.com")!)
           }
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity)
@@ -155,7 +154,7 @@ struct EffectsBasicsView: View {
   }
 }
 
-// MARK: - Feature SwiftUI previews
+// MARK: - SwiftUI previews
 
 struct EffectsBasicsView_Previews: PreviewProvider {
   static var previews: some View {

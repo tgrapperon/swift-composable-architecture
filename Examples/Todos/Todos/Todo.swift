@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import Foundation
 import SwiftUI
 
 struct Todo: ReducerProtocol {
@@ -14,7 +13,7 @@ struct Todo: ReducerProtocol {
     case textFieldChanged(String)
   }
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .checkBoxToggled:
       state.isComplete.toggle()

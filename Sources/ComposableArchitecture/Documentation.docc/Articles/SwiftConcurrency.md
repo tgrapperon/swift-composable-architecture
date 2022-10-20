@@ -7,11 +7,11 @@ and functions that are not thread-safe in concurrent contexts. Many of these war
 for the time being, but in Swift 6 most (if not all) of these warnings will become errors, and so
 you will need to know how to prove to the compiler that your types are safe to use concurrently.
 
-There are 3 primary ways to create an ``Effect`` in the library:
+There are 3 primary ways to create an ``EffectTask`` in the library:
 
-  * ``Effect/task(priority:operation:catch:file:fileID:line:)``
-  * ``Effect/run(priority:operation:catch:file:fileID:line:)``
-  * ``Effect/fireAndForget(priority:_:)``
+  * ``EffectPublisher/task(priority:operation:catch:file:fileID:line:)``
+  * ``EffectPublisher/run(priority:operation:catch:file:fileID:line:)``
+  * ``EffectPublisher/fireAndForget(priority:_:)``
 
 Each of these constructors takes a `@Sendable`, asynchronous closure, which restricts the types of
 closures you can use for your effects. In particular, the closure can only capture `Sendable`
@@ -32,7 +32,7 @@ struct Feature: ReducerProtocol {
   struct State { … }
   enum Action { … }
 
-  func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
+  func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .buttonTapped:
       return .task {
@@ -71,7 +71,7 @@ return .task { [count = state.count] in
 ### Accessing dependencies in an effect
 
 In the Composable Architecture, one provides dependencies to a reducer so that it can interact with
-the outside world in a determinstic and controlled manner. Those dependencies can be used from
+the outside world in a deterministic and controlled manner. Those dependencies can be used from
 asynchronous and concurrent contexts, and so must be `Sendable`.
 
 If your dependency is not sendable, you will be notified at the time of registering it with the
@@ -89,7 +89,7 @@ extension DependencyValues {
 If `FactClient` is not `Sendable`, for whatever reason, you will get a warning in the `get`
 and `set` lines:
 
->⚠️ Type 'AudioPlayerClient' does not conform to the 'Sendable' protocol
+>⚠️ Type 'FactClient' does not conform to the 'Sendable' protocol
 
 To fix this you need to make each dependency `Sendable`. This usually just means making sure 
 that the interface type only holds onto `Sendable` data, and in particular, any closure-based 
@@ -101,5 +101,5 @@ struct FactClient {
 }
 ```
 
-This will restrict the kinds of closures that can be used when construct `FactClient` values, thus 
+This will restrict the kinds of closures that can be used when constructing `FactClient` values, thus 
 making the entire `FactClient` sendable itself.

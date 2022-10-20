@@ -1,12 +1,12 @@
 import Combine
 import Foundation
 
-extension Effect {
+extension EffectPublisher {
   /// Turns an effect into one that is capable of being canceled.
   ///
   /// To turn an effect into a cancellable one you must provide an identifier, which is used in
-  /// ``Effect/cancel(id:)-iun1`` to identify which in-flight effect should be canceled. Any
-  /// hashable value can be used for the identifier, such as a string, but you can add a bit of
+  /// ``EffectPublisher/cancel(id:)-6hzsl`` to identify which in-flight effect should be canceled.
+  /// Any hashable value can be used for the identifier, such as a string, but you can add a bit of
   /// protection against typos by defining a new type for the identifier:
   ///
   /// ```swift
@@ -42,24 +42,24 @@ extension Effect {
                   AnyPublisher<Action, Failure>, PassthroughSubject<Void, Never>
                 >
               > in
-            cancellablesLock.lock()
-            defer { cancellablesLock.unlock() }
+            _cancellablesLock.lock()
+            defer { _cancellablesLock.unlock() }
 
-            let id = CancelToken(id: id)
+            let id = _CancelToken(id: id)
             if cancelInFlight {
-              cancellationCancellables[id]?.forEach { $0.cancel() }
+              _cancellationCancellables[id]?.forEach { $0.cancel() }
             }
 
             let cancellationSubject = PassthroughSubject<Void, Never>()
 
             var cancellationCancellable: AnyCancellable!
             cancellationCancellable = AnyCancellable {
-              cancellablesLock.sync {
+              _cancellablesLock.sync {
                 cancellationSubject.send(())
                 cancellationSubject.send(completion: .finished)
-                cancellationCancellables[id]?.remove(cancellationCancellable)
-                if cancellationCancellables[id]?.isEmpty == .some(true) {
-                  cancellationCancellables[id] = nil
+                _cancellationCancellables[id]?.remove(cancellationCancellable)
+                if _cancellationCancellables[id]?.isEmpty == .some(true) {
+                  _cancellationCancellables[id] = nil
                 }
               }
             }
@@ -67,8 +67,8 @@ extension Effect {
             return publisher.prefix(untilOutputFrom: cancellationSubject)
               .handleEvents(
                 receiveSubscription: { _ in
-                  _ = cancellablesLock.sync {
-                    cancellationCancellables[id, default: []].insert(
+                  _ = _cancellablesLock.sync {
+                    _cancellationCancellables[id, default: []].insert(
                       cancellationCancellable
                     )
                   }
@@ -93,8 +93,8 @@ extension Effect {
 
   /// Turns an effect into one that is capable of being canceled.
   ///
-  /// A convenience for calling ``Effect/cancellable(id:cancelInFlight:)-17skv`` with a static type
-  /// as the effect's unique identifier.
+  /// A convenience for calling ``EffectPublisher/cancellable(id:cancelInFlight:)-29q60`` with a
+  /// static type as the effect's unique identifier.
   ///
   /// - Parameters:
   ///   - id: A unique type identifying the effect.
@@ -112,16 +112,16 @@ extension Effect {
   ///   identifier.
   public static func cancel(id: AnyHashable) -> Self {
     .fireAndForget {
-      cancellablesLock.sync {
-        cancellationCancellables[.init(id: id)]?.forEach { $0.cancel() }
+      _cancellablesLock.sync {
+        _cancellationCancellables[.init(id: id)]?.forEach { $0.cancel() }
       }
     }
   }
 
   /// An effect that will cancel any currently in-flight effect with the given identifier.
   ///
-  /// A convenience for calling ``Effect/cancel(id:)-iun1`` with a static type as the effect's
-  /// unique identifier.
+  /// A convenience for calling ``EffectPublisher/cancel(id:)-6hzsl`` with a static type as the
+  /// effect's unique identifier.
   ///
   /// - Parameter id: A unique type identifying the effect.
   /// - Returns: A new effect that will cancel any currently in-flight effect with the given
@@ -136,19 +136,19 @@ extension Effect {
   /// - Returns: A new effect that will cancel any currently in-flight effects with the given
   ///   identifiers.
   public static func cancel(ids: [AnyHashable]) -> Self {
-    .merge(ids.map(Effect.cancel(id:)))
+    .merge(ids.map(EffectPublisher.cancel(id:)))
   }
 
   /// An effect that will cancel multiple currently in-flight effects with the given identifiers.
   ///
-  /// A convenience for calling ``Effect/cancel(ids:)-dmwy`` with a static type as the effect's
-  /// unique identifier.
+  /// A convenience for calling ``EffectPublisher/cancel(ids:)-1cqqx`` with a static type as the
+  /// effect's unique identifier.
   ///
   /// - Parameter ids: An array of unique types identifying the effects.
   /// - Returns: A new effect that will cancel any currently in-flight effects with the given
   ///   identifiers.
   public static func cancel(ids: [Any.Type]) -> Self {
-    .merge(ids.map(Effect.cancel(id:)))
+    .merge(ids.map(EffectPublisher.cancel(id:)))
   }
 }
 
@@ -196,21 +196,21 @@ public func withTaskCancellation<T: Sendable>(
   cancelInFlight: Bool = false,
   operation: @Sendable @escaping () async throws -> T
 ) async rethrows -> T {
-  let id = CancelToken(id: id)
-  let (cancellable, task) = cancellablesLock.sync { () -> (AnyCancellable, Task<T, Error>) in
+  let id = _CancelToken(id: id)
+  let (cancellable, task) = _cancellablesLock.sync { () -> (AnyCancellable, Task<T, Error>) in
     if cancelInFlight {
-      cancellationCancellables[id]?.forEach { $0.cancel() }
+      _cancellationCancellables[id]?.forEach { $0.cancel() }
     }
     let task = Task { try await operation() }
     let cancellable = AnyCancellable { task.cancel() }
-    cancellationCancellables[id, default: []].insert(cancellable)
+    _cancellationCancellables[id, default: []].insert(cancellable)
     return (cancellable, task)
   }
   defer {
-    cancellablesLock.sync {
-      cancellationCancellables[id]?.remove(cancellable)
-      if cancellationCancellables[id]?.isEmpty == .some(true) {
-        cancellationCancellables[id] = nil
+    _cancellablesLock.sync {
+      _cancellationCancellables[id]?.remove(cancellable)
+      if _cancellationCancellables[id]?.isEmpty == .some(true) {
+        _cancellationCancellables[id] = nil
       }
     }
   }
@@ -250,7 +250,7 @@ extension Task where Success == Never, Failure == Never {
   ///
   /// - Parameter id: An identifier.
   public static func cancel<ID: Hashable & Sendable>(id: ID) {
-    cancellablesLock.sync { cancellationCancellables[.init(id: id)]?.forEach { $0.cancel() } }
+    _cancellablesLock.sync { _cancellationCancellables[.init(id: id)]?.forEach { $0.cancel() } }
   }
 
   /// Cancel any currently in-flight operation with the given identifier.
@@ -264,18 +264,18 @@ extension Task where Success == Never, Failure == Never {
   }
 }
 
-struct CancelToken: Hashable {
+@_spi(Internals) public struct _CancelToken: Hashable {
   let id: AnyHashable
   let discriminator: ObjectIdentifier
 
-  init(id: AnyHashable) {
+  public init(id: AnyHashable) {
     self.id = id
     self.discriminator = ObjectIdentifier(type(of: id.base))
   }
 }
 
-var cancellationCancellables: [CancelToken: Set<AnyCancellable>] = [:]
-let cancellablesLock = NSRecursiveLock()
+@_spi(Internals) public var _cancellationCancellables: [_CancelToken: Set<AnyCancellable>] = [:]
+@_spi(Internals) public let _cancellablesLock = NSRecursiveLock()
 
 @rethrows
 private protocol _ErrorMechanism {

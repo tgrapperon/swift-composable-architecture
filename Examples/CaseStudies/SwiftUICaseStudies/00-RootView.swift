@@ -5,7 +5,7 @@ struct RootView: View {
   let store: StoreOf<Root>
 
   var body: some View {
-    NavigationView {
+    NavigationSplitView {
       List {
         Section(header: Text("Getting started")) {
           NavigationLink(
@@ -291,8 +291,22 @@ struct RootView: View {
       }
       .listStyle(.sidebar)
       .navigationTitle("Case Studies")
-      .onAppear { ViewStore(self.store).send(.onAppear) }
+    } detail: {
+      ZStack {
+        Text("SwiftUI Case Studies")
+          .font(.largeTitle)
+          .fontWeight(.bold)
+          .overlay(alignment: .top) {
+            Text("The Composable Architecture")
+              .font(.headline)
+              .fontWeight(.semibold)
+              .foregroundStyle(.secondary)
+              .alignmentGuide(.top) { $0[.bottom] }
+              .textCase(.uppercase)
+          }
+      }
     }
+    .onAppear { ViewStore(self.store).send(.onAppear) }
   }
 }
 

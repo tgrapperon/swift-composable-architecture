@@ -67,11 +67,9 @@ extension SpeechClient: TestDependencyKey {
   }
 
   static let testValue = Self(
-    finishTask: XCTUnimplemented("\(Self.self).finishTask"),
-    requestAuthorization: XCTUnimplemented(
-      "\(Self.self).requestAuthorization", placeholder: .notDetermined
-    ),
-    startTask: XCTUnimplemented("\(Self.self).recognitionTask", placeholder: .never)
+    finishTask: unimplement.finishTask,
+    requestAuthorization: unimplement.requestAuthorization(placeholder: .notDetermined),
+    startTask: unimplement.startTask(placeholder: .never)
   )
 }
 

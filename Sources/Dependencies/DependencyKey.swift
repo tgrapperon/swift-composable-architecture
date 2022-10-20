@@ -237,3 +237,49 @@ extension TestDependencyKey {
   /// which will take precedence over this implementation.
   public static var previewValue: Value { Self.testValue }
 }
+@dynamicMemberLookup
+public struct UnimplementedDependency<Dependency: TestDependencyKey> {
+  // Only there to make Xcode propose correct completion. `CustomDump` `KeyPath` extraction
+  // doesn't seem to work when `Value` is a function. So we fall-back on `@dynamicMemberLookup`
+  // string variants.
+  @_disfavoredOverload
+  public dynamic subscript<Value>(dynamicMember keyPath: KeyPath<Dependency.Value, Value>)
+    -> @Sendable () -> Value
+  {
+    fatalError()
+  }
+
+  public dynamic subscript<Value>(dynamicMember keyPath: String) -> @Sendable () -> Value {
+    XCTUnimplemented("\(Dependency.Value.self).\(keyPath)")
+  }
+  
+  public dynamic subscript<Value>(dynamicMember keyPath: String) -> @Sendable () async -> Value {
+    XCTUnimplemented("\(Dependency.Value.self).\(keyPath)")
+  }
+  // … more overloads from XCTestDynamicOverlay
+  public dynamic subscript<Value>(dynamicMember keyPath: String) -> UnimplementedWithPlaceholder<Value>
+  {
+    UnimplementedWithPlaceholder(description: "\(Dependency.Value.self).\(keyPath)")
+  }
+}
+
+// Used to allow a `placeholder` that a curried function at the dynamic member level wouldn't hallow
+public struct UnimplementedWithPlaceholder<Value> {
+  let description: String
+  public func callAsFunction<A>(placeholder: @autoclosure @escaping @Sendable () -> Value) -> @Sendable (A) -> Value {
+    XCTUnimplemented(description, placeholder: placeholder())
+  }
+  public func callAsFunction(placeholder: @autoclosure @escaping @Sendable () -> Value) -> @Sendable () -> Value {
+    XCTUnimplemented(description, placeholder: placeholder())
+  }
+  public func callAsFunction(placeholder: @autoclosure @escaping @Sendable () -> Value) -> @Sendable () async -> Value {
+    XCTUnimplemented(description, placeholder: placeholder())
+  }
+  // … more overloads from XCTestDynamicOverlay
+}
+
+extension TestDependencyKey {
+  public static var unimplement: UnimplementedDependency<Self> {
+    UnimplementedDependency<Self>()
+  }
+}

@@ -353,13 +353,13 @@ extension DependencyValues {
 
 struct WebSocketView_Previews: PreviewProvider {
   static var previews: some View {
-//    NavigationView {
+    NavigationView {
       WebSocketView(
         store: Store(
           initialState: WebSocket.State(receivedMessages: ["Hi"]),
           reducer: WebSocket()
         )
       )
-//    }
+    }
   }
 }

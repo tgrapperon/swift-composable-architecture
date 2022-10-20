@@ -14,10 +14,10 @@ extension ReducerProtocol where Body == Never {
   
   @ViewBuilder var view: some View {
     GroupBox {
-      Text("func")
-        .italic()
+      RoundedRectangle(cornerRadius: 3)
+        .frame(height: 33)
     } label: {
-      Text("reduce()")
+      Text("func reduce() -> EffectTask<\(String(describing: Self.Action.self))>")
     }
 //      .padding(.leading)
   }

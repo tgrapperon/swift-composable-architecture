@@ -90,11 +90,27 @@ extension Scope {
   }
   @ViewBuilder var view: some View {
     GroupBox {
+      HStack {
         self.child._view
+      }
     } label: {
       Text("Scope")
     }
-    .padding()
+  }
+}
+
+extension _IfLetReducer {
+  public var _view: AnyView {
+    AnyView(view)
+  }
+  @ViewBuilder var view: some View {
+    GroupBox {
+      HStack {
+        self.child._view
+      }
+    } label: {
+      Text("if let \(String(describing: Child.State.self))?")
+    }
   }
 }
 
@@ -105,7 +121,6 @@ extension EmptyReducer {
   @ViewBuilder var view: some View {
     //    if #available(iOS 15.0, *) {
     Text("Empty")
-      .padding()
   }
 }
 
@@ -119,13 +134,34 @@ extension Reduce {
     } label: {
       Text("Reduce")
     }
-      .padding()
   }
 }
 
 extension ReducerBuilder._Optional {
   public var _view: AnyView {
-    AnyView(Color.orange)
+    AnyView(Group {
+      if let wrapped {
+        wrapped._view
+      } else {
+        Text("\(String(describing: Wrapped.self))?")
+      }
+    })
+  }
+}
+
+extension ReducerBuilder._Conditional {
+  public var _view: AnyView {
+    AnyView (
+      HStack {
+        switch self {
+        case let .first(first):
+          first._view
+          Text("\(String(describing: Second.self))")
+        case let .second(second):
+          Text("\(String(describing: First.self))")
+          second._view
+        }
+      })
   }
 }
 
@@ -140,26 +176,16 @@ extension ReducerBuilder._Sequence {
   }
 }
 
-//extension ReducerProtocol where Body == Never {
-//  public var view: AnyView {
-//    AnyView(Color.green)
-//  }
-//}
-//
-//extension ReducerProtocol where Body: ReducerProtocol {
-//  public var view: AnyView {
-//    AnyView(ReducerView(reducer: body))
-//  }
-//}
+extension ReducerBuilder._SequenceMany {
+  public var _view: AnyView {
+    AnyView(
+      Group {
+        ForEach(Array(zip(0..., self.reducers)), id: \.0) { index, reducer in
+          reducer._view
+        }
+      }
+    )
+  }
+}
 
-//extension ReducerProtocol where Body: ReducerProtocol {
-//  var view: AnyView {
-////    AnyView(Rectangle())
-//  }
-//}
 
-//extension Reduce {
-//  var view: AnyView {
-//    AnyView(Ellipse())
-//  }
-//}

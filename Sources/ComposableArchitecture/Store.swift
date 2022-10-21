@@ -126,7 +126,7 @@ public final class Store<State, Action> {
   private var isSending = false
   var parentCancellable: AnyCancellable?
   #if swift(>=5.7)
-    private let reducer: any ReducerProtocol<State, Action>
+    fileprivate let reducer: any ReducerProtocol<State, Action>
   #else
     private let reducer: (inout State, Action) -> EffectTask<Action>
     fileprivate var scope: AnyStoreScope?
@@ -317,11 +317,20 @@ public final class Store<State, Action> {
     self.scope(state: toChildState, action: { $0 })
   }
 
+  func printReducer() {
+    #if swift(>=5.7)
+//    if parentCancellable == nil {
+      reducer.printGraphValue()
+//    }
+    #endif
+  }
+
   @_spi(Internals) public func send(
     _ action: Action,
     originatingFrom originatingAction: Action? = nil
   ) -> Task<Void, Never>? {
     self.threadCheck(status: .send(action, originatingAction: originatingAction))
+    printReducer()
 
     self.bufferedActions.append(action)
     guard !self.isSending else { return nil }
@@ -614,6 +623,12 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
       } else {
         return .none
       }
+    }
+    
+    public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
+      let typeName = "Scope"
+      let info = ReducerInfo(typeName: typeName, traits: .scope)
+      return .node(info, children: [self.rootStore.reducer._graphValue(parameters: parameters)])
     }
   }
 

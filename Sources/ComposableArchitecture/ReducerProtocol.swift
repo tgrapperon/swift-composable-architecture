@@ -210,7 +210,8 @@
     @ReducerBuilder<State, Action>
     var body: Body { get }
     
-    @_spi(Graph) var _graphValue: ReducerGraphValue { get }
+//    @_spi(Graph)
+    func _graphValue(parameters: ReducerGraphValue.Parameters) ->  ReducerGraphValue
   }
 #else
   /// A protocol that describes how to evolve the current state of an application to the next state,
@@ -322,7 +323,7 @@
     @ReducerBuilder<State, Action>
     var body: Body { get }
     
-    @_spi(Graph) var _graphValue: ReducerGraphValue { get }
+    @_spi(Graph) func _graphValue(parameters: ReducerGraphValue.Parameters) ->  ReducerGraphValue 
   }
 #endif
 

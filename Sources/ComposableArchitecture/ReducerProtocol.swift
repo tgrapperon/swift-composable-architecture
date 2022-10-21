@@ -209,6 +209,8 @@
     /// > instead, either with ``Reduce``, or with a separate, dedicated conformance.
     @ReducerBuilder<State, Action>
     var body: Body { get }
+    
+    @_spi(Graph) var _graphValue: ReducerGraphValue { get }
   }
 #else
   /// A protocol that describes how to evolve the current state of an application to the next state,
@@ -319,6 +321,8 @@
     /// > instead, either with ``Reduce``, or with a separate, dedicated conformance.
     @ReducerBuilder<State, Action>
     var body: Body { get }
+    
+    @_spi(Graph) var _graphValue: ReducerGraphValue { get }
   }
 #endif
 
@@ -372,3 +376,4 @@ extension ReducerProtocol where Body: ReducerProtocol, Body.State == State, Body
   /// ```
   public typealias ReducerProtocolOf<R: ReducerProtocol> = ReducerProtocol<R.State, R.Action>
 #endif
+

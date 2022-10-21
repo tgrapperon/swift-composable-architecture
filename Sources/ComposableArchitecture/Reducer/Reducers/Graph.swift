@@ -14,6 +14,11 @@ public indirect enum GraphValue<T> {
   }
 }
 
+extension GraphValue: Equatable where T: Equatable {}
+extension GraphValue: Hashable where T: Hashable {}
+extension GraphValue: Sendable where T: Sendable {}
+extension GraphValue: Codable where T: Codable {}
+
 extension ReducerGraphValue {
   public struct Parameters {
     var isFlattened: Bool = true
@@ -30,18 +35,51 @@ extension GraphValue where T == ReducerInfo {
       return t.typeName
     }
   }
+
+  func with(traits: (inout ReducerInfo.Traits) -> Void) -> Self {
+    switch self {
+    case .value(var t):
+      traits(&t.traits)
+      return .value(t)
+    case .node(var t, let children):
+      traits(&t.traits)
+      return .node(t, children: children)
+    }
+  }
 }
 
 public typealias ReducerGraphValue = GraphValue<ReducerInfo>
 
-public struct ReducerInfo: Hashable, Sendable {
-  public init(typeName: String, traits: ReducerInfo.Traits = []) {
+public struct ReducerInfo: Hashable, Sendable, Codable {
+  init(
+    typeName: String,
+    state: String,
+    action: String,
+    traits: ReducerInfo.Traits = []
+  ) {
     self.typeName = typeName
+    self.name = typeName
+    self.state = state
+    self.action = action
     self.traits = traits
   }
-  
-  //  public let id: GraphIdentifier<ReducerGraphID>
+
+  init<R: ReducerProtocol>(
+    _ reducer: R.Type,
+    name: String? = nil,
+    traits: ReducerInfo.Traits = []
+  ) {
+    self.typeName = _typeName(reducer, qualified: true)
+    self.name = name ?? _typeName(reducer, qualified: false)
+    self.state = _typeName(reducer.State.self, qualified: true)
+    self.action = _typeName(reducer.Action.self, qualified: true)
+    self.traits = traits
+  }
+
+  public var name: String
   public var typeName: String
+  public var state: String
+  public var action: String
   public var traits: Traits = []
 }
 
@@ -52,7 +90,7 @@ extension ReducerInfo: CustomDumpStringConvertible {
 }
 
 extension ReducerInfo {
-  public struct Traits: RawRepresentable, OptionSet, Hashable, Sendable {
+  public struct Traits: RawRepresentable, OptionSet, Hashable, Sendable, Codable {
     public var rawValue: Int
     public init(rawValue: Int) {
       self.rawValue = rawValue
@@ -61,11 +99,21 @@ extension ReducerInfo {
     public static let builderSequence: Traits = .init(rawValue: 1 << 2)
     public static let scope: Traits = .init(rawValue: 1 << 3)
     public static let optional: Traits = .init(rawValue: 1 << 4)
-    
-    public static let list: Traits = .init(rawValue: 1 << 6)
-    public static let modifier: Traits = .init(rawValue: 1 << 7)
-    public static let accumulator: Traits = .init(rawValue: 1 << 8)
+    public static let conditional: Traits = .init(rawValue: 1 << 5)
 
+    public static let switchCase: Traits = .init(rawValue: 1 << 6)
+    public static let store: Traits = .init(rawValue: 1 << 7)
+
+    public static let list: Traits = .init(rawValue: 1 << 10)
+    public static let modifier: Traits = .init(rawValue: 1 << 11)
+    public static let modified: Traits = .init(rawValue: 1 << 12)
+
+    public static let group: Traits = .init(rawValue: 1 << 13)
+    public static let builder: Traits = .init(rawValue: 1 << 14)
+
+    public static let empty: Traits = .init(rawValue: 1 << 20)
+    public static let binding: Traits = .init(rawValue: 1 << 21)
+    public static let debug: Traits = .init(rawValue: 1 << 22)
   }
 }
 
@@ -74,30 +122,26 @@ extension ReducerInfo.Traits: CustomDumpStringConvertible {
     guard !isEmpty else { return "none" }
     var components: [String] = []
     var remainder = self
-    if remainder.contains(.opaque) {
-      remainder.remove(.opaque)
-      components.append("opaque")
+    func consume(_ trait: Self, _ description: String) {
+      if remainder.contains(trait) {
+        remainder.remove(trait)
+        components.append(description)
+      }
     }
-    if remainder.contains(.builderSequence) {
-      remainder.remove(.builderSequence)
-      components.append("sequence")
-    }
-    if remainder.contains(.scope) {
-      remainder.remove(.scope)
-      components.append("scope")
-    }
-    if remainder.contains(.optional) {
-      remainder.remove(.optional)
-      components.append("optional")
-    }
-    if remainder.contains(.list) {
-      remainder.remove(.list)
-      components.append("list")
-    }
-    if remainder.contains(.modifier) {
-      remainder.remove(.modifier)
-      components.append("modifier")
-    }
+    consume(.opaque, "opaque")
+    consume(.builderSequence, "builderSequence")
+    consume(.scope, "scope")
+    consume(.optional, "optional")
+    consume(.switchCase, "switchCase")
+    consume(.list, "list")
+    consume(.modifier, "modifier")
+    consume(.modified, "modified")
+    consume(.group, "group")
+    consume(.binding, "binding")
+    consume(.builder, "builder")
+    consume(.empty, "empty")
+    consume(.debug, "debug")
+
     if !remainder.isEmpty {
       components.append("Unknown: \(remainder.rawValue)")
     }
@@ -105,39 +149,16 @@ extension ReducerInfo.Traits: CustomDumpStringConvertible {
   }
 }
 
-//extension ReducerInfo {
-//  init<R: ReducerProtocol>(reducer: R) {
-//    self.typeName = _typeName(R.self, qualified: false)
-//    self.id = .init(id: ObjectIdentifier(R.self), path: path)
-//  }
-//
-//  init<R: ReducerProtocol>(
-//    reducer: R,
-//    typeName: String,
-//    path: [GraphIdentifier<ReducerGraphID>]
-//  ) where R.Body: ReducerProtocol {
-//    self.typeName = typeName
-//    self.id = .init(id: ObjectIdentifier(R.self), path: path)
-//  }
-//}
-
-//extension ReducerProtocol {
-//  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-//    fatalError()
-//  }
-//}
 extension ReducerProtocol where Body == Never {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = _typeName(Self.self, qualified: false)
-    return .value(.init(typeName: typeName, traits: .opaque))
+    return .value(.init(Self.self, traits: .opaque))
   }
 }
 
 extension ReducerProtocol where Body: ReducerProtocol {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
     //    let path = DependencyValues._current.reducerPath
-    let typeName = _typeName(Self.self, qualified: false)
-    let info = ReducerInfo(typeName: typeName)
+    let info = ReducerInfo(Self.self)
     let bodyValue = body._graphValue(parameters: parameters)
     switch bodyValue {
     case let .value(_info) where _info.traits.contains(.opaque):
@@ -150,55 +171,115 @@ extension ReducerProtocol where Body: ReducerProtocol {
 
 extension _IfLetReducer {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "IfLet"
-    let info = ReducerInfo(typeName: typeName, traits: .optional)
-    return .node(info, children: [
-      child._graphValue(parameters: parameters),
-      parent._graphValue(parameters: parameters)
-    ])
+    let info = ReducerInfo(
+      Self.self,
+      name: "IfLet",
+      traits: .optional
+    )
+    return .node(
+      info,
+      children: [
+        child._graphValue(parameters: parameters),
+        parent._graphValue(parameters: parameters).with {
+          $0.formUnion(.modified)
+        },
+      ])
   }
 }
 
 extension _IfCaseLetReducer {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "IfCaseLet"
-    let info = ReducerInfo(typeName: typeName, traits: .optional)
-    return .node(info, children: [
-      child._graphValue(parameters: parameters),
-      parent._graphValue(parameters: parameters)
-    ])
+    let info = ReducerInfo(
+      Self.self,
+      name: "IfCaseLet",
+      traits: .switchCase
+    )
+    return .node(
+      info,
+      children: [
+        child._graphValue(parameters: parameters),
+        parent._graphValue(parameters: parameters).with {
+          $0.formUnion(.modified)
+        },
+      ])
   }
 }
 
 extension _ForEachReducer {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "ForEach"
-    var info = ReducerInfo(typeName: typeName, traits: .list)
+    let info = ReducerInfo(
+      Self.self,
+      name: "ForEach",
+      traits: .list
+    )
     #warning("Quick Recursive fix for now")
     if Parent.State.self == Element.State.self {
       return .node(info, children: [])
     }
-    
+
     let child = self.element._graphValue(parameters: parameters)
-    return .node(info, children: [
-      child,
-      parent._graphValue(parameters: parameters)
-    ])
+    return .node(
+      info,
+      children: [
+        child,
+        parent._graphValue(parameters: parameters).with {
+          $0.formUnion(.modified)
+        },
+      ])
   }
 }
-//
-//extension BindingReducer {
-//  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-//    let typeName = "Binding"
-//    let info = ReducerInfo(typeName: typeName, traits: [])
-//    return .value(info)
-//  }
-//}
+
+extension EmptyReducer {
+  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
+    let info = ReducerInfo(Self.self, traits: .empty)
+    return .value(info)
+  }
+}
+
+extension BindingReducer {
+  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
+    let info = ReducerInfo(Self.self, traits: .binding)
+    return .value(info)
+  }
+}
+
+extension _SignpostReducer {
+  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
+    let info = ReducerInfo(
+      Self.self,
+      name: "SignPost",
+      traits: [.modifier, .debug]
+    )
+    return .node(
+      info,
+      children: [
+        base._graphValue(parameters: parameters)
+      ])
+  }
+}
+
+extension _PrintChangesReducer {
+  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
+    let info = ReducerInfo(
+      Self.self,
+      name: "PrintChanges",
+      traits: [.modifier, .debug]
+    )
+    return .node(
+      info,
+      children: [
+        base._graphValue(parameters: parameters)
+      ])
+  }
+}
 
 extension _DependencyKeyWritingReducer {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "Dependency"
-    let info = ReducerInfo(typeName: typeName, traits: .modifier)
+    let info = ReducerInfo(
+      Self.self,
+      name: "Dependency",
+      traits: .modifier
+    )
     return .node(
       info,
       children: [
@@ -209,8 +290,11 @@ extension _DependencyKeyWritingReducer {
 
 extension CombineReducers {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "Combine"
-    let info = ReducerInfo(typeName: typeName, traits: .accumulator)
+    let info = ReducerInfo(
+      Self.self,
+      name: "Combine",
+      traits: .group
+    )
     return .node(
       info,
       children: [
@@ -221,8 +305,7 @@ extension CombineReducers {
 
 extension Scope {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = _typeName(Self.self, qualified: false)
-    let info = ReducerInfo(typeName: typeName, traits: .scope)
+    let info = ReducerInfo(Self.self, name: "Scope", traits: .scope)
     return .node(
       info,
       children: [
@@ -232,11 +315,17 @@ extension Scope {
 }
 
 extension Optional {
-  public func _graphValue<State, Action>(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue?  where Wrapped: ReducerProtocol, Wrapped.State == State, Wrapped.Action == Action {
+  public func _graphValue<State, Action>(parameters: ReducerGraphValue.Parameters)
+    -> ReducerGraphValue?
+  where Wrapped: ReducerProtocol, Wrapped.State == State, Wrapped.Action == Action {
     switch self {
     case .none:
       guard parameters.isExhaustive else { return nil }
-      let info = ReducerInfo(typeName: _typeName(Wrapped.self, qualified: false), traits: [])
+      let info = ReducerInfo(
+        Wrapped.self,
+        name: "\(_typeName(Wrapped.self, qualified: false))?",
+        traits: [.optional]
+      )
       return .node(info, children: [])
     case .some(let wrapped):
       return wrapped._graphValue(parameters: parameters)
@@ -246,8 +335,11 @@ extension Optional {
 
 extension ReducerBuilder._Optional {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "Optional"
-    let info = ReducerInfo(typeName: typeName, traits: .optional)
+    let info = ReducerInfo(
+      Self.self,
+      name: "Optional",
+      traits: [.optional, .builder]
+    )
     if let wrapped = self.wrapped._graphValue(parameters: parameters) {
       return .node(info, children: [wrapped])
     } else {
@@ -258,26 +350,33 @@ extension ReducerBuilder._Optional {
 
 extension ReducerBuilder._Conditional {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "Optional"
-    let info = ReducerInfo(typeName: typeName, traits: .optional)
+    let info = ReducerInfo(
+      Self.self,
+      name: "Conditional",
+      traits: [.conditional, .builder]
+    )
     switch self {
     case let .first(first):
       if parameters.isExhaustive {
-        let second = ReducerInfo(typeName: _typeName(Second.self, qualified: false))
-        return .node(info, children: [
-          first._graphValue(parameters: parameters),
-          .node(second, children: [])
-        ])
+        let second = ReducerInfo(Second.self)
+        return .node(
+          info,
+          children: [
+            first._graphValue(parameters: parameters),
+            .node(second, children: []),
+          ])
       } else {
         return .node(info, children: [first._graphValue(parameters: parameters)])
       }
     case let .second(second):
       if parameters.isExhaustive {
-        let first = ReducerInfo(typeName: _typeName(First.self, qualified: false))
-        return .node(info, children: [
-          .node(first, children: []),
-          second._graphValue(parameters: parameters)
-        ])
+        let first = ReducerInfo(First.self)
+        return .node(
+          info,
+          children: [
+            .node(first, children: []),
+            second._graphValue(parameters: parameters),
+          ])
       } else {
         return .node(info, children: [second._graphValue(parameters: parameters)])
       }
@@ -287,8 +386,11 @@ extension ReducerBuilder._Conditional {
 
 extension ReducerBuilder._SequenceMany {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    let typeName = "SequenceMany"
-    let info = ReducerInfo(typeName: typeName, traits: .builderSequence)
+    let info = ReducerInfo(
+      Self.self,
+      name: "SequenceMany",
+      traits: [.builder]
+    )
     let children = self.reducers.map { $0._graphValue(parameters: parameters) }
     return .node(info, children: children)
   }
@@ -296,9 +398,11 @@ extension ReducerBuilder._SequenceMany {
 
 extension ReducerBuilder._Sequence {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-    //    let path = DependencyValues._current.reducerPath
-    let typeName = "Sequence"  //_typeName(Self.self, qualified: false)
-    let info = ReducerInfo(typeName: typeName, traits: .builderSequence)
+    let info = ReducerInfo(
+      Self.self,
+      name: "Sequence",
+      traits: [.builder, .builderSequence]
+    )
     let r0Body = self.r0._graphValue(parameters: parameters)
     let r1Body = self.r1._graphValue(parameters: parameters)
     if parameters.isFlattened {
@@ -341,11 +445,17 @@ extension ReducerBuilder._Sequence {
 //  }
 //}
 
+import Foundation
 extension ReducerProtocol {
   public func printGraphValue() {
     //    let _ = DependencyValues.withValue(\.reducerPath, []) {
     print("---")
-    customDump(_graphValue(parameters: .init(isFlattened: true, isExhaustive: true)))
+
+    let tree = _graphValue(parameters: .init())
+//    customDump(_graphValue(parameters: .init(isFlattened: true, isExhaustive: true)))
+    let json = try! JSONEncoder().encode(tree)
+    let string = String(decoding: json, as: UTF8.self)
+    print(string, json.count)
     print("***")
     //    }
   }

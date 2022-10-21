@@ -617,8 +617,11 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
     }
     
     public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
-      let typeName = "Scope"
-      let info = ReducerInfo(typeName: typeName, traits: .scope)
+      let info = ReducerInfo(
+        Self.self,
+        name: "Scoped",
+        traits: [.scope, .store]
+      )
       return .node(info, children: [self.rootStore.reducer._graphValue(parameters: parameters)])
     }
   }

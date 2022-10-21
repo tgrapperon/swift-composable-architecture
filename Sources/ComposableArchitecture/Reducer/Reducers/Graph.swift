@@ -48,6 +48,22 @@ extension GraphValue where T == ReducerInfo {
   }
 }
 
+extension GraphValue: CustomDumpReflectable where T == ReducerInfo {
+  public var customDumpMirror: Mirror {
+    switch self {
+    case .value(let t):
+     return Mirror(self, children: [
+        "info": t
+     ], displayStyle: .struct)
+    case .node(let t, let children):
+      return Mirror(self, children: [
+        "info": t,
+        "children": children
+      ], displayStyle: .struct)
+    }
+  }
+}
+
 public typealias ReducerGraphValue = GraphValue<ReducerInfo>
 
 public struct ReducerInfo: Hashable, Sendable, Codable {
@@ -83,11 +99,15 @@ public struct ReducerInfo: Hashable, Sendable, Codable {
   public var traits: Traits = []
 }
 
-extension ReducerInfo: CustomDumpStringConvertible {
-  public var customDumpDescription: String {
-    "\(typeName), traits: \(traits.customDumpDescription)"
+extension ReducerInfo: CustomDumpReflectable {
+  public var customDumpMirror: Mirror {
+    Mirror(self, children: [
+      "name": name,
+      "traits": traits
+    ], displayStyle: .struct)
   }
 }
+
 
 extension ReducerInfo {
   public struct Traits: RawRepresentable, OptionSet, Hashable, Sendable, Codable {
@@ -452,10 +472,10 @@ extension ReducerProtocol {
     print("---")
 
     let tree = _graphValue(parameters: .init())
-//    customDump(_graphValue(parameters: .init(isFlattened: true, isExhaustive: true)))
+    customDump(tree)
     let json = try! JSONEncoder().encode(tree)
     let string = String(decoding: json, as: UTF8.self)
-    print(string, json.count)
+//    print(string, json.count)
     print("***")
     //    }
   }

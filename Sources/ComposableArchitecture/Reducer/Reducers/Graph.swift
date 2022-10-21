@@ -468,21 +468,22 @@ public extension ReducerBuilder._Sequence {
       switch (r0Body, r1Body) {
       case let (.value(r0), .value(r1)):
         return .node(info, children: [.value(r0), .value(r1)])
+        
       case let (.node(_info, children), .value(r1))
         where _info.traits.contains(.builderSequence):
         return .node(info, children: children + [.value(r1)])
-      case let (.value(r0), .node(_info, children))
-        where _info.traits.contains(.builderSequence):
-        return .node(info, children: [.value(r0)] + children)
-      case let (.node(_info0, children0), .node(_info1, children1))
-        where _info0.traits.contains(.builderSequence) && _info1.traits.contains(.builderSequence):
+//      case let (.value(r0), .node(_info, children))
+//        where _info.traits.contains(.builderSequence):
+//        return .node(info, children: [.value(r0)] + children)
+      case let (.node(_info0, children0), .node(_, children1))
+        where _info0.traits.contains(.builderSequence):
         return .node(info, children: children0 + children1)
-      case let (.node(_info0, children0), .node(_info1, _))
-        where _info0.traits.contains(.builderSequence) && !_info1.traits.contains(.builderSequence):
-        return .node(info, children: children0 + [r1Body])
-      case let (.node(_info0, _), .node(_info1, children1))
-        where !_info0.traits.contains(.builderSequence) && _info1.traits.contains(.builderSequence):
-        return .node(info, children: [r0Body] + children1)
+//      case let (.node(_info0, children0), .node(_info1, _))
+//        where _info0.traits.contains(.builderSequence) && !_info1.traits.contains(.builderSequence):
+//        return .node(info, children: children0 + [r1Body])
+//      case let (.node(_info0, _), .node(_info1, children1))
+//        where !_info0.traits.contains(.builderSequence) && _info1.traits.contains(.builderSequence):
+//        return .node(info, children: [r0Body] + children1)
       default:
         return .node(info, children: [r0Body, r1Body])
       }

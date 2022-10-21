@@ -14,12 +14,24 @@ public indirect enum GraphValue<T> {
       return children
     }
   }
+  
+  public var payload: T {
+    switch self {
+    case .value(let t):
+      return t
+    case .node(let t, _):
+      return t
+    }
+  }
 }
 
 extension GraphValue: Equatable where T: Equatable {}
 extension GraphValue: Hashable where T: Hashable {}
 extension GraphValue: Sendable where T: Sendable {}
 extension GraphValue: Codable where T: Codable {}
+extension GraphValue: Identifiable where T: Identifiable {
+  public var id: T.ID { payload.id }
+}
 
 public extension ReducerGraphValue {
   struct Parameters {

@@ -64,6 +64,7 @@ extension ReducerInfo {
     
     public static let list: Traits = .init(rawValue: 1 << 6)
     public static let modifier: Traits = .init(rawValue: 1 << 7)
+    public static let accumulator: Traits = .init(rawValue: 1 << 8)
 
   }
 }
@@ -151,7 +152,10 @@ extension _IfLetReducer {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
     let typeName = "IfLet"
     let info = ReducerInfo(typeName: typeName, traits: .optional)
-    return .node(info, children: [child._graphValue(parameters: parameters)])
+    return .node(info, children: [
+      child._graphValue(parameters: parameters),
+      parent._graphValue(parameters: parameters)
+    ])
   }
 }
 
@@ -159,7 +163,10 @@ extension _IfCaseLetReducer {
   public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
     let typeName = "IfCaseLet"
     let info = ReducerInfo(typeName: typeName, traits: .optional)
-    return .node(info, children: [child._graphValue(parameters: parameters)])
+    return .node(info, children: [
+      child._graphValue(parameters: parameters),
+      parent._graphValue(parameters: parameters)
+    ])
   }
 }
 
@@ -173,7 +180,10 @@ extension _ForEachReducer {
     }
     
     let child = self.element._graphValue(parameters: parameters)
-    return .node(info, children: [child])
+    return .node(info, children: [
+      child,
+      parent._graphValue(parameters: parameters)
+    ])
   }
 }
 //
@@ -193,6 +203,18 @@ extension _DependencyKeyWritingReducer {
       info,
       children: [
         base._graphValue(parameters: parameters)
+      ])
+  }
+}
+
+extension CombineReducers {
+  public func _graphValue(parameters: ReducerGraphValue.Parameters) -> ReducerGraphValue {
+    let typeName = "Combine"
+    let info = ReducerInfo(typeName: typeName, traits: .accumulator)
+    return .node(
+      info,
+      children: [
+        reducers._graphValue(parameters: parameters)
       ])
   }
 }
@@ -323,7 +345,7 @@ extension ReducerProtocol {
   public func printGraphValue() {
     //    let _ = DependencyValues.withValue(\.reducerPath, []) {
     print("---")
-    customDump(_graphValue(parameters: .init(isFlattened: false, isExhaustive: true)))
+    customDump(_graphValue(parameters: .init(isFlattened: true, isExhaustive: true)))
     print("***")
     //    }
   }

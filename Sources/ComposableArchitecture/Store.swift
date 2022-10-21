@@ -317,20 +317,11 @@ public final class Store<State, Action> {
     self.scope(state: toChildState, action: { $0 })
   }
 
-  func printReducer() {
-    #if swift(>=5.7)
-//    if parentCancellable == nil {
-      reducer.printGraphValue()
-//    }
-    #endif
-  }
-
   @_spi(Internals) public func send(
     _ action: Action,
     originatingFrom originatingAction: Action? = nil
   ) -> Task<Void, Never>? {
     self.threadCheck(status: .send(action, originatingAction: originatingAction))
-    printReducer()
 
     self.bufferedActions.append(action)
     guard !self.isSending else { return nil }

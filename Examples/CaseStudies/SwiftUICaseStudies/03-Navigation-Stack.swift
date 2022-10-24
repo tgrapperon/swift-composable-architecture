@@ -11,27 +11,41 @@ struct NavigationDemo: ReducerProtocol {
   }
 
   enum Action: Equatable {
+    case cancelTimersButtonTapped
     case goBackToScreen(Int)
     case goToABCButtonTapped
-    case path(NavigationActionOf<Destinations>)
+    case navigation(NavigationActionOf<Destinations>)
     case shuffleButtonTapped
-    case cancelTimersButtonTapped
   }
 
   var body: some ReducerProtocol<State, Action> {
     Reduce { state, action in
       switch action {
       case .cancelTimersButtonTapped:
+//        return .cancel(id: ScreenC.TimerID.self)
+        // TODO: support 3 use cases of cancellation
+        //       You can either:
+        //         * Cancel all timers across all screen C's in the stack
+        //           return .cancel(id: ScreenC.TimerID.self)
+        //         * Cancel all effects inside a particular screen in the stack
+        //           return .cancel(navigationID: id)
+        //         * Cancel a particular effect inside a particular screen in the stack
+        //           return .cancel(id: ScreenC.TimerID.self, navigationID: id)
         return .merge(
-          state.$path.compactMap { destination in
+          state.$path.compactMap { destination -> EffectTask<Action>? in
             switch destination.element {
             case .screenA, .screenB:
               return nil
 
             case .screenC:
-              return .cancel(id: destination.id)
+              return DependencyValues.withValue(\.navigationID.current, destination.id) {
+                Effect.cancel(id: ScreenC.TimerID.self)
+              }
+//               .cancel(id: ScreenC.TimerID.self, navigationID: id)
+//              return .init(value: .path(.element(id: destination.id, .screenC(.stopButtonTapped))))
             }
-          })
+          }
+        )
 
       case let .goBackToScreen(n):
         state.path.removeLast(n)
@@ -43,19 +57,19 @@ struct NavigationDemo: ReducerProtocol {
         state.path.append(.screenC(.init()))
         return .none
 
-      case .path(.element(id: _, .screenB(.screenAButtonTapped))):
+      case .navigation(.element(id: _, .screenB(.screenAButtonTapped))):
         state.path.append(.screenA(.init()))
         return .none
 
-      case .path(.element(id: _, .screenB(.screenBButtonTapped))):
+      case .navigation(.element(id: _, .screenB(.screenBButtonTapped))):
         state.path.append(.screenB(.init()))
         return .none
 
-      case .path(.element(id: _, .screenB(.screenCButtonTapped))):
+      case .navigation(.element(id: _, .screenB(.screenCButtonTapped))):
         state.path.append(.screenC(.init()))
         return .none
 
-      case .path:
+      case .navigation:
         return .none
 
       case .shuffleButtonTapped:
@@ -63,7 +77,7 @@ struct NavigationDemo: ReducerProtocol {
         return .none
       }
     }
-    .navigationDestination(\.$path, action: /Action.path) {
+    .navigationDestination(\.$path, action: /Action.navigation) {
       Destinations()
     }
   }
@@ -82,22 +96,13 @@ struct NavigationDemo: ReducerProtocol {
     }
 
     var body: some ReducerProtocol<State, Action> {
-      Scope(
-        state: /State.screenA,
-        action: /Action.screenA
-      ) {
+      Scope(state: /State.screenA, action: /Action.screenA) {
         ScreenA()
       }
-      Scope(
-        state: /State.screenB,
-        action: /Action.screenB
-      ) {
+      Scope(state: /State.screenB, action: /Action.screenB) {
         ScreenB()
       }
-      Scope(
-        state: /State.screenC,
-        action: /Action.screenC
-      ) {
+      Scope(state: /State.screenC, action: /Action.screenC) {
         ScreenC()
       }
     }
@@ -109,7 +114,7 @@ struct NavigationDemoView: View {
 
   var body: some View {
     ZStack(alignment: .bottom) {
-      NavigationStackStore(self.store.scope(state: \.$path, action: NavigationDemo.Action.path)) {
+      NavigationStackStore(self.store.scope(state: \.$path, action: NavigationDemo.Action.navigation)) {
         Form {
           Section { Text(readMe) }
 
@@ -137,7 +142,7 @@ struct NavigationDemoView: View {
           }
         }
         .navigationDestination(
-          store: self.store.scope(state: \.$path, action: NavigationDemo.Action.path)
+          store: self.store.scope(state: \.$path, action: NavigationDemo.Action.navigation)
         ) { store in
           SwitchStore(store) {
             CaseLet(
@@ -168,10 +173,12 @@ struct NavigationDemoView: View {
   }
 }
 
+// MARK: - Floating menu
+
 struct FloatingMenuView: View {
   let store: StoreOf<NavigationDemo>
 
-  struct State: Equatable {
+  struct ViewState: Equatable {
     var currentStack: [String]
     var total: Int
     init(state: NavigationDemo.State) {
@@ -193,7 +200,7 @@ struct FloatingMenuView: View {
   }
 
   var body: some View {
-    WithViewStore(self.store.scope(state: State.init)) { viewStore in
+    WithViewStore(self.store.scope(state: ViewState.init)) { viewStore in
       if viewStore.currentStack.count > 0 {
         VStack(alignment: .leading) {
           Text("Total count: \(viewStore.total)")
@@ -201,7 +208,7 @@ struct FloatingMenuView: View {
             viewStore.send(.shuffleButtonTapped)
           }
           Button("Pop to root") {
-            viewStore.send(.path(.setPath([:])))
+            viewStore.send(.navigation(.setPath([:])), animation: .default)
           }
           Button("Cancel timers") {
             viewStore.send(.cancelTimersButtonTapped)
@@ -214,7 +221,9 @@ struct FloatingMenuView: View {
               }
               .disabled(offset == 0)
             }
-            Button("Root") { viewStore.send(.path(.setPath([:]))) }
+            Button("Root") {
+              viewStore.send(.navigation(.setPath([:])), animation: .default)
+            }
           } label: {
             Text("Current stack")
           }
@@ -225,7 +234,7 @@ struct FloatingMenuView: View {
         .transition(.opacity.animation(.default))
       }
     }
-    .debug()
+//    .debug()
   }
 }
 
@@ -404,9 +413,9 @@ struct ScreenC: ReducerProtocol {
   }
 
   @Dependency(\.mainQueue) var mainQueue
+  enum TimerID {}
 
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
-    enum TimerID {}
 
     switch action {
     case .startButtonTapped:
@@ -417,6 +426,7 @@ struct ScreenC: ReducerProtocol {
         }
       }
       .cancellable(id: TimerID.self)
+      .concatenate(with: .init(value: .stopButtonTapped))
 
     case .stopButtonTapped:
       state.isTimerRunning = false

@@ -1,6 +1,7 @@
 import SwiftUI
 
 // TODO: `@dynamicMemberLookup`? `Sendable where State: Sendable`
+// TODO: copy-on-write box better than indirect enum?
 @propertyWrapper
 public enum PresentationState<State> {
   case dismissed
@@ -101,6 +102,7 @@ extension PresentationState: Hashable where State: Hashable {
 //}
 
 public enum PresentationAction<State, Action> {
+  // NB: sending present(id, nil) from the view means let the reducer hydrate state
   case present(id: AnyHashable = DependencyValues._current.uuid(), State? = nil)
   case presented(Action)
   case dismiss
@@ -190,24 +192,35 @@ public struct _PresentationDestinationReducer<
 
   @inlinable
   public func reduce(
-    into state: inout Presenter.State, action: Presenter.Action
+    into state: inout Presenter.State,
+    action: Presenter.Action
   ) -> EffectTask<Presenter.Action> {
-    var effect: EffectTask<Presenter.Action> = .none
+    // TODO: explore more performance impliciations
+    //       Doing effect = effect.merge may be faster on the creation side and slower on the run side,
+    //       because it creates a lot of nested TaskGroups
+    var effects: [EffectTask<Presenter.Action>] = []
 
-    let presentedState = state[keyPath: self.toPresentedState]
+    let currentPresentedState = state[keyPath: self.toPresentedState]
     let presentedAction = self.toPresentedAction.extract(from: action)
+
+    // TODO: should we extract id from `presentedAction` at the very beginning, and then wrap
+    //       everything below in a `withValue(\.navigationID, id)` ?
 
     switch presentedAction {
     case let .present(id, .some(presentedState)):
       state[keyPath: self.toPresentedState] = .presented(id: id, presentedState)
 
     case let .presented(presentedAction):
-      if case .presented(let id, var presentedState) = presentedState {
+      if case .presented(let id, var presentedState) = currentPresentedState {
         defer { state[keyPath: self.toPresentedState] = .presented(id: id, presentedState) }
-        effect = effect.merge(
-          with: self.presented
+        effects.append(
+          self.presented
             .dependency(\.dismiss, DismissEffect { Task.cancel(id: DismissID.self) })
             .dependency(\.navigationID.current, id)
+            //            .transformDependency(\.self) {
+            //              $0.navigationID.current = id
+            //              $0.dismiss = DismissEffect { Task.cancel(id: DismissID.self, navigationID: id) }
+            //            }
             .reduce(into: &presentedState, action: presentedAction)
             .map { self.toPresentedAction.embed(.presented($0)) }
             .cancellable(id: id)
@@ -243,33 +256,53 @@ public struct _PresentationDestinationReducer<
       break
     }
 
-    effect = effect.merge(with: self.presenter.reduce(into: &state, action: action))
+    effects.append(self.presenter.reduce(into: &state, action: action))
 
-    if case .dismiss = presentedAction, case let .presented(id, _) = presentedState {
+    if case .dismiss = presentedAction, case let .presented(id, _) = currentPresentedState {
       state[keyPath: self.toPresentedState].wrappedValue = nil
-      effect = effect.merge(with: .cancel(id: id))
-    } else if case let .presented(id, _) = presentedState,
+      effects.append(.cancel(id: id))
+    } else if case let .presented(id, _) = currentPresentedState,
       state[keyPath: self.toPresentedState].id != id
     {
-      effect = effect.merge(with: .cancel(id: id))
-    }
+      effects.append(.cancel(id: id))
+    } else if case .present(_, .none) = presentedAction,
+      case .dismissed = state[keyPath: self.toPresentedState]
+    {
+      // TODO: Should we warn if a `.present(nil)` action was sent but state did not hydrate?
+      runtimeWarn(
+        """
+        A ".present" action was sent with "nil" state at "\(self.fileID):\(self.line)" but the \
+        destination state was not hydrated to something non-nil: …
 
-    if let id = state[keyPath: self.toPresentedState].id, id != presentedState.id {
-      effect = effect.merge(
-        with: .task {
-          var dependencies = DependencyValues._current
-          dependencies.navigationID.current = id
-          return try await DependencyValues.$_current.withValue(dependencies) {
-            try await withTaskCancellation(id: DismissID.self) {
-              try await Task.never()
-            }
-          }
-        }
-        .concatenate(with: Effect(value: self.toPresentedAction.embed(.dismiss)))
+          Action:
+            \(debugCaseOutput(action))
+
+        This is generally considered an application logic error. To fix, match on the ".present" \
+        action in the parent reducer in order to hydrate the destination state to something non-nil.
+        """,
+        file: self.file,
+        line: self.line
       )
     }
 
-    return effect
+    if let id = state[keyPath: self.toPresentedState].id, id != currentPresentedState.id {
+      effects.append(
+        .run { send in
+          do {
+            try await DependencyValues.withValue(\.navigationID.current, id) {
+              try await withTaskCancellation(id: DismissID.self) {
+                try await Task.never()
+              }
+            }
+          } catch is CancellationError {
+            await send(self.toPresentedAction.embed(.dismiss))
+          }
+        }
+        .cancellable(id: id)
+      )
+    }
+
+    return .merge(effects)
   }
 }
 
@@ -381,6 +414,8 @@ extension View {
     }
   }
 
+  // TODO: kinda confusing to have navigationDestination defined for both PresentationState
+  //       and NavigationState.
   @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   public func navigationDestination<State, Action, Destination: View>(
     store: Store<PresentationState<State>, PresentationAction<State, Action>>,
@@ -418,12 +453,13 @@ extension View {
   }
 }
 
-private func areDestinationsEqual<State>(
-  _ lhs: PresentationState<State>,
-  _ rhs: PresentationState<State>
-) -> Bool {
-  lhs.id == rhs.id
-}
+// TODO: needed?
+//private func areDestinationsEqual<State>(
+//  _ lhs: PresentationState<State>,
+//  _ rhs: PresentationState<State>
+//) -> Bool {
+//  lhs.id == rhs.id
+//}
 
 private struct Item: Identifiable {
   let id: AnyHashable
@@ -432,9 +468,66 @@ private struct Item: Identifiable {
     destinations: PresentationState<Destinations>,
     destination toDestination: (Destinations) -> Destination?
   ) {
-    guard case let .presented(id, destinations) = destinations, toDestination(destinations) != nil
+    guard
+      case let .presented(id, destinations) = destinations,
+      toDestination(destinations) != nil
     else { return nil }
 
     self.id = id
+  }
+}
+
+// TODO: worth it?
+public struct PresentedView<
+  State,
+  Action,
+  DestinationState,
+  DestinationAction,
+  Destination: View,
+  Dismissed: View
+>: View {
+  let store: Store<PresentationState<State>, PresentationAction<State, Action>>
+  let toDestinationState: (State) -> DestinationState?
+  let fromDestinationAction: (DestinationAction) -> Action
+  let destination: (Store<DestinationState, DestinationAction>) -> Destination
+  let dismissed: Dismissed
+
+  public init(
+    _ store: Store<PresentationState<State>, PresentationAction<State, Action>>,
+    state toDestinationState: @escaping (State) -> DestinationState?,
+    action fromDestinationAction: @escaping (DestinationAction) -> Action,
+    @ViewBuilder destination: @escaping (Store<DestinationState, DestinationAction>) -> Destination,
+    @ViewBuilder dismissed: () -> Dismissed
+  ) {
+    self.store = store
+    self.toDestinationState = toDestinationState
+    self.fromDestinationAction = fromDestinationAction
+    self.destination = destination
+    self.dismissed = dismissed()
+  }
+
+  public init(
+    _ store: Store<PresentationState<State>, PresentationAction<State, Action>>,
+    @ViewBuilder destination: @escaping (Store<DestinationState, DestinationAction>) -> Destination,
+    @ViewBuilder dismissed: () -> Dismissed
+  ) where State == DestinationState, Action == DestinationAction {
+    self.store = store
+    self.toDestinationState = { $0 }
+    self.fromDestinationAction = { $0 }
+    self.destination = destination
+    self.dismissed = dismissed()
+  }
+
+  public var body: some View {
+    IfLetStore(
+      self.store.scope(
+        state: { $0.wrappedValue.flatMap(toDestinationState) },
+        action: { .presented(fromDestinationAction($0)) }
+      )
+    ) { store in
+      self.destination(store)
+    } else: {
+      self.dismissed
+    }
   }
 }

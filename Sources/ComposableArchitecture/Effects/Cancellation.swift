@@ -181,16 +181,19 @@ extension EffectPublisher {
 ///
 /// ### Debouncing tasks
 ///
-/// When paired with a scheduler, this function can be used to debounce a unit of async work by
+/// When paired with a clock, this function can be used to debounce a unit of async work by
 /// specifying the `cancelInFlight`, which will automatically cancel any in-flight work with the
 /// same identifier:
 ///
 /// ```swift
+/// @Dependency(\.continuousClock) var clock
 /// enum CancelID {}
+///
+/// // ...
 ///
 /// return .task {
 ///   await withTaskCancellation(id: CancelID.self, cancelInFlight: true) {
-///     try await environment.scheduler.sleep(for: .seconds(0.3))
+///     try await self.clock.sleep(for: .seconds(0.3))
 ///     return await .debouncedResponse(
 ///       TaskResult { try await environment.request() }
 ///     )
@@ -210,6 +213,7 @@ public func withTaskCancellation<T: Sendable>(
   cancelInFlight: Bool = false,
   operation: @Sendable @escaping () async throws -> T
 ) async rethrows -> T {
+  // TODO: do we need to pass navigationID here if we `??` coalesce it in _CancelToken
   let id = _CancelToken(id: id, navigationID: DependencyValues._current.navigationID.current)
   let (cancellable, task) = _cancellablesLock.sync { () -> (AnyCancellable, Task<T, Error>) in
     if cancelInFlight {
@@ -264,6 +268,7 @@ extension Task where Success == Never, Failure == Never {
   ///
   /// - Parameter id: An identifier.
   public static func cancel<ID: Hashable & Sendable>(id: ID) {
+    // TODO: do we need to pass navigationID here if we `??` coalesce it in _CancelToken
     let id = _CancelToken(id: id, navigationID: DependencyValues._current.navigationID.current)
     _cancellablesLock.sync { _cancellationCancellables[id]?.forEach { $0.cancel() } }
   }

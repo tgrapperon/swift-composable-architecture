@@ -1,7 +1,7 @@
 import OrderedCollections
 import SwiftUI
 
-// TODO: Other names? `NavigationPathState`? `NavigationStatePath`?
+// TODO: Other names? `NavigationPathState`? `NavigationStatePath`? `PathState`
 // TODO: Should `NavigationState` flatten to just work on `Identifiable` elements?
 // TODO: `Sendable where Element: Sendable`
 // TODO: Get a better handle on how explicit `ID`s are handled for various navigation scenarios.
@@ -19,7 +19,9 @@ public struct NavigationState<Element: Hashable>:
 
     @usableFromInline
     init(id: ID? = nil, element: Element) {
-      self.id = id ?? DependencyValues._current.navigationID.next()
+      // Reaching out to DependencyValues._current breaks the isolation of the test store
+      @Dependency(\.navigationID) var navigationID;
+      self.id = id ?? navigationID.next()
       self.element = element
     }
   }
@@ -193,6 +195,12 @@ public struct NavigationState<Element: Hashable>:
 public typealias NavigationStateOf<R: ReducerProtocol> = NavigationState<R.State>
 where R.State: Hashable
 
+extension NavigationState: ExpressibleByArrayLiteral {
+  public init(arrayLiteral elements: Element...) {
+    self.init(wrappedValue: Path(elements))
+  }
+}
+
 extension NavigationState: ExpressibleByDictionaryLiteral {
   public init(dictionaryLiteral elements: (ID, Element)...) {
     self.destinations = .init(uniqueKeysWithValues: elements)
@@ -348,7 +356,9 @@ where Destinations.State: Hashable {
 
   @inlinable
   public func reduce(into state: inout Base.State, action: Base.Action) -> EffectTask<Base.Action> {
-    var effect: EffectTask<Base.Action> = .none
+    var effects: [EffectTask<Base.Action>] = []
+
+    let previousPath = state[keyPath: self.toNavigationState]
 
     switch self.toNavigationAction.extract(from: action) {
     case let .dismiss(id):
@@ -403,8 +413,15 @@ where Destinations.State: Hashable {
         )
         break
       }
-      effect = effect.merge(
-        with: self.destinations
+      effects.append(
+        self.destinations
+          // TODO: 👇
+          // .dependency(\.popToRoot, ...)
+          // .dependency(\.navigation.dismiss, ...)
+          // .dependency(\.navigation.id, ...)
+          // .dependency(\.navigation.popToRoot, ...)
+          // .dependency(\.navigation.popLast(...), ....)
+          // .dependency(\.navigation.currentStack(...), ...)
           .dependency(\.dismiss, DismissEffect { Task.cancel(id: DismissID.self) })
           .dependency(\.navigationID.current, id)
           .reduce(
@@ -418,39 +435,39 @@ where Destinations.State: Hashable {
     // TODO: Track insertions, removals in action for parent to listen to?
     // .setPath(PathUpdate { newPath: Path, presented: [Element], dismissed: [Element] })
     case let .setPath(newPath):
-      let oldPath = state[keyPath: self.toNavigationState]
-      let presentedIDs = newPath.ids.subtracting(oldPath.ids)
-      let dismissedIDs = oldPath.ids.subtracting(newPath.ids)
-
       state[keyPath: self.toNavigationState] = newPath
-
-      for id in presentedIDs {
-        effect = effect.merge(
-          with: .task {
-            var dependencies = DependencyValues._current
-            dependencies.navigationID.current = id
-            return try await DependencyValues.$_current.withValue(dependencies) {
-              try await withTaskCancellation(id: DismissID.self) {
-                try await Task.never()
-              }
-            }
-          }
-          .concatenate(with: Effect(value: self.toNavigationAction.embed(.dismiss(id: id))))
-        )
-      }
-      for id in dismissedIDs {
-        effect = effect.merge(with: .cancel(id: id))
-      }
 
     case .none:
       break
     }
 
-    effect = effect.merge(
-      with: self.base.reduce(into: &state, action: action)
-    )
+    effects.append(self.base.reduce(into: &state, action: action))
 
-    return effect
+    let newPath = state[keyPath: self.toNavigationState]
+    let presentedIDs = newPath.ids.subtracting(previousPath.ids)
+    let dismissedIDs = previousPath.ids.subtracting(newPath.ids)
+
+    for id in presentedIDs {
+      effects.append(
+        .run { send in
+          do {
+            try await DependencyValues.withValue(\.navigationID.current, id) {
+              try await withTaskCancellation(id: DismissID.self) {
+                try await Task.never()
+              }
+            }
+          } catch is CancellationError {
+            await send(self.toNavigationAction.embed(.dismiss(id: id)))
+          }
+        }
+          .cancellable(id: id)
+      )
+    }
+    for id in dismissedIDs {
+      effects.append(.cancel(id: id))
+    }
+
+    return .merge(effects)
   }
 }
 
@@ -482,6 +499,7 @@ public struct NavigationStackStore<Element: Hashable, Content: View>: View {
     guard lhs.count == rhs.count
     else { return false }
 
+    // TODO: memcmp ids and then fallback to comparing enum tags?
     for (lhs, rhs) in zip(lhs, rhs) {
       guard lhs.id == rhs.id && enumTag(lhs.element) == enumTag(rhs.element)
       else { return false }

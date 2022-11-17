@@ -14,12 +14,14 @@ import XCTestDynamicOverlay
   extension DependencyValues {
     /// A dependency that opens a URL.
     @available(iOS 13, macOS 10.15, tvOS 13, watchOS 7, *)
+    @available(iOSApplicationExtension, unavailable)
     public var openURL: OpenURLEffect {
       get { self[OpenURLKey.self] }
       set { self[OpenURLKey.self] = newValue }
     }
   }
 
+  @available(iOSApplicationExtension, unavailable)
   private enum OpenURLKey: DependencyKey {
     static let liveValue = OpenURLEffect { url in
       let stream = AsyncStream<Bool> { continuation in

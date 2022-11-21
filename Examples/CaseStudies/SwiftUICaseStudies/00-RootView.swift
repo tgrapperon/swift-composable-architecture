@@ -97,6 +97,16 @@ struct RootView: View {
               )
             )
           )
+          
+          NavigationLink(
+            "StateAction",
+            destination: StateActionDemoView(
+              store: self.store.scope(
+                state: \.stateAction,
+                action: Root.Action.stateAction
+              )
+            )
+          )
         }
 
         Section(header: Text("Effects")) {

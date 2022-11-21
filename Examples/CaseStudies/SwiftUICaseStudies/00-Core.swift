@@ -25,6 +25,7 @@ struct Root: ReducerProtocol {
     var presentAndLoad = PresentAndLoad.State()
     var refreshable = Refreshable.State()
     var shared = SharedState.State()
+    var stateAction = StateActionDemo.State()
     var timers = Timers.State()
     var twoCounters = TwoCounters.State()
     var webSocket = WebSocket.State()
@@ -55,6 +56,7 @@ struct Root: ReducerProtocol {
     case presentAndLoad(PresentAndLoad.Action)
     case refreshable(Refreshable.Action)
     case shared(SharedState.Action)
+    case stateAction(StateActionDemo.Action)
     case timers(Timers.Action)
     case twoCounters(TwoCounters.Action)
     case webSocket(WebSocket.Action)
@@ -142,6 +144,9 @@ struct Root: ReducerProtocol {
     }
     Scope(state: \.shared, action: /Action.shared) {
       SharedState()
+    }
+    Scope(state: \.stateAction, action: /Action.stateAction) {
+      StateActionDemo()
     }
     Scope(state: \.timers, action: /Action.timers) {
       Timers()

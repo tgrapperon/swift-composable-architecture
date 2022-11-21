@@ -32,9 +32,9 @@ public struct StateAction<Action> {
     get { self }
     set { self = newValue }
   }
-
-  public init() {
-    self._wrappedValue = nil
+  
+  public init(wrappedValue: Action? = nil) {
+    self.wrappedValue = wrappedValue
   }
 }
 

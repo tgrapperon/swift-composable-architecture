@@ -77,14 +77,6 @@ struct StateActionDemoView: View {
           }
         }
       }
-      // Experimental API
-//      .onStateAction(store.stateActions.$signal) { action in
-//        if case let .scrollTo(value) = signal {
-//          withAnimation(.spring()) {
-//            proxy.scrollTo(value, anchor: .center)
-//          }
-//        }
-//      }
     }
     .navigationTitle("StateAction demo")
   }

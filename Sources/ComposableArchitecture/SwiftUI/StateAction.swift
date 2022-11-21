@@ -5,14 +5,21 @@ import SwiftUI
 @propertyWrapper
 public struct StateAction<Action> {
   struct ProjectedAction: Equatable {
-    var token: UUID
-    var action: Action
+    let action: Action
+    let token: UUID
+    // Note: Because this type is only used internally and on the UI side, using
+    // `@Dependency(\.uuid) instead of `UUID.init` doesn't really improves testability and
+    // furthermore forces the user to provide some `\.uuid` implementation when testing values with
+    // `@StateAction`.
+    init(_ action: Action, token: UUID = UUID()) {
+      self.action = action
+      self.token = token
+    }
     static func == (lhs: ProjectedAction, rhs: ProjectedAction) -> Bool {
       lhs.token == rhs.token
     }
   }
 
-  @Dependency(\.uuid) var uuid
   var projectedAction: ProjectedAction?
   var _wrappedValue: Action?
 
@@ -21,7 +28,7 @@ public struct StateAction<Action> {
     set {
       _wrappedValue = newValue
       if let newValue = newValue {
-        projectedAction = ProjectedAction(token: uuid(), action: newValue)
+        projectedAction = ProjectedAction(newValue)
       } else {
         projectedAction = nil
       }
@@ -63,7 +70,6 @@ extension StateAction: CustomDumpReflectable {
   }
 }
 
-// TODO: Handle multiple actions/reduction?
 @available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
 extension View {
   /// A view modifier that perform the provided closure when a `StateAction` is assigned to the

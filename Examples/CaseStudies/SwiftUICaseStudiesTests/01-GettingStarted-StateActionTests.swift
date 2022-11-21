@@ -11,7 +11,6 @@ final class StateActionTests: XCTestCase {
       reducer: StateActionDemo()
     )
     
-    store.dependencies.uuid = .incrementing
     store.dependencies.withRandomNumberGenerator = .init(LCRNG())
     
     await store.send(.userDidTapRandomButton) {

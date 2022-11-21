@@ -36,11 +36,6 @@ public struct StateAction<Action> {
   public init() {
     self._wrappedValue = nil
   }
-
-  /// Cancel any pending action.
-  public mutating func reset() {
-    self.projectedAction = nil
-  }
 }
 
 extension StateAction: Sendable where Action: Sendable {}
@@ -108,6 +103,10 @@ struct StateActionModifier<StoreState, Action>: ViewModifier {
 
   func body(content: Content) -> some View {
     content
+      .onAppear {
+        guard let action = viewStore.state?.action else { return }
+        perform(action)
+      }
       .onChange(of: viewStore.state) { projectedAction in
         guard let projectedAction = projectedAction else { return }
         perform(projectedAction.action)

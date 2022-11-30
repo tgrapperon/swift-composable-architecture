@@ -7,6 +7,10 @@ public struct DynamicState {
     self.id = id
     self.wrappedValue = self.delegate.initialState(for: id)
   }
+  public init(id: Any.Type) {
+    self = .init(id: ObjectIdentifier(id))
+  }
+
   let id: AnyHashable
   public var wrappedValue: Any?
 
@@ -14,7 +18,7 @@ public struct DynamicState {
     get { self }
     set { self = newValue }
   }
-  
+
   @discardableResult
   public mutating func modify<T, Result>(as: T.Type, perform: (inout T) -> Result) -> Result? {
     guard var wrappedValue = wrappedValue as? T else { return nil }
@@ -74,13 +78,13 @@ public final class DynamicDomainDelegate: DependencyKey, EnvironmentKey {
   func initialState<ID: Hashable>(for id: ID) -> Any? {
     return domains[id]?.initialState()
   }
-  
+
   @MainActor
-  public func view(id: AnyHashable) -> ((Store<DynamicState, DynamicAction>) -> AnyView)? {
+  func view(id: AnyHashable) -> ((Store<DynamicState, DynamicAction>) -> AnyView)? {
     domains[id]?.view
   }
 
-  public func registerDynamicDomain(_ domain: DynamicDomain) {
+  func registerDynamicDomain(_ domain: DynamicDomain) {
     self.domains[domain.id] = domain
   }
 
@@ -130,7 +134,10 @@ extension DynamicReducer: ReducerProtocol {
 
 extension Store where State == DynamicState, Action == DynamicAction {
   func cast<S, A>(id: AnyHashable) -> Store<S, A>? {
-    guard let value = ViewStore(self, observe: { $0 }, removeDuplicates: {_, _ in false}).state.wrappedValue as? S
+    guard
+      let value =
+        ViewStore(self, observe: { $0 }, removeDuplicates: { _, _ in false }).state.wrappedValue
+        as? S
     else { return nil }
     return self.scope {
       $0.wrappedValue as? S ?? value
@@ -140,7 +147,7 @@ extension Store where State == DynamicState, Action == DynamicAction {
   }
 }
 
-public struct DynamicDomain {
+struct DynamicDomain {
   var id: AnyHashable
   var reducer: () -> any ReducerProtocol
   var initialState: () -> Any
@@ -149,7 +156,7 @@ public struct DynamicDomain {
 }
 
 extension DynamicDomain {
-  public init<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
+  init<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
     id: ID,
     reducer: @autoclosure @escaping () -> Reducer,
     initialState: @autoclosure @escaping () -> Reducer.State,
@@ -165,10 +172,10 @@ extension DynamicDomain {
 
 extension View {
   public func registerDynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
-      id: ID,
-      reducer: @escaping @autoclosure () -> Reducer,
-      initialState: @autoclosure @escaping () -> Reducer.State,
-      @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content
+    id: ID,
+    reducer: @escaping @autoclosure () -> Reducer,
+    initialState: @autoclosure @escaping () -> Reducer.State,
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content
   ) -> some View {
     self.transformEnvironment(\.dynamicDomainDelegate) {
       $0.registerDynamicDomain(
@@ -181,18 +188,89 @@ extension View {
       )
     }
   }
-}
 
+  public func registerDynamicDomain<ID, Reducer: ReducerProtocol, Content: View>(
+    id: ID.Type,
+    reducer: @escaping @autoclosure () -> Reducer,
+    initialState: @autoclosure @escaping () -> Reducer.State,
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content
+  ) -> some View {
+    return self.registerDynamicDomain(
+      id: ObjectIdentifier(ID.self),
+      reducer: reducer(),
+      initialState: initialState(),
+      view: view
+    )
+  }
+}
 
 public struct DynamicDomainView<ID: Hashable>: View {
   let id: ID
   let store: Store<DynamicState, DynamicAction>
+
+  let file: StaticString
+  let fileID: StaticString
+  let line: UInt
+
   @Environment(\.dynamicDomainDelegate) var delegate
-  public init(id: ID, store: Store<DynamicState, DynamicAction>) {
+  var isPreview: Bool {
+    ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+  }
+  public init(
+    id: ID,
+    store: Store<DynamicState, DynamicAction>,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) {
     self.id = id
     self.store = store
+    self.file = file
+    self.fileID = fileID
+    self.line = line
+  }
+  public init<T>(
+    id: T.Type,
+    store: Store<DynamicState, DynamicAction>,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  )
+  where ID == ObjectIdentifier {
+    self.id = ObjectIdentifier(T.self)
+    self.store = store
+    self.file = file
+    self.fileID = fileID
+    self.line = line
   }
   public var body: some View {
-    delegate.view(id: id)?(store)
+    if let view = delegate.view(id: id)?(store) {
+      view
+    } else if isPreview {
+      Text("Preview warning")
+    } else {
+      Text("Runtime warning")
+    }
+  }
+}
+
+extension Store {
+  public static func dynamic<ID: Hashable>(id: ID) -> Store<DynamicState, DynamicAction> {
+    .init(initialState: DynamicState(id: id), reducer: DynamicReducer())
+  }
+}
+
+struct DynamicDomainView_Previews: PreviewProvider {
+
+  static var previews: some View {
+    VStack {
+      DynamicDomainView(
+        id: 44,
+        store: .dynamic(id: 44)
+      )
+    }
+    .registerDynamicDomain(id: 44, reducer: EmptyReducer<Void, Void>(), initialState: ()) { store in
+      Text("Dynamic")
+    }
   }
 }

@@ -113,7 +113,7 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
 }
 
 extension DependencyValues {
-  public var dynamicDomainDelegate: DynamicDomainDelegate {
+  public internal(set) var dynamicDomainDelegate: DynamicDomainDelegate {
     get { self[DynamicDomainDelegate.self] }
     set { self[DynamicDomainDelegate.self] = newValue }
   }

@@ -63,7 +63,8 @@ public struct DynamicAction {
 
 extension DynamicAction: Equatable {
   public static func == (lhs: DynamicAction, rhs: DynamicAction) -> Bool {
-    lhs.id == rhs.id
+    guard lhs.id == rhs.id else { return false }
+    return (lhs.wrappedValue as? any Equatable)?.isEqual(other: rhs.wrappedValue) == true
   }
 }
 

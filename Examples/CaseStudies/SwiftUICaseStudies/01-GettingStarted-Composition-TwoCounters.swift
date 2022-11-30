@@ -13,11 +13,13 @@ struct TwoCounters: ReducerProtocol {
   struct State: Equatable {
     var counter1 = Counter.State()
     var counter2 = Counter.State()
+    @DynamicState(id: 42) var dynamic
   }
 
   enum Action: Equatable {
     case counter1(Counter.Action)
     case counter2(Counter.Action)
+    case dynamic(DynamicAction)
   }
 
   var body: some ReducerProtocol<State, Action> {
@@ -26,6 +28,27 @@ struct TwoCounters: ReducerProtocol {
     }
     Scope(state: \.counter2, action: /Action.counter2) {
       Counter()
+    }
+    Scope(state: \.$dynamic, action: /Action.dynamic) {
+      DynamicReducer()
+    }
+
+    Reduce<State, Action> { state, action in
+      switch action {
+      case .counter1(_):
+        return .none
+      case .counter2(_):
+        if var dynamic = state.dynamic as? IntValueContainer {
+          dynamic.intValue = state.counter2.count
+          state.dynamic = dynamic
+        }
+        return .none
+      case .dynamic:
+        if let intContainer = state.dynamic as? IntValueContainer {
+          state.counter2.count = intContainer.intValue
+        }
+        return .none
+      }
     }
   }
 }
@@ -56,9 +79,17 @@ struct TwoCountersView: View {
           store: self.store.scope(state: \.counter2, action: TwoCounters.Action.counter2)
         )
       }
+
+      DynamicDomainView(
+        id: 42,
+        store: store.scope(
+          state: \.$dynamic,
+          action: TwoCounters.Action.dynamic
+        )
+      )
     }
     .buttonStyle(.borderless)
-    .navigationTitle("Two counter demo")
+    .navigationTitle("Two counters demo")
   }
 }
 
@@ -74,5 +105,16 @@ struct TwoCountersView_Previews: PreviewProvider {
         )
       )
     }
+//    .transformEnvironment(\.dynamicDomainDelegate) {
+//      $0.registerDynamicDomain(
+//        .init(
+//          id: 42,
+//          reducer: Counter(),
+//          state: Counter.State(count: 4),
+//          view: CounterView.init(store:)
+//        )
+//      )
+//
+//    }
   }
 }

@@ -87,6 +87,13 @@ struct Animations: ReducerProtocol {
   }
 }
 
+extension Animations.State: IntValueContainer {
+  var intValue: Int {
+    get { Int(circleCenter?.x ?? 0) }
+    set { circleCenter?.x = CGFloat(newValue) }
+  }
+}
+
 // MARK: - Feature view
 
 struct AnimationsView: View {

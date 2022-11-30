@@ -25,6 +25,14 @@ public struct DynamicState {
     defer { self.wrappedValue = wrappedValue }
     return perform(&wrappedValue)
   }
+
+  public var new: Any? {
+    self.delegate.newState(for: id)
+  }
+
+  public mutating func reset() {
+    self.wrappedValue = delegate.initialState(for: id)
+  }
 }
 
 extension DynamicState: Equatable {
@@ -69,12 +77,12 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
     static var shared = Storage()
     var domains: [AnyHashable: DynamicDomain] = [:]
   }
-  
+
   public static var liveValue: DynamicDomainDelegate = .init()
   public static var defaultValue: DynamicDomainDelegate { liveValue }
-  
+
   private let storage = Storage.shared
-  var token: UInt = 0//.random(in: 0...(.max))
+  var token: UInt = 0  //.random(in: 0...(.max))
 
   func reducer<ID: Hashable>(for id: ID) -> (any ReducerProtocol)? {
     storage.domains[id]?.reducer()
@@ -84,6 +92,10 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
     return storage.domains[id]?.initialState()
   }
 
+  func newState<ID: Hashable>(for id: ID) -> Any? {
+    return storage.domains[id]?.newState()
+  }
+
   @MainActor
   func view(id: AnyHashable) -> ((Store<DynamicState, DynamicAction>) -> AnyView)? {
     storage.domains[id]?.view
@@ -91,7 +103,7 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
 
   mutating func registerDynamicDomain(_ domain: DynamicDomain) {
     self.storage.domains[domain.id] = domain
-    self.token += 1// = UInt.random(in: 1...(.max))
+    self.token += 1  // = UInt.random(in: 1...(.max))
   }
 
   public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -160,6 +172,7 @@ struct DynamicDomain {
   var id: AnyHashable
   var reducer: () -> any ReducerProtocol
   var initialState: () -> Any
+  var newState: () -> Any
   var action: (Any) -> DynamicAction
   var view: (Store<DynamicState, DynamicAction>) -> AnyView
 }
@@ -169,11 +182,13 @@ extension DynamicDomain {
     id: ID,
     reducer: @autoclosure @escaping () -> Reducer,
     initialState: @autoclosure @escaping () -> Reducer.State,
+    newState: (() -> Reducer.State)? = nil,
     view: @escaping (Store<Reducer.State, Reducer.Action>) -> Content
   ) {
     self.id = id
     self.reducer = reducer
     self.initialState = initialState
+    self.newState = newState ?? initialState
     self.action = { .init(id: id, wrappedValue: $0) }
     self.view = { AnyView($0.cast(id: id).map(view)) }
   }
@@ -184,6 +199,7 @@ extension View {
     id: ID,
     reducer: @escaping @autoclosure () -> Reducer,
     initialState: @autoclosure @escaping () -> Reducer.State,
+    newState: (() -> Reducer.State)? = nil,
     @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content
   ) -> some View {
     self.transformEnvironment(\.dynamicDomainDelegate) {
@@ -192,6 +208,7 @@ extension View {
           id: id,
           reducer: reducer(),
           initialState: initialState(),
+          newState: newState,
           view: view
         )
       )
@@ -221,47 +238,72 @@ public struct DynamicDomainView<ID: Hashable>: View {
   let fileID: StaticString
   let line: UInt
 
+  var previewWidth: CGFloat?
+  var previewHeight: CGFloat?
+
   @Environment(\.dynamicDomainDelegate) var delegate
   var isPreview: Bool {
     ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
   }
-  @State var bump: Int = 0
+
   public init(
     id: ID,
     store: Store<DynamicState, DynamicAction>,
+    previewWidth: CGFloat? = nil,
+    previewHeight: CGFloat? = nil,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) {
     self.id = id
     self.store = store
+    self.previewWidth = previewWidth
+    self.previewHeight = previewHeight
     self.file = file
     self.fileID = fileID
     self.line = line
   }
+  
   public init<T>(
     id: T.Type,
     store: Store<DynamicState, DynamicAction>,
+    previewWidth: CGFloat? = nil,
+    previewHeight: CGFloat? = nil,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
   )
   where ID == ObjectIdentifier {
-    self.id = ObjectIdentifier(T.self)
-    self.store = store
-    self.file = file
-    self.fileID = fileID
-    self.line = line
+    self = .init(
+      id: ObjectIdentifier(T.self),
+      store: store,
+      previewWidth: previewWidth,
+      previewHeight: previewHeight,
+      file: file,
+      fileID: fileID,
+      line: line
+    )
   }
   public var body: some View {
     if let view = delegate.view(id: id)?(store) {
       view
     } else if isPreview {
-      Text("Preview warning")
+      VStack {
+        Text(verbatim: "Dynamic View Placeholder")
+          .font(.callout)
+          .bold()
+        Text(verbatim: "ID: \(id)")
+          .font(.callout)
+        Text(verbatim: ("\(fileID)" as NSString).lastPathComponent + ":\(line)")
+          .font(.footnote)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .frame(width: previewWidth, height: previewHeight)
+      .background(Color.gray.opacity(0.5))
+      .border(Color.gray)
     } else {
-      Text("Runtime warning")
+      // Runtime warning?
     }
-    Text("\(delegate.token)")
   }
 }
 
@@ -277,18 +319,23 @@ struct DynamicDomainView_Previews: PreviewProvider {
     VStack {
       DynamicDomainView(
         id: 44,
-        store: .dynamic(id: 44)
+        store: .dynamic(id: 44),
+        previewHeight: 100
+      )
+      DynamicDomainView(
+        id: 55,
+        store: .dynamic(id: 55),
+        previewHeight: 200
       )
     }
-    .registerDynamicDomain(
-      id: 44,
-      reducer: EmptyReducer<Void, Void>(),
-      initialState: ()
-    ) { store in
-      ZStack {
-        Text("Dynamic")
-      }
-      .background(Color.red)
-    }
+    //    .registerDynamicDomain(
+    //      id: 44,
+    //      reducer: EmptyReducer<Void, Void>(),
+    //      initialState: ()
+    //    ) { store in
+    //      ZStack {
+    //        Text("Dynamic")
+    //      }
+    //    }
   }
 }

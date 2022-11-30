@@ -64,30 +64,39 @@ public struct DynamicReducer {
   public init() {}
 }
 
-public final class DynamicDomainDelegate: DependencyKey, EnvironmentKey {
-  static let shared = DynamicDomainDelegate()
-  public static var liveValue: DynamicDomainDelegate { shared }
-  public static var defaultValue: DynamicDomainDelegate { shared }
-
-  private var domains: [AnyHashable: DynamicDomain] = [:]
+public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
+  final class Storage {
+    static var shared = Storage()
+    var domains: [AnyHashable: DynamicDomain] = [:]
+  }
+  
+  public static var liveValue: DynamicDomainDelegate = .init()
+  public static var defaultValue: DynamicDomainDelegate { liveValue }
+  
+  private let storage = Storage.shared
+  var token: UInt = 0//.random(in: 0...(.max))
 
   func reducer<ID: Hashable>(for id: ID) -> (any ReducerProtocol)? {
-    domains[id]?.reducer()
+    storage.domains[id]?.reducer()
   }
 
   func initialState<ID: Hashable>(for id: ID) -> Any? {
-    return domains[id]?.initialState()
+    return storage.domains[id]?.initialState()
   }
 
   @MainActor
   func view(id: AnyHashable) -> ((Store<DynamicState, DynamicAction>) -> AnyView)? {
-    domains[id]?.view
+    storage.domains[id]?.view
   }
 
-  func registerDynamicDomain(_ domain: DynamicDomain) {
-    self.domains[domain.id] = domain
+  mutating func registerDynamicDomain(_ domain: DynamicDomain) {
+    self.storage.domains[domain.id] = domain
+    self.token += 1// = UInt.random(in: 1...(.max))
   }
 
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.token == rhs.token
+  }
 }
 
 extension DependencyValues {
@@ -216,6 +225,7 @@ public struct DynamicDomainView<ID: Hashable>: View {
   var isPreview: Bool {
     ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
   }
+  @State var bump: Int = 0
   public init(
     id: ID,
     store: Store<DynamicState, DynamicAction>,
@@ -251,6 +261,7 @@ public struct DynamicDomainView<ID: Hashable>: View {
     } else {
       Text("Runtime warning")
     }
+    Text("\(delegate.token)")
   }
 }
 
@@ -269,8 +280,15 @@ struct DynamicDomainView_Previews: PreviewProvider {
         store: .dynamic(id: 44)
       )
     }
-    .registerDynamicDomain(id: 44, reducer: EmptyReducer<Void, Void>(), initialState: ()) { store in
-      Text("Dynamic")
+    .registerDynamicDomain(
+      id: 44,
+      reducer: EmptyReducer<Void, Void>(),
+      initialState: ()
+    ) { store in
+      ZStack {
+        Text("Dynamic")
+      }
+      .background(Color.red)
     }
   }
 }

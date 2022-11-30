@@ -38,14 +38,14 @@ struct TwoCounters: ReducerProtocol {
       case .counter1(_):
         return .none
       case .counter2(_):
-        if var dynamic = state.dynamic as? IntValueContainer {
-          dynamic.intValue = state.counter2.count
-          state.dynamic = dynamic
+        let count = state.counter2.count
+        state.$dynamic.modify(as: IntValueContainer.self) { container in
+          container.intValue = count
         }
         return .none
       case .dynamic:
-        if let intContainer = state.dynamic as? IntValueContainer {
-          state.counter2.count = intContainer.intValue
+        if let intValue = (state.dynamic as? IntValueContainer)?.intValue {
+          state.counter2.count = intValue
         }
         return .none
       }

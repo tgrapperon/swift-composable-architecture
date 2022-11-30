@@ -14,6 +14,13 @@ public struct DynamicState {
     get { self }
     set { self = newValue }
   }
+  
+  @discardableResult
+  public mutating func modify<T, Result>(as: T.Type, perform: (inout T) -> Result) -> Result? {
+    guard var wrappedValue = wrappedValue as? T else { return nil }
+    defer { self.wrappedValue = wrappedValue }
+    return perform(&wrappedValue)
+  }
 }
 
 extension DynamicState: Equatable {

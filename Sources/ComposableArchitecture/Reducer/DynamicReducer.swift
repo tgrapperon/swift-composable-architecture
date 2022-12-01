@@ -146,6 +146,10 @@ extension DynamicReducer: ReducerProtocol {
   public func reduce(into state: inout DynamicState, action: DynamicAction) -> EffectTask<
     DynamicAction
   > {
+    guard action.id == state.id else {
+      // TODO: Warn?
+      return .none
+    }
     guard let reducer = delegate.reducer(for: state.id) else {
       // TODO: Warn
       return .none

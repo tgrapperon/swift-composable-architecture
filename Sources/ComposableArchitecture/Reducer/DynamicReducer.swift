@@ -3,10 +3,10 @@ import XCTestDynamicOverlay
 
 @propertyWrapper
 public struct DynamicState {
-  @Dependency(\.dynamicDomainDelegate) var delegate
+  @Dependency(\.dynamicDomains) var dynamicDomains
   public init(id: AnyHashable) {
     self.id = id
-    self.wrappedValue = self.delegate.initialState(for: id)
+    self.wrappedValue = self.dynamicDomains.initialState(for: id)
   }
   public init(id: Any.Type) {
     self = .init(id: ObjectIdentifier(id))
@@ -28,11 +28,11 @@ public struct DynamicState {
   }
 
   public var new: Any? {
-    self.delegate.newState(for: id)
+    self.dynamicDomains.newState(for: id)
   }
 
   public mutating func reset() {
-    self.wrappedValue = delegate.initialState(for: id)
+    self.wrappedValue = dynamicDomains.initialState(for: id)
   }
 }
 
@@ -74,7 +74,7 @@ extension DynamicAction: Equatable {
 }
 
 public struct DynamicReducer {
-  @Dependency(\.dynamicDomainDelegate) var delegate
+  @Dependency(\.dynamicDomains) var dynamicDomains
   public init() {}
 }
 
@@ -130,15 +130,64 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
   }
 }
 
+extension DynamicDomainDelegate {
+  @discardableResult
+  public func register<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
+    id: ID,
+    reducer: @escaping @autoclosure () -> Reducer,
+    initialState: @autoclosure @escaping () -> Reducer.State,
+    newState: (() -> Reducer.State)? = nil,
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> DynamicDomainDelegate {
+    var delegate = self
+    delegate.registerDynamicDomain(
+      .init(
+        id: id,
+        reducer: reducer(),
+        initialState: initialState(),
+        newState: newState,
+        view: view,
+        file: file,
+        fileID: fileID,
+        line: line
+      )
+    )
+    return delegate
+  }
+  @discardableResult
+  public func register<ID, Reducer: ReducerProtocol, Content: View>(
+    id: ID.Type,
+    reducer: @escaping @autoclosure () -> Reducer,
+    initialState: @autoclosure @escaping () -> Reducer.State,
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> DynamicDomainDelegate {
+    return self.register(
+      id: ObjectIdentifier(ID.self),
+      reducer: reducer(),
+      initialState: initialState(),
+      view: view,
+      file: file,
+      fileID: fileID,
+      line: line
+    )
+  }
+}
+
 extension DependencyValues {
-  public internal(set) var dynamicDomainDelegate: DynamicDomainDelegate {
+  public internal(set) var dynamicDomains: DynamicDomainDelegate {
     get { self[DynamicDomainDelegate.self] }
     set { self[DynamicDomainDelegate.self] = newValue }
   }
 }
 
 extension EnvironmentValues {
-  var dynamicDomainDelegate: DynamicDomainDelegate {
+  var dynamicDomains: DynamicDomainDelegate {
     get { self[DynamicDomainDelegate.self] }
     set { self[DynamicDomainDelegate.self] = newValue }
   }
@@ -168,7 +217,7 @@ extension DynamicReducer: ReducerProtocol {
       // TODO: Warn?
       return .none
     }
-    guard let reducer = delegate.reducer(for: state.id) else {
+    guard let reducer = dynamicDomains.reducer(for: state.id) else {
       XCTFail("No dynamic reducer is declared for the id:\(state.id)")
       return .none
     }
@@ -238,7 +287,7 @@ extension View {
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) -> some View {
-    self.transformEnvironment(\.dynamicDomainDelegate) {
+    self.transformEnvironment(\.dynamicDomains) {
       guard !_XCTIsTesting else { return }
       $0.registerDynamicDomain(
         .init(
@@ -276,54 +325,6 @@ extension View {
   }
 }
 
-extension TestStore {
-  public func dynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
-    id: ID,
-    reducer: @escaping @autoclosure () -> Reducer,
-    initialState: @autoclosure @escaping () -> Reducer.State,
-    newState: (() -> Reducer.State)? = nil,
-    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> TestStore {
-    self.dependencies.dynamicDomainDelegate.registerDynamicDomain(
-      .init(
-        id: id,
-        reducer: reducer(),
-        initialState: initialState(),
-        newState: newState,
-        view: view,
-        file: file,
-        fileID: fileID,
-        line: line
-      )
-    )
-    return self
-  }
-  
-  public func dynamicDomain<ID, Reducer: ReducerProtocol, Content: View>(
-    id: ID.Type,
-    reducer: @escaping @autoclosure () -> Reducer,
-    initialState: @autoclosure @escaping () -> Reducer.State,
-    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> TestStore {
-    return self.dynamicDomain(
-      id: ObjectIdentifier(ID.self),
-      reducer: reducer(),
-      initialState: initialState(),
-      view: view,
-      file: file,
-      fileID: fileID,
-      line: line
-    )
-  }
-}
-
-
 public struct DynamicDomainView<ID: Hashable>: View {
   let id: ID
   let store: Store<DynamicState, DynamicAction>
@@ -335,7 +336,7 @@ public struct DynamicDomainView<ID: Hashable>: View {
   var previewWidth: CGFloat?
   var previewHeight: CGFloat?
 
-  @Environment(\.dynamicDomainDelegate) var delegate
+  @Environment(\.dynamicDomains) var dynamicDomains
   var isPreview: Bool {
     ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
   }
@@ -380,7 +381,7 @@ public struct DynamicDomainView<ID: Hashable>: View {
   }
   
   public var body: some View {
-    if let view = delegate.view(id: id)?(store) {
+    if let view = dynamicDomains.view(id: id)?(store) {
       view
     } else if isPreview {
       VStack {

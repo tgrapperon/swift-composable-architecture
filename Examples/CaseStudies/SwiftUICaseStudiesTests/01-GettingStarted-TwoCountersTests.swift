@@ -9,15 +9,17 @@ final class TwoCountersTests: XCTestCase {
   func testDynamicDomain() async {
     let store = TestStore(
       initialState: .init(),
-      reducer: TwoCounters()
+      reducer: TwoCounters(),
+      prepareDependencies: {
+        $0.dynamicDomainDelegate.register(
+          id: 42,
+          reducer: Animations(),
+          initialState: Animations.State(),
+          view: AnimationsView.init(store:)
+        )
+      }
     )
-    .dynamicDomain(
-      id: 42,
-      reducer: Animations(),
-      initialState: Animations.State(),
-      view: AnimationsView.init(store:)
-    )
-    
+
     store.exhaustivity = .off
     await store.send(.dynamic(.init(id: 42, Animations.Action.tapped(.init(x: 100, y: 0))))) {
       $0.counter2.count = 100

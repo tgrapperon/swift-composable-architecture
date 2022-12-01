@@ -85,7 +85,8 @@ struct TwoCountersView: View {
         store: store.scope(
           state: \.$dynamic,
           action: TwoCounters.Action.dynamic
-        )
+        ),
+        previewHeight: 200
       )
     }
     .buttonStyle(.borderless)
@@ -105,16 +106,5 @@ struct TwoCountersView_Previews: PreviewProvider {
         )
       )
     }
-//    .transformEnvironment(\.dynamicDomainDelegate) {
-//      $0.registerDynamicDomain(
-//        .init(
-//          id: 42,
-//          reducer: Counter(),
-//          state: Counter.State(count: 4),
-//          view: CounterView.init(store:)
-//        )
-//      )
-//
-//    }
   }
 }

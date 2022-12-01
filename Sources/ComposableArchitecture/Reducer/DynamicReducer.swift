@@ -169,7 +169,7 @@ extension DynamicReducer: ReducerProtocol {
       return .none
     }
     guard let reducer = delegate.reducer(for: state.id) else {
-      // TODO: Warn
+      XCTFail("No dynamic reducer is declared for the id:\(state.id)")
       return .none
     }
     return reducer.reduceDynamic(into: &state, action: action)
@@ -239,6 +239,7 @@ extension View {
     line: UInt = #line
   ) -> some View {
     self.transformEnvironment(\.dynamicDomainDelegate) {
+      guard !_XCTIsTesting else { return }
       $0.registerDynamicDomain(
         .init(
           id: id,

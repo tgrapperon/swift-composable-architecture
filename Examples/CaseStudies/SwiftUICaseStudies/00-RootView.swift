@@ -287,8 +287,8 @@ struct RootView: View {
 }
 
 // This protocol allows `Animations.State` to communicate with `TwoCounters`
-protocol IntValueContainer {
-  var intValue: Int { get set }
+protocol PointProvider {
+  var point: CGPoint { get set }
 }
 
 // MARK: - SwiftUI previews

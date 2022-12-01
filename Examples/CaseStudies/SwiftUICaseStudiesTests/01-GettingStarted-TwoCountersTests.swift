@@ -21,14 +21,15 @@ final class TwoCountersTests: XCTestCase {
     )
 
     store.exhaustivity = .off
-    await store.send(.dynamic(.init(id: 42, Animations.Action.tapped(.init(x: 100, y: 0))))) {
-      $0.counter2.count = 100
+    await store.send(.dynamic(.init(id: 42, Animations.Action.tapped(.init(x: 100, y: 30))))) {
+      $0.counter1.count = 100
+      $0.counter2.count = 30
     }
     
     store.exhaustivity = .on
     await store.send(.counter2(.incrementButtonTapped)) {
-      $0.counter2.count = 101
-      $0.dynamic = Animations.State(circleCenter: .init(x: 101, y: 0))
+      $0.counter2.count = 31
+      $0.dynamic = Animations.State(circleCenter: .init(x: 100, y: 31))
     }
   }
 }

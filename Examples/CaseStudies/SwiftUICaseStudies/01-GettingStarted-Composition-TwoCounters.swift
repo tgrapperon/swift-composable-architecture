@@ -36,16 +36,21 @@ struct TwoCounters: ReducerProtocol {
     Reduce<State, Action> { state, action in
       switch action {
       case .counter1(_):
+        let count = state.counter1.count
+        state.$dynamic.modify(as: PointProvider.self) { provider in
+          provider.point.x = CGFloat(count)
+        }
         return .none
       case .counter2(_):
         let count = state.counter2.count
-        state.$dynamic.modify(as: IntValueContainer.self) { container in
-          container.intValue = count
+        state.$dynamic.modify(as: PointProvider.self) { provider in
+          provider.point.y = CGFloat(count)
         }
         return .none
       case .dynamic:
-        if let intValue = (state.dynamic as? IntValueContainer)?.intValue {
-          state.counter2.count = intValue
+        if let point = (state.dynamic as? PointProvider)?.point {
+          state.counter1.count = Int(point.x)
+          state.counter2.count = Int(point.y)
         }
         return .none
       }

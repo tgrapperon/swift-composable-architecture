@@ -87,10 +87,10 @@ struct Animations: ReducerProtocol {
   }
 }
 
-extension Animations.State: IntValueContainer {
-  var intValue: Int {
-    get { Int(circleCenter?.x ?? 0) }
-    set { circleCenter?.x = CGFloat(newValue) }
+extension Animations.State: PointProvider {
+  var point: CGPoint {
+    get { circleCenter ?? .zero }
+    set { circleCenter = newValue }
   }
 }
 

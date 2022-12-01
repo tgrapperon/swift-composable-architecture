@@ -10,8 +10,8 @@ final class TwoCountersTests: XCTestCase {
     let store = TestStore(
       initialState: .init(),
       reducer: TwoCounters(),
-      prepareDependencies: {
-        $0.dynamicDomainDelegate.register(
+      prepareDependencies: { 
+        $0.dynamicDomains.register(
           id: 42,
           reducer: Animations(),
           initialState: Animations.State(),

@@ -6,7 +6,11 @@ public struct DynamicState {
   @Dependency(\.dynamicDomains) var dynamicDomains
   public init(id: AnyHashable) {
     self.id = id
-    self.wrappedValue = self.dynamicDomains.initialState(for: id)
+    if !self.dynamicDomains.contains(id: id) {
+      XCTFail("No dynamic domain is declared for the id:\(id)")
+    } else {
+      self.wrappedValue = self.dynamicDomains.initialState(for: id)
+    }
   }
   public init(id: Any.Type) {
     self = .init(id: ObjectIdentifier(id))
@@ -96,11 +100,15 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
   }
 
   func initialState<ID: Hashable>(for id: ID) -> Any? {
-    return storage.domains[id]?.initialState()
+    storage.domains[id]?.initialState()
   }
 
   func newState<ID: Hashable>(for id: ID) -> Any? {
-    return storage.domains[id]?.newState()
+    storage.domains[id]?.newState()
+  }
+  
+  func contains<ID: Hashable>(id: ID) -> Bool {
+    self.storage.domains[id] != nil
   }
 
   @MainActor
@@ -218,7 +226,7 @@ extension DynamicReducer: ReducerProtocol {
       return .none
     }
     guard let reducer = dynamicDomains.reducer(for: state.id) else {
-      XCTFail("No dynamic reducer is declared for the id:\(state.id)")
+      XCTFail("No dynamic domain is declared for the id:\(state.id)")
       return .none
     }
     return reducer.reduceDynamic(into: &state, action: action)

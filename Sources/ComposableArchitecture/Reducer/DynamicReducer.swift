@@ -1,4 +1,5 @@
 import SwiftUI
+import XCTestDynamicOverlay
 
 @propertyWrapper
 public struct DynamicState {
@@ -116,7 +117,7 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
           - \(domain.fileID):\(domain.line)
         This operation is not supported.
         """
-        print(message)
+        XCTFail(message)
       }
     } else {
       self.storage.domains[domain.id] = domain
@@ -225,52 +226,6 @@ extension DynamicDomain {
   }
 }
 
-extension TestStore {
-  public func dynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
-    id: ID,
-    reducer: @escaping @autoclosure () -> Reducer,
-    initialState: @autoclosure @escaping () -> Reducer.State,
-    newState: (() -> Reducer.State)? = nil,
-    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> TestStore {
-    self.dependencies.dynamicDomainDelegate.registerDynamicDomain(
-      .init(
-        id: id,
-        reducer: reducer(),
-        initialState: initialState(),
-        newState: newState,
-        view: view,
-        file: file,
-        fileID: fileID,
-        line: line
-      )
-    )
-    return self
-  }
-  
-  public func dynamicDomain<ID, Reducer: ReducerProtocol, Content: View>(
-    id: ID.Type,
-    reducer: @escaping @autoclosure () -> Reducer,
-    initialState: @autoclosure @escaping () -> Reducer.State,
-    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> TestStore {
-    return self.dynamicDomain(
-      id: ObjectIdentifier(ID.self),
-      reducer: reducer(),
-      initialState: initialState(),
-      view: view,
-      file: file,
-      fileID: fileID,
-      line: line
-    )
-  }
-}
 
 extension View {
   public func dynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
@@ -319,6 +274,54 @@ extension View {
     )
   }
 }
+
+extension TestStore {
+  public func dynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
+    id: ID,
+    reducer: @escaping @autoclosure () -> Reducer,
+    initialState: @autoclosure @escaping () -> Reducer.State,
+    newState: (() -> Reducer.State)? = nil,
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> TestStore {
+    self.dependencies.dynamicDomainDelegate.registerDynamicDomain(
+      .init(
+        id: id,
+        reducer: reducer(),
+        initialState: initialState(),
+        newState: newState,
+        view: view,
+        file: file,
+        fileID: fileID,
+        line: line
+      )
+    )
+    return self
+  }
+  
+  public func dynamicDomain<ID, Reducer: ReducerProtocol, Content: View>(
+    id: ID.Type,
+    reducer: @escaping @autoclosure () -> Reducer,
+    initialState: @autoclosure @escaping () -> Reducer.State,
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
+  ) -> TestStore {
+    return self.dynamicDomain(
+      id: ObjectIdentifier(ID.self),
+      reducer: reducer(),
+      initialState: initialState(),
+      view: view,
+      file: file,
+      fileID: fileID,
+      line: line
+    )
+  }
+}
+
 
 public struct DynamicDomainView<ID: Hashable>: View {
   let id: ID
@@ -374,6 +377,7 @@ public struct DynamicDomainView<ID: Hashable>: View {
       line: line
     )
   }
+  
   public var body: some View {
     if let view = delegate.view(id: id)?(store) {
       view

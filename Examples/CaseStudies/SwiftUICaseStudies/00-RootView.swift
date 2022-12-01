@@ -277,7 +277,7 @@ struct RootView: View {
       .navigationTitle("Case Studies")
       .onAppear { ViewStore(self.store).send(.onAppear) }
     }
-    .registerDynamicDomain(
+    .dynamicDomain(
       id: 42,
       reducer: Animations(),
       initialState: Animations.State(),

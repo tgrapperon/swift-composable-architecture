@@ -83,7 +83,7 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
   public static var defaultValue: DynamicDomainDelegate { liveValue }
 
   private let storage = Storage.shared
-  var token: UInt = 0  //.random(in: 0...(.max))
+  var token: UInt = 0
 
   func reducer<ID: Hashable>(for id: ID) -> (any ReducerProtocol)? {
     storage.domains[id]?.reducer()
@@ -103,8 +103,20 @@ public struct DynamicDomainDelegate: Equatable, DependencyKey, EnvironmentKey {
   }
 
   mutating func registerDynamicDomain(_ domain: DynamicDomain) {
-    self.storage.domains[domain.id] = domain
-    self.token += 1  // = UInt.random(in: 1...(.max))
+    if let existing = self.storage.domains[domain.id] {
+      if "\(existing.fileID)" != "\(domain.fileID)" || existing.line != domain.line {
+        let message = """
+        Warning, registering a dynamic domain more than once with the id: "\(domain.id)":
+          - \(existing.fileID):\(existing.line)
+          - \(domain.fileID):\(domain.line)
+        This operation is not supported.
+        """
+        print(message)
+      }
+    } else {
+      self.storage.domains[domain.id] = domain
+      self.token += 1
+    }
   }
 
   public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -174,12 +186,15 @@ extension Store where State == DynamicState, Action == DynamicAction {
 }
 
 struct DynamicDomain {
-  var id: AnyHashable
-  var reducer: () -> any ReducerProtocol
-  var initialState: () -> Any
-  var newState: () -> Any
-  var action: (Any) -> DynamicAction
-  var view: (Store<DynamicState, DynamicAction>) -> AnyView
+  let id: AnyHashable
+  let reducer: () -> any ReducerProtocol
+  let initialState: () -> Any
+  let newState: () -> Any
+  let action: (Any) -> DynamicAction
+  let view: (Store<DynamicState, DynamicAction>) -> AnyView
+  let file: StaticString
+  let fileID: StaticString
+  let line: UInt
 }
 
 extension DynamicDomain {
@@ -188,7 +203,10 @@ extension DynamicDomain {
     reducer: @autoclosure @escaping () -> Reducer,
     initialState: @autoclosure @escaping () -> Reducer.State,
     newState: (() -> Reducer.State)? = nil,
-    view: @escaping (Store<Reducer.State, Reducer.Action>) -> Content
+    view: @escaping (Store<Reducer.State, Reducer.Action>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) {
     self.id = id
     self.reducer = reducer
@@ -196,16 +214,22 @@ extension DynamicDomain {
     self.newState = newState ?? initialState
     self.action = { .init(id: id, wrappedValue: $0) }
     self.view = { AnyView($0.cast(id: id).map(view)) }
+    self.file = file
+    self.fileID = fileID
+    self.line = line
   }
 }
 
 extension View {
-  public func registerDynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
+  public func dynamicDomain<ID: Hashable, Reducer: ReducerProtocol, Content: View>(
     id: ID,
     reducer: @escaping @autoclosure () -> Reducer,
     initialState: @autoclosure @escaping () -> Reducer.State,
     newState: (() -> Reducer.State)? = nil,
-    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) -> some View {
     self.transformEnvironment(\.dynamicDomainDelegate) {
       $0.registerDynamicDomain(
@@ -214,23 +238,32 @@ extension View {
           reducer: reducer(),
           initialState: initialState(),
           newState: newState,
-          view: view
+          view: view,
+          file: file,
+          fileID: fileID,
+          line: line
         )
       )
     }
   }
 
-  public func registerDynamicDomain<ID, Reducer: ReducerProtocol, Content: View>(
+  public func dynamicDomain<ID, Reducer: ReducerProtocol, Content: View>(
     id: ID.Type,
     reducer: @escaping @autoclosure () -> Reducer,
     initialState: @autoclosure @escaping () -> Reducer.State,
-    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content
+    @ViewBuilder view: @escaping (StoreOf<Reducer>) -> Content,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) -> some View {
-    return self.registerDynamicDomain(
+    return self.dynamicDomain(
       id: ObjectIdentifier(ID.self),
       reducer: reducer(),
       initialState: initialState(),
-      view: view
+      view: view,
+      file: file,
+      fileID: fileID,
+      line: line
     )
   }
 }
@@ -333,14 +366,5 @@ struct DynamicDomainView_Previews: PreviewProvider {
         previewHeight: 200
       )
     }
-    //    .registerDynamicDomain(
-    //      id: 44,
-    //      reducer: EmptyReducer<Void, Void>(),
-    //      initialState: ()
-    //    ) { store in
-    //      ZStack {
-    //        Text("Dynamic")
-    //      }
-    //    }
   }
 }

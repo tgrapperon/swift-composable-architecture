@@ -81,6 +81,7 @@
 		DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD442C5286CA91F008B4EA7 /* AboutView.swift */; };
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
+		E9A1BFB429383B2200029108 /* 01-GettingStarted-TwoCountersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9A1BFB329383B2200029108 /* 01-GettingStarted-TwoCountersTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -234,6 +235,7 @@
 		DCD442C5286CA91F008B4EA7 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-Recursion.swift"; sourceTree = "<group>"; };
 		DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaseStudiesApp.swift; sourceTree = "<group>"; };
+		E9A1BFB329383B2200029108 /* 01-GettingStarted-TwoCountersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "01-GettingStarted-TwoCountersTests.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -434,6 +436,7 @@
 			children = (
 				CA50BE5F24A8F46500FE7DBA /* 01-GettingStarted-AlertsAndConfirmationDialogsTests.swift */,
 				CA34170724A4E89500FAF950 /* 01-GettingStarted-AnimationsTests.swift */,
+				E9A1BFB329383B2200029108 /* 01-GettingStarted-TwoCountersTests.swift */,
 				DC27215525BF84FC00D9C8DB /* 01-GettingStarted-BindingBasicsTests.swift */,
 				4F5AC11E24ECC7E4009DC50B /* 01-GettingStarted-SharedStateTests.swift */,
 				CAA9ADC324465AB00003A984 /* 02-Effects-BasicsTests.swift */,
@@ -792,6 +795,7 @@
 				CA410EE2247C73B400E41798 /* 02-Effects-WebSocketTests.swift in Sources */,
 				CABC4F3B26AEE20200D5FA2C /* 02-Effects-RefreshableTests.swift in Sources */,
 				CA34170824A4E89500FAF950 /* 01-GettingStarted-AnimationsTests.swift in Sources */,
+				E9A1BFB429383B2200029108 /* 01-GettingStarted-TwoCountersTests.swift in Sources */,
 				CA0C0C4724B89BEC00CBDD8A /* 04-HigherOrderReducers-LifecycleTests.swift in Sources */,
 				DC07231724465D1E003A8B65 /* 02-Effects-TimersTests.swift in Sources */,
 				CA50BE6024A8F46500FE7DBA /* 01-GettingStarted-AlertsAndConfirmationDialogsTests.swift in Sources */,

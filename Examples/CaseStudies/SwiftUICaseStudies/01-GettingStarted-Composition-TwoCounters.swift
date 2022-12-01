@@ -86,8 +86,7 @@ struct TwoCountersView: View {
       }
 
       DynamicDomainView(
-        id: 42,
-        store: store.scope(
+        store.scope(
           state: \.$dynamic,
           action: TwoCounters.Action.dynamic
         ),

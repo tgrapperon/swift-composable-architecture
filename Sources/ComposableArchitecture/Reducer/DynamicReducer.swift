@@ -7,7 +7,7 @@ public struct DynamicState {
   public init(id: AnyHashable) {
     self.id = id
     if !self.dynamicDomains.contains(id: id) {
-      XCTFail("No dynamic domain is declared for the id:\(id)")
+//      XCTFail("No dynamic domain is declared for the id:\(id)")
     } else {
       self.wrappedValue = self.dynamicDomains.initialState(for: id)
     }
@@ -333,8 +333,8 @@ extension View {
   }
 }
 
-public struct DynamicDomainView<ID: Hashable>: View {
-  let id: ID
+public struct DynamicDomainView: View {
+  let id: AnyHashable
   let store: Store<DynamicState, DynamicAction>
 
   let file: StaticString
@@ -350,42 +350,20 @@ public struct DynamicDomainView<ID: Hashable>: View {
   }
 
   public init(
-    id: ID,
-    store: Store<DynamicState, DynamicAction>,
+    _ store: Store<DynamicState, DynamicAction>,
     previewWidth: CGFloat? = nil,
     previewHeight: CGFloat? = nil,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
   ) {
-    self.id = id
+    self.id = ViewStore(store).id
     self.store = store
     self.previewWidth = previewWidth
     self.previewHeight = previewHeight
     self.file = file
     self.fileID = fileID
     self.line = line
-  }
-  
-  public init<T>(
-    id: T.Type,
-    store: Store<DynamicState, DynamicAction>,
-    previewWidth: CGFloat? = nil,
-    previewHeight: CGFloat? = nil,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  )
-  where ID == ObjectIdentifier {
-    self = .init(
-      id: ObjectIdentifier(T.self),
-      store: store,
-      previewWidth: previewWidth,
-      previewHeight: previewHeight,
-      file: file,
-      fileID: fileID,
-      line: line
-    )
   }
   
   public var body: some View {
@@ -422,13 +400,11 @@ struct DynamicDomainView_Previews: PreviewProvider {
   static var previews: some View {
     VStack {
       DynamicDomainView(
-        id: 44,
-        store: .dynamic(id: 44),
+        .dynamic(id: 44),
         previewHeight: 100
       )
       DynamicDomainView(
-        id: 55,
-        store: .dynamic(id: 55),
+        .dynamic(id: 55),
         previewHeight: 200
       )
     }

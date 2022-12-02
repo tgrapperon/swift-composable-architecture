@@ -72,7 +72,7 @@ extension StateAction: CustomDumpReflectable {
 
 @available(iOS 14, macOS 11, tvOS 14, watchOS 7, *)
 extension View {
-  /// A view modifier that perform the provided closure when a `StateAction` is assigned to the
+  /// A view modifier that performs the provided closure when a `StateAction` is assigned to the
   /// store's state by the reducer.
   ///
   /// Assigning the same value that was assigned on a previous reducer run produces a new signal.

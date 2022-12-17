@@ -20,6 +20,8 @@ public enum SubscriptionActionOf<Value> {
 
 // TODO: Make a modifier to scope onto `SubscriptionStateOf`?
 // TODO: Find a way to handle better `Value` vs `Value?`
+// This could be very convenient if store instances are stables, as we would be able to
+// automatically subscribe and cancel following the lifetime of the store's identity.
 
 public struct SubscriptionReducer<Value>: ReducerProtocol {
   public typealias State = SubscriptionStateOf<Value>

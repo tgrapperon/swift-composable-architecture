@@ -128,6 +128,15 @@ struct RootView: View {
               )
             )
           )
+          NavigationLink(
+            "Long-living effects (Subscriptions)",
+            destination: LongLivingEffectsSubscriptionView(
+              store: self.store.scope(
+                state: \.longLivingEffectsSubscription,
+                action: Root.Action.longLivingEffectsSubscription
+              )
+            )
+          )
 
           NavigationLink(
             "Refreshable",

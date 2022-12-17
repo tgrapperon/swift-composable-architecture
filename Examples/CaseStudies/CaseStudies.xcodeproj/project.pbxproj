@@ -81,6 +81,7 @@
 		DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD442C5286CA91F008B4EA7 /* AboutView.swift */; };
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
+		E9772BD0294E28B3005C7DD6 /* 02-Effects-LongLivingSubscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9772BCF294E28B3005C7DD6 /* 02-Effects-LongLivingSubscription.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -234,6 +235,7 @@
 		DCD442C5286CA91F008B4EA7 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "04-HigherOrderReducers-Recursion.swift"; sourceTree = "<group>"; };
 		DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaseStudiesApp.swift; sourceTree = "<group>"; };
+		E9772BCF294E28B3005C7DD6 /* 02-Effects-LongLivingSubscription.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "02-Effects-LongLivingSubscription.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -407,6 +409,7 @@
 				CAA9ADC12446587C0003A984 /* 02-Effects-Basics.swift */,
 				CAA9ADC524465C810003A984 /* 02-Effects-Cancellation.swift */,
 				CAA9ADC92446605B0003A984 /* 02-Effects-LongLiving.swift */,
+				E9772BCF294E28B3005C7DD6 /* 02-Effects-LongLivingSubscription.swift */,
 				CABC4F3826AEE00C00D5FA2C /* 02-Effects-Refreshable.swift */,
 				DC89C45424465C44006900B9 /* 02-Effects-Timers.swift */,
 				CA410EDF247A15FE00E41798 /* 02-Effects-WebSocket.swift */,
@@ -777,6 +780,7 @@
 				DC89C45124462DE7006900B9 /* 03-Navigation-Lists-LoadThenNavigate.swift in Sources */,
 				DC89C45524465C44006900B9 /* 02-Effects-Timers.swift in Sources */,
 				CA410EE0247A15FE00E41798 /* 02-Effects-WebSocket.swift in Sources */,
+				E9772BD0294E28B3005C7DD6 /* 02-Effects-LongLivingSubscription.swift in Sources */,
 				CA7BC8EE245CCFE4001FB69F /* 01-GettingStarted-SharedState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

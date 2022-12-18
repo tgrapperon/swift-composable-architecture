@@ -27,6 +27,7 @@ struct LongLivingEffects: ReducerProtocol {
     case userDidTakeScreenshotNotification
   }
 
+  @MainActor
   @Dependency(\.notifications.screenshots) var screenshots
 
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
@@ -34,7 +35,7 @@ struct LongLivingEffects: ReducerProtocol {
     case .task:
       // When the view appears, start the effect that emits when screenshots are taken.
       return .run { send in
-        for await _ in self.screenshots() {
+        for await _ in await self.screenshots() {
           await send(.userDidTakeScreenshotNotification)
         }
       }
@@ -46,9 +47,9 @@ struct LongLivingEffects: ReducerProtocol {
   }
 }
 
-extension Notification.Dependency {
+extension Notification.Dependencies {
   @MainActor
-  var screenshots: NotificationDependency<Void> {
+  var screenshots: Dependency<Void> {
     .init(UIApplication.userDidTakeScreenshotNotification)
   }
 }

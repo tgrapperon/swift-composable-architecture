@@ -47,7 +47,7 @@ struct LongLivingEffects: ReducerProtocol {
   }
 }
 
-extension Notification.Dependencies {
+extension Notification.DependencyValues {
   @MainActor
   var screenshots: Dependency<Void> {
     .init(UIApplication.userDidTakeScreenshotNotification)

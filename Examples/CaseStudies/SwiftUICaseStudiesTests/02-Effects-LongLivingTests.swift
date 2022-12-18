@@ -6,6 +6,12 @@ import XCTest
 @MainActor
 final class LongLivingEffectsTests: XCTestCase {
   func testReducer() async {
+    
+    DependencyValues.withValue(\.notifications.screenshots, .controllable(\.screenshots)) {
+      
+    }
+    
+    
     let store = TestStore(
       initialState: LongLivingEffects.State(),
       reducer: LongLivingEffects()

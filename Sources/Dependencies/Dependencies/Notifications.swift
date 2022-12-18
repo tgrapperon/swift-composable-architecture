@@ -2,56 +2,58 @@ import Foundation
 
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 extension DependencyValues {
-  public var notifications: NotificationStreamOf {
-    get { self[NotificationStreamOf.self] }
-    set { self[NotificationStreamOf.self] = newValue }
+  public var notifications: Notification.StreamOf {
+    get { self[Notification.StreamOf.self] }
+    set { self[Notification.StreamOf.self] = newValue }
   }
 }
 
 extension Notification {
   /// Used as a namespace to host read-only NotificationDependency
-  public struct Dependencies {
+  public struct DependencyValues {
     public typealias Dependency = Notification.Dependency
     init() {}
   }
 }
 
-@available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-@dynamicMemberLookup
-public struct NotificationStreamOf: DependencyKey {
-  private static var notifications: [Notification.Dependencies.ID: Any] = [:]
-  private static var lock = NSRecursiveLock()
+extension Notification {
+  @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+  @dynamicMemberLookup
+  public struct StreamOf: DependencyKey, Sendable {
+    private static var notifications: [DependencyValues.ID: Any] = [:]
+    private static var lock = NSRecursiveLock()
 
-  public static var liveValue: NotificationStreamOf { .init() }
-  // TODO: make it unimplemented by default
-  public static var testValue: NotificationStreamOf { .init() }
+    public static var liveValue: StreamOf { .init() }
+    // TODO: make it unimplemented by default
+    public static var testValue: StreamOf { .init() }
 
-  public subscript<Value>(
-    dynamicMember keyPath: KeyPath<Notification.Dependencies, Notification.Dependency<Value>>
-  )
-    -> Notification.Stream<Value>
-  {
-    get {
-      let dependency = Notification.Dependencies()[keyPath: keyPath]
-      Self.lock.lock()
-      defer { Self.lock.unlock() }
-      if let existing = Self.notifications[dependency.id] as? Notification.Stream<Value> {
-        return existing
+    public subscript<Value>(
+      dynamicMember keyPath: KeyPath<DependencyValues, Dependency<Value>>
+    )
+      -> Stream<Value>
+    {
+      get {
+        let dependency = DependencyValues()[keyPath: keyPath]
+        Self.lock.lock()
+        defer { Self.lock.unlock() }
+        if let existing = Self.notifications[dependency.id] as? Notification.Stream<Value> {
+          return existing
+        }
+        let stream = Notification.Stream<Value>(dependency)
+        Self.notifications[dependency.id] = stream
+        return stream
       }
-      let stream = Notification.Stream<Value>(dependency, source: .notifications)
-      Self.notifications[dependency.id] = stream
-      return stream
-    }
-    nonmutating set {
-      let dependency = Notification.Dependencies()[keyPath: keyPath]
-      Self.lock.lock()
-      defer { Self.lock.unlock() }
-      Self.notifications[dependency.id] = newValue
+      nonmutating set {
+        let dependency = Notification.DependencyValues()[keyPath: keyPath]
+        Self.lock.lock()
+        defer { Self.lock.unlock() }
+        Self.notifications[dependency.id] = newValue
+      }
     }
   }
 }
 
-extension Notification.Dependencies {
+extension Notification.DependencyValues {
   struct ID: Hashable, Sendable {
     let key: Notification.Name
     let object: ObjectIdentifier?
@@ -97,7 +99,7 @@ extension Notification {
       self.line = line
     }
 
-    var id: Notification.Dependencies.ID {
+    var id: Notification.DependencyValues.ID {
       .init(
         key: key,
         object: object.map(ObjectIdentifier.init),
@@ -122,7 +124,7 @@ private var continuations: [ContinuationID: Any] = [:]
 
 private struct ContinuationID: Hashable {
   let uuid: UUID
-  let notificationID: Notification.Dependencies.ID
+  let notificationID: Notification.DependencyValues.ID
 }
 
 extension Notification {
@@ -133,24 +135,26 @@ extension Notification {
       case controllable
     }
 
+    // Warning: Dependency = Notification.Dependency, DependencyValues = Notification.Dependency
+    private let dependency: Dependency<Value>
     private var source: Source = .notifications
-    private let notificationDependency: Dependency<Value>
 
-    init(_ notificationDependency: Dependency<Value>, source: Source) {
-      self.notificationDependency = notificationDependency
+    init(_ dependency: Dependency<Value>, source: Source = .notifications) {
+      self.dependency = dependency
       self.source = source
     }
 
     // allows teststore.depdencies.notifications.makeControllable()
     public mutating func makeControllable() {
-      self = Self.controllable(notificationDependency)
+      self.source = .controllable
     }
-    // allows .dependency(\.notifications[xxx], .controllable(xxx))
+    
+    // allows .dependency(\.notifications.xxx, .controllable(\.xxx))
     @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-    public static func controllable(_ notification: Dependency<Value>)
+    public static func controllable(_ keyPath: KeyPath<DependencyValues, Dependency<Value>>)
       -> Stream<Value>
     {
-      Stream(notification, source: .controllable)
+      Stream(DependencyValues()[keyPath: keyPath], source: .controllable)
     }
 
     // TODO: Make NotificationStream itself an AsyncSequence instead?
@@ -160,10 +164,10 @@ extension Notification {
         return AsyncStream(Value.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
           let task = Task {
             for await notification in NotificationCenter.default.notifications(
-              named: self.notificationDependency.key)
+              named: self.dependency.key)
             {
               do {
-                let value = try await self.notificationDependency.transform(notification)
+                let value = try await self.dependency.transform(notification)
                 continuation.yield(value)
               } catch {
                 continuation.finish()
@@ -176,7 +180,7 @@ extension Notification {
         }
       case .controllable:
         return AsyncStream(Value.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
-          let id = ContinuationID(uuid: .init(), notificationID: self.notificationDependency.id)
+          let id = ContinuationID(uuid: .init(), notificationID: self.dependency.id)
           continuationsLock.lock()
           continuations[id] = continuation
           continuationsLock.unlock()
@@ -196,7 +200,7 @@ extension Notification {
         runtimeWarn("Trying to control a notification-based dependency. This is not supported.")
         return
       }
-      let id = self.notificationDependency.id
+      let id = self.dependency.id
       continuationsLock.lock()
       for continuation in continuations.filter({ $0.key.notificationID == id }).values {
         (continuation as! AsyncStream<Value>.Continuation).yield(value)

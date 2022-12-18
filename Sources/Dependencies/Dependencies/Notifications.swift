@@ -23,6 +23,7 @@ extension Notification {
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   @dynamicMemberLookup
   public struct StreamOf: DependencyKey, Sendable {
+    // This is currently leaking across tests. Use a @Dependency to record the values instead?
     private static var notifications: [DependencyValues.ID: Any] = [:]
     private static var lock = NSRecursiveLock()
     

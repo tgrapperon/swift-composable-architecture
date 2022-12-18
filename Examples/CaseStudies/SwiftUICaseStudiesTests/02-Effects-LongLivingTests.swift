@@ -6,19 +6,17 @@ import XCTest
 @MainActor
 final class LongLivingEffectsTests: XCTestCase {
   func testReducer() async {
-    let (screenshots, takeScreenshot) = AsyncStream<Void>.streamWithContinuation()
-
     let store = TestStore(
       initialState: LongLivingEffects.State(),
       reducer: LongLivingEffects()
     )
-
-    store.dependencies.screenshots = { screenshots }
+    
+    store.dependencies.notifications[screenshotsNotification] = screenshotsNotification.controllable
 
     let task = await store.send(.task)
 
     // Simulate a screenshot being taken
-    takeScreenshot.yield()
+    await store.dependencies.notifications[screenshotsNotification].send(())
 
     await store.receive(.userDidTakeScreenshotNotification) {
       $0.screenshotCount = 1
@@ -28,6 +26,7 @@ final class LongLivingEffectsTests: XCTestCase {
     await task.cancel()
 
     // Simulate a screenshot being taken to show no effects are executed.
-    takeScreenshot.yield()
+    await store.dependencies.notifications[screenshotsNotification].send(())
+
   }
 }

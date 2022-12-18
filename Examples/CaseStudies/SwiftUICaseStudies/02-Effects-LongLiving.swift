@@ -27,15 +27,16 @@ struct LongLivingEffects: ReducerProtocol {
     case userDidTakeScreenshotNotification
   }
 
-  @Dependency(\.screenshots) var screenshots
-
+  @MainActor
+  @Dependency(\.notifications[screenshotsNotification]) var screenshots
+  
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .task:
       // When the view appears, start the effect that emits when screenshots are taken.
-      return .run { send in
-        for await _ in await self.screenshots() {
-          await send(.userDidTakeScreenshotNotification)
+      return .run { @MainActor send in
+        for await _ in self.screenshots() {
+          send(.userDidTakeScreenshotNotification)
         }
       }
 
@@ -46,25 +47,8 @@ struct LongLivingEffects: ReducerProtocol {
   }
 }
 
-extension DependencyValues {
-  var screenshots: @Sendable () async -> AsyncStream<Void> {
-    get { self[ScreenshotsKey.self] }
-    set { self[ScreenshotsKey.self] = newValue }
-  }
-}
-
-private enum ScreenshotsKey: DependencyKey {
-  static let liveValue: @Sendable () async -> AsyncStream<Void> = {
-    await AsyncStream(
-      NotificationCenter.default
-        .notifications(named: UIApplication.userDidTakeScreenshotNotification)
-        .map { _ in }
-    )
-  }
-  static let testValue: @Sendable () async -> AsyncStream<Void> = unimplemented(
-    #"@Dependency(\.screenshots)"#, placeholder: .finished
-  )
-}
+@MainActor
+let screenshotsNotification = NotificationDependency(UIApplication.userDidTakeScreenshotNotification)
 
 // MARK: - Feature view
 

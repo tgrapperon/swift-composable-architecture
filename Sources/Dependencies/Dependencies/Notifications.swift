@@ -8,7 +8,14 @@ extension DependencyValues {
   }
 }
 
+extension Notification {
+  public struct Dependency {
+    init(){}
+  }
+}
+
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
+@dynamicMemberLookup
 public struct NotificationStreamOf: DependencyKey {
   private static var notifications: [NotificationDependencyID: Any] = [:]
   private static var lock = NSRecursiveLock()
@@ -16,6 +23,7 @@ public struct NotificationStreamOf: DependencyKey {
   public static var liveValue: NotificationStreamOf { .init() }
   public static var testValue: NotificationStreamOf { .init() }
   
+  // Make internal?
   public subscript<Value>(_ notificationDependency: NotificationDependency<Value>)
     -> NotificationStream<Value>
   {
@@ -35,6 +43,13 @@ public struct NotificationStreamOf: DependencyKey {
       defer { Self.lock.unlock() }
       Self.notifications[notificationDependency.id] = newValue
     }
+  }
+  
+  public subscript<Value>(dynamicMember keyPath: KeyPath<Notification.Dependency, NotificationDependency<Value>>)
+    -> NotificationStream<Value>
+  {
+    get { self[Notification.Dependency()[keyPath: keyPath]] }
+    set { self[Notification.Dependency()[keyPath: keyPath]] = newValue }
   }
 }
 
@@ -111,6 +126,7 @@ public struct NotificationDependency<Value: Sendable>: @unchecked Sendable, Hash
 
   // We can lower all iOS 15 requirements to iOS 13 using Combine or even old-school notification
   // observation.
+  // TODO: There are too much methods to make a `NotificationStream` controllable.
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   public var controllable: NotificationStream<Value> {
     NotificationStream(self, source: .controllable)
@@ -126,7 +142,7 @@ private struct ContinuationID: Hashable {
 }
 
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
-public struct NotificationStream<Value> {
+public struct NotificationStream<Value: Sendable>: Sendable {
   enum Source {
     case notifications
     case controllable
@@ -140,10 +156,11 @@ public struct NotificationStream<Value> {
     self.source = source
   }
 
+  // allows teststore.depdencies.notifications.makeControllable()
   public mutating func makeControllable() {
     self = Self.controllable(notificationDependency)
   }
-
+  // allows .dependency(\.notifications[xxx]) = .controllable(xxx)
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   public static func controllable(_ notification: NotificationDependency<Value>)
     -> NotificationStream<Value>

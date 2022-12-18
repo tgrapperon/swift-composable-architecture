@@ -11,12 +11,12 @@ final class LongLivingEffectsTests: XCTestCase {
       reducer: LongLivingEffects()
     )
     
-    store.dependencies.screenshotsAlt = screenshotsNotification.controllable
+    store.dependencies.notifications.screenshots.makeControllable()
 
     let task = await store.send(.task)
 
     // Simulate a screenshot being taken
-    store.dependencies.screenshotsAlt.send()
+    store.dependencies.notifications.screenshots.send()
 
     await store.receive(.userDidTakeScreenshotNotification) {
       $0.screenshotCount = 1
@@ -26,7 +26,7 @@ final class LongLivingEffectsTests: XCTestCase {
     await task.cancel()
 
     // Simulate a screenshot being taken to show no effects are executed.
-    store.dependencies.screenshotsAlt.send()
+    store.dependencies.notifications.screenshots.send()
 
   }
 }

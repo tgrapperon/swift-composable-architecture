@@ -7,9 +7,10 @@ import XCTest
 @MainActor
 final class AnimationTests: XCTestCase {
   func testRainbow() async {
-    let store = TestStore(
+    let store = SnapshotTestStore(
       initialState: Animations.State(),
-      reducer: Animations()
+      reducer: Animations(),
+      snapshotValue: AnimationsView.init
     )
 
     let clock = TestClock()

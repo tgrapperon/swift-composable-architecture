@@ -422,7 +422,7 @@ import XCTestDynamicOverlay
 /// [merowing.info]: https://www.merowing.info
 /// [exhaustive-testing-in-tca]: https://www.merowing.info/exhaustive-testing-in-tca/
 /// [Composable-Architecture-at-Scale]: https://vimeo.com/751173570
-public final class TestStore<State, Action, ScopedState, ScopedAction, Environment> {
+open class TestStore<State, Action, ScopedState, ScopedAction, Environment> {
 
   /// The current dependencies of the test store.
   ///
@@ -554,7 +554,8 @@ public final class TestStore<State, Action, ScopedState, ScopedAction, Environme
   let reducer: TestReducer<State, Action>
   private let store: Store<State, TestReducer<State, Action>.TestAction>
   private let toScopedState: (State) -> ScopedState
-
+  
+  public var onTestStoreEvent: (TestStoreEvent<State, Action>) -> Void =  { _ in () }
   /// Creates a test store with an initial state and a reducer powering its runtime.
   ///
   /// See <doc:Testing> and the documentation of ``TestStore`` for more information on how to best
@@ -696,6 +697,7 @@ public final class TestStore<State, Action, ScopedState, ScopedAction, Environme
       line: UInt = #line
     ) async {
       await self.finish(timeout: duration.nanoseconds, file: file, line: line)
+      self.onTestStoreEvent(.onFinish(current: self.state))
     }
   #endif
 
@@ -706,7 +708,7 @@ public final class TestStore<State, Action, ScopedState, ScopedAction, Environme
   /// - Parameter nanoseconds: The amount of time to wait before asserting.
   @_disfavoredOverload
   @MainActor
-  public func finish(
+  open func finish(
     timeout nanoseconds: UInt64? = nil,
     file: StaticString = #file,
     line: UInt = #line
@@ -714,6 +716,7 @@ public final class TestStore<State, Action, ScopedState, ScopedAction, Environme
     let nanoseconds = nanoseconds ?? self.timeout
     let start = DispatchTime.now().uptimeNanoseconds
     await Task.megaYield()
+    defer { self.onTestStoreEvent(.onFinish(current: self.state)) }
     while !self.reducer.inFlightEffects.isEmpty {
       guard start.distance(to: DispatchTime.now().uptimeNanoseconds) < nanoseconds
       else {
@@ -931,6 +934,11 @@ extension TestStore where ScopedState: Equatable {
     // NB: Give concurrency runtime more time to kick off effects so users don't need to manually
     //     instrument their effects.
     await Task.megaYield(count: 20)
+    defer {
+      self.onTestStoreEvent(
+        .onSend(self.fromScopedAction(action), previous: previousState, current: self.state)
+      )
+    }
     return .init(rawValue: task, timeout: self.timeout)
   }
 
@@ -1022,7 +1030,11 @@ extension TestStore where ScopedState: Equatable {
     if "\(self.file)" == "\(file)" {
       self.line = line
     }
-
+    defer {
+      self.onTestStoreEvent(
+        .onSend(self.fromScopedAction(action), previous: previousState, current: self.state)
+      )
+    }
     return .init(rawValue: task, timeout: self.timeout)
   }
 
@@ -1623,6 +1635,7 @@ extension TestStore where ScopedState: Equatable, Action: Equatable {
 
     let (receivedAction, state) = self.reducer.receivedActions.removeFirst()
     onReceive(receivedAction)
+    let previousState = self.state
     let expectedState = self.toScopedState(self.state)
     do {
       try self.expectedStateShouldMatch(
@@ -1639,6 +1652,9 @@ extension TestStore where ScopedState: Equatable, Action: Equatable {
     if "\(self.file)" == "\(file)" {
       self.line = line
     }
+    self.onTestStoreEvent(
+      .onReceive(receivedAction, previous: previousState, current: self.state)
+    )
   }
 
   private func receiveAction(
@@ -2211,6 +2227,34 @@ public enum Exhaustivity: Equatable {
 
   /// Non-exhaustive assertions.
   public static let off = Self.off(showSkippedAssertions: false)
+}
+
+public enum TestStoreEvent<State, Action>: CustomStringConvertible {
+  case onSend(Action, previous: State, current: State)
+  case onReceive(Action, previous: State, current: State)
+  case onFinish(current: State)
+  
+  public var description: String {
+    switch self {
+    case .onSend(let action, _, _):
+      return "Sent \(action)"
+    case .onReceive(let action, _, _):
+      return "Received \(action)"
+    case .onFinish:
+      return "Finished"
+    }
+  }
+  
+  public var truncatedDescription: String {
+    switch self {
+    case .onSend:
+      return "onSend"
+    case .onReceive:
+      return "onReceive"
+    case .onFinish:
+      return "onFinish"
+    }
+  }
 }
 
 @_transparent

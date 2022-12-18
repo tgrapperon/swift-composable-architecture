@@ -6,9 +6,10 @@ import XCTest
 @MainActor
 final class AlertsAndConfirmationDialogsTests: XCTestCase {
   func testAlert() async {
-    let store = TestStore(
+    let store = SnapshotTestStore(
       initialState: AlertAndConfirmationDialog.State(),
-      reducer: AlertAndConfirmationDialog()
+      reducer: AlertAndConfirmationDialog(),
+      snapshotValue: AlertAndConfirmationDialogView.init
     )
 
     await store.send(.alertButtonTapped) {
@@ -29,9 +30,10 @@ final class AlertsAndConfirmationDialogsTests: XCTestCase {
   }
 
   func testConfirmationDialog() async {
-    let store = TestStore(
+    let store = SnapshotTestStore(
       initialState: AlertAndConfirmationDialog.State(),
-      reducer: AlertAndConfirmationDialog()
+      reducer: AlertAndConfirmationDialog(),
+      snapshotValue: AlertAndConfirmationDialogView.init
     )
 
     await store.send(.confirmationDialogButtonTapped) {

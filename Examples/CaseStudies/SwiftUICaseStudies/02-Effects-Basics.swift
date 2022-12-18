@@ -91,6 +91,10 @@ struct EffectsBasics: ReducerProtocol {
 // MARK: - Feature view
 
 struct EffectsBasicsView: View {
+  init(store: StoreOf<EffectsBasics>) {
+    self.store = store
+  }
+  
   let store: StoreOf<EffectsBasics>
   @Environment(\.openURL) var openURL
 

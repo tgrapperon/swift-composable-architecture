@@ -81,6 +81,7 @@
 		DCD442C6286CA91F008B4EA7 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD442C5286CA91F008B4EA7 /* AboutView.swift */; };
 		DCE63B71245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE63B70245CC0B90080A23D /* 04-HigherOrderReducers-Recursion.swift */; };
 		DCFE1960278DBF0600C14CCF /* CaseStudiesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFE195F278DBF0600C14CCF /* CaseStudiesApp.swift */; };
+		E9772BD3294E88F0005C7DD6 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = E9772BD2294E88F0005C7DD6 /* SnapshotTesting */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -279,6 +280,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E9772BD3294E88F0005C7DD6 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -582,6 +584,7 @@
 			);
 			name = SwiftUICaseStudiesTests;
 			packageProductDependencies = (
+				E9772BD2294E88F0005C7DD6 /* SnapshotTesting */,
 			);
 			productName = CaseStudiesTests;
 			productReference = DC89C42924460F96006900B9 /* SwiftUICaseStudiesTests.xctest */;
@@ -629,6 +632,9 @@
 				Base,
 			);
 			mainGroup = DC89C40A24460F95006900B9;
+			packageReferences = (
+				E9772BD1294E88F0005C7DD6 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
+			);
 			productRefGroup = DC89C41424460F95006900B9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1258,6 +1264,17 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		E9772BD1294E88F0005C7DD6 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		CAF88E9024B8E3AF00539345 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1270,6 +1287,11 @@
 		DC13940F2469E27300EE1157 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ComposableArchitecture;
+		};
+		E9772BD2294E88F0005C7DD6 /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E9772BD1294E88F0005C7DD6 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

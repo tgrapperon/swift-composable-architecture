@@ -6,23 +6,17 @@ import XCTest
 @MainActor
 final class LongLivingEffectsTests: XCTestCase {
   func testReducer() async {
-    
-    DependencyValues.withValue(\.notifications.screenshots, .controllable(\.screenshots)) {
-      
-    }
-    
-    
     let store = TestStore(
       initialState: LongLivingEffects.State(),
-      reducer: LongLivingEffects()
+      reducer: LongLivingEffects().dependency(\.notifications.screenshots, .controllable(\.screenshots))
     )
     
-    store.dependencies.notifications.screenshots.makeControllable()
+//    store.dependencies.notifications.screenshots.makeControllable()
 
     let task = await store.send(.task)
 
     // Simulate a screenshot being taken
-    store.dependencies.notifications.screenshots.send()
+    store.dependencies.notifications.screenshots.post()
 
     await store.receive(.userDidTakeScreenshotNotification) {
       $0.screenshotCount = 1
@@ -32,7 +26,7 @@ final class LongLivingEffectsTests: XCTestCase {
     await task.cancel()
 
     // Simulate a screenshot being taken to show no effects are executed.
-    store.dependencies.notifications.screenshots.send()
+    store.dependencies.notifications.screenshots.post()
 
   }
 }

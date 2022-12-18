@@ -1,4 +1,5 @@
 import Foundation
+import XCTestDynamicOverlay
 
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 extension DependencyValues {
@@ -9,8 +10,10 @@ extension DependencyValues {
 }
 
 extension Notification {
-  /// Used as a namespace to host read-only NotificationDependency
+  /// Used as a namespace to host read-only Notification.Dependency's
   public struct DependencyValues {
+    // This helps to disambiguate with Dependencies.Dependency when defining the read-only
+    // Notification.Dependency
     public typealias Dependency = Notification.Dependency
     init() {}
   }
@@ -22,11 +25,12 @@ extension Notification {
   public struct StreamOf: DependencyKey, Sendable {
     private static var notifications: [DependencyValues.ID: Any] = [:]
     private static var lock = NSRecursiveLock()
-
+    
     public static var liveValue: StreamOf { .init() }
-    // TODO: make it unimplemented by default
     public static var testValue: StreamOf { .init() }
 
+    @Dependencies.Dependency(\.context) var context
+    
     public subscript<Value>(
       dynamicMember keyPath: KeyPath<DependencyValues, Dependency<Value>>
     )
@@ -38,6 +42,19 @@ extension Notification {
         defer { Self.lock.unlock() }
         if let existing = Self.notifications[dependency.id] as? Notification.Stream<Value> {
           return existing
+        }
+        if context == .test {
+          let message = """
+          Unimplemented: Notification.Dependency for \(dependency.key.rawValue)…
+          
+          The Notification dependency observing \(dependency.key.rawValue) defined at \
+          \(dependency.file):\(dependency.line) is not implemented in a test context.
+          
+          You can assign an explicit `Notification.Stream`, or make the default one controllable \
+          by calling `.makeControllable()` directly on the dependency, or by assigning \
+          `.controllable(\\.foo)` to the dependency `\\.notifications.foo`.
+          """
+          XCTFail(message)
         }
         let stream = Notification.Stream<Value>(dependency)
         Self.notifications[dependency.id] = stream
@@ -194,10 +211,16 @@ extension Notification {
       }
     }
 
-    public func send(_ value: Value) {
+    public func post(_ value: Value) {
       guard source == .controllable else {
         /// TODO: Improve with #file, etc.
-        runtimeWarn("Trying to control a notification-based dependency. This is not supported.")
+        XCTFail("""
+          Trying to control a notification-based dependency. This is not supported.
+          
+          You can only control a notification stream that was made controllable using \
+          `.makeControllable()` or defined as `.controllable(\\.foo)`.
+          """
+        )
         return
       }
       let id = self.dependency.id
@@ -208,8 +231,8 @@ extension Notification {
       continuationsLock.unlock()
     }
 
-    public func send() where Value == Void {
-      self.send(())
+    public func post() where Value == Void {
+      self.post(())
     }
   }
 }

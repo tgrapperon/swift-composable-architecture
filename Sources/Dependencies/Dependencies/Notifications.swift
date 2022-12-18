@@ -89,18 +89,6 @@ public struct NotificationDependency<Value: Sendable>: @unchecked Sendable, Hash
     )
   }
 
-  var controlledNotificationName: Notification.Name {
-    .init(
-      [
-        self.key.rawValue,
-        String(describing: self.object.map(ObjectIdentifier.init)),
-        self.file.description,
-        "\(self.line)",
-        "\(ObjectIdentifier(Value.self))",
-      ].joined(separator: ":")
-    )
-  }
-
   public static func == (lhs: Self, rhs: Self) -> Bool {
     guard
       lhs.key == rhs.key,
@@ -120,11 +108,16 @@ public struct NotificationDependency<Value: Sendable>: @unchecked Sendable, Hash
 
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   public var controllable: NotificationStream<Value> {
-    let dependency = NotificationDependency(self.controlledNotificationName) {
-      $0.userInfo![""]! as! Value
-    }
-    return NotificationStream(dependency, source: .controllable)
+    NotificationStream(self, source: .controllable)
   }
+}
+
+var continuationsLock = NSRecursiveLock()
+var continuations: [ContinuationID: Any] = [:]
+
+struct ContinuationID: Hashable {
+  let uuid: UUID
+  let notificationID: NotificationDependencyID
 }
 
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
@@ -150,41 +143,60 @@ public struct NotificationStream<Value> {
   public static func controllable(_ notification: NotificationDependency<Value>)
     -> NotificationStream<Value>
   {
-    let dependency = NotificationDependency(notification.controlledNotificationName) {
-      $0.userInfo![""]! as! Value
-    }
-    return NotificationStream(dependency, source: .controllable)
+    NotificationStream(notification, source: .controllable)
   }
 
   public func callAsFunction() -> AsyncStream<Value> {
-    return AsyncStream(Value.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
-      let task = Task {
-        for await notification in NotificationCenter.default.notifications(
-          named: self.notificationDependency.key)
-        {
-          do {
-            let value = try await self.notificationDependency.transform(notification)
-            continuation.yield(value)
-          } catch {
-            continuation.finish()
+    switch self.source {
+    case .notifications:
+      return AsyncStream(Value.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
+        let task = Task {
+          for await notification in NotificationCenter.default.notifications(
+            named: self.notificationDependency.key)
+          {
+            do {
+              let value = try await self.notificationDependency.transform(notification)
+              continuation.yield(value)
+            } catch {
+              continuation.finish()
+            }
           }
         }
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
       }
-      continuation.onTermination = { _ in
-        task.cancel()
+    case .controllable:
+      return AsyncStream(Value.self, bufferingPolicy: .bufferingNewest(1)) { continuation in
+        let id = ContinuationID(uuid: .init(), notificationID: self.notificationDependency.id)
+        continuationsLock.lock()
+        continuations[id] = continuation
+        continuationsLock.unlock()
+        
+        continuation.onTermination = { _ in
+          continuationsLock.lock()
+          defer { continuationsLock.unlock() }
+          continuations[id] = nil
+        }
       }
     }
   }
 
-  public func send(_ value: Value) async {
-    guard source == .notifications else {
-      print("Trying to control a notification-based dependency. This is not supported.")
+  public func send(_ value: Value) {
+    guard source == .controllable else {
+      /// TODO: Improve with #file, etc.
+      runtimeWarn("Trying to control a notification-based dependency. This is not supported.")
       return
     }
-    NotificationCenter.default.post(
-      name: notificationDependency.controlledNotificationName,
-      object: nil,
-      userInfo: ["": value]
-    )
+    let id = self.notificationDependency.id
+    continuationsLock.lock()
+    for continuation in continuations.filter({ $0.key.notificationID == id }).values {
+      (continuation as! AsyncStream<Value>.Continuation).yield(value)
+    }
+    continuationsLock.unlock()
+  }
+  
+  public func send() where Value == Void {
+    self.send(())
   }
 }

@@ -27,9 +27,11 @@ struct LongLivingEffects: ReducerProtocol {
     case userDidTakeScreenshotNotification
   }
 
+  // Access using direct subscripting
   @MainActor
   @Dependency(\.notifications[screenshotsNotification]) var screenshots
-  
+  // Or via an helper
+  @Dependency(\.screenshotsAlt) var screenshotsAlt
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .task:
@@ -49,6 +51,14 @@ struct LongLivingEffects: ReducerProtocol {
 
 @MainActor
 let screenshotsNotification = NotificationDependency(UIApplication.userDidTakeScreenshotNotification)
+
+// This is not required. Makes tests easiers
+extension DependencyValues {
+  public var screenshotsAlt: NotificationStream<Void> {
+    get { self.notifications[screenshotsNotification] }
+    set { self.notifications[screenshotsNotification] = newValue }
+  }
+}
 
 // MARK: - Feature view
 

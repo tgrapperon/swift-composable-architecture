@@ -160,7 +160,7 @@ public struct NotificationStream<Value: Sendable>: Sendable {
   public mutating func makeControllable() {
     self = Self.controllable(notificationDependency)
   }
-  // allows .dependency(\.notifications[xxx]) = .controllable(xxx)
+  // allows .dependency(\.notifications[xxx], .controllable(xxx))
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   public static func controllable(_ notification: NotificationDependency<Value>)
     -> NotificationStream<Value>

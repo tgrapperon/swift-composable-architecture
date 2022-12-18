@@ -10,8 +10,9 @@ extension DependencyValues {
 
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 public struct NotificationStreamOf: DependencyKey {
-  static var notifications: [NotificationDependencyID: Any] = [:]
-  static var lock = NSRecursiveLock()
+  private static var notifications: [NotificationDependencyID: Any] = [:]
+  private static var lock = NSRecursiveLock()
+  
   public static var liveValue: NotificationStreamOf { .init() }
   public static var testValue: NotificationStreamOf { .init() }
   
@@ -66,6 +67,7 @@ public struct NotificationDependency<Value: Sendable>: @unchecked Sendable, Hash
     self.line = line
   }
   
+  // Case where (Notification) -> Void
   public init(
     _ key: Notification.Name,
     object: AnyObject? = nil,
@@ -89,6 +91,7 @@ public struct NotificationDependency<Value: Sendable>: @unchecked Sendable, Hash
     )
   }
 
+  // This is used by `KeyPath`s comparison when used as a subscript. This can probably be improved
   public static func == (lhs: Self, rhs: Self) -> Bool {
     guard
       lhs.key == rhs.key,
@@ -106,16 +109,18 @@ public struct NotificationDependency<Value: Sendable>: @unchecked Sendable, Hash
     hasher.combine(self.line)
   }
 
+  // We can lower all iOS 15 requirements to iOS 13 using Combine or even old-school notification
+  // observation.
   @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
   public var controllable: NotificationStream<Value> {
     NotificationStream(self, source: .controllable)
   }
 }
 
-var continuationsLock = NSRecursiveLock()
-var continuations: [ContinuationID: Any] = [:]
+private var continuationsLock = NSRecursiveLock()
+private var continuations: [ContinuationID: Any] = [:]
 
-struct ContinuationID: Hashable {
+private struct ContinuationID: Hashable {
   let uuid: UUID
   let notificationID: NotificationDependencyID
 }
@@ -146,6 +151,7 @@ public struct NotificationStream<Value> {
     NotificationStream(notification, source: .controllable)
   }
 
+  // TODO: Make NotificationStream itself an AsyncSequence instead?
   public func callAsFunction() -> AsyncStream<Value> {
     switch self.source {
     case .notifications:

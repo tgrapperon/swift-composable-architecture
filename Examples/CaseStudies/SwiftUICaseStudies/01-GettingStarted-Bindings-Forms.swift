@@ -80,7 +80,7 @@ struct BindingFormView: View {
         }
         .disabled(viewStore.toggleIsOn)
 
-                Toggle(
+        Toggle(
           "Disable other controls",
           isOn: viewStore.$toggleIsOn
             .resignFirstResponder()

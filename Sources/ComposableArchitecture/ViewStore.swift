@@ -779,7 +779,7 @@ public struct StateBinding<State> {
   public subscript<Value>(dynamicMember keyPath: WritableKeyPath<State, BindingState<Value>>)
     -> BindingViewState<Value>
   {
-    return .init(
+    .init(
       wrappedValue: self.state[keyPath: keyPath].wrappedValue,
       keyPath: keyPath
     )
@@ -788,24 +788,45 @@ public struct StateBinding<State> {
 
 @propertyWrapper
 public struct BindingViewState<Value> {
-  let keyPath: AnyKeyPath
-  public var wrappedValue: Value
+  var keyPath: AnyKeyPath? // Both optional to allow deferred init by projected value
+  var value: Value? = nil  // Should be non-optional if this option is not retained.
+  public var wrappedValue: Value {
+    guard let value else {
+      fatalError("Tried to access a `nil` \(Value.self) binding…")
+      // Can be contextualized from `file` and `line` caught in `init()`
+    }
+    return value
+  }
   public var projectedValue: Self {
     get { self }
-    set { self = newValue }
+    set { self = newValue } // Writable only to allow deferred init by projected value
   }
-  // Trying to get $value = state.binding.$value to work,
-  // but unsuccessfully right now.
+  //
+  public init() {} // This trick allows the property wrapper to implicitly
+  // initialize, allowing in turn to assign using the projected property:
+  // $count = state.binding.$count, but we lose on safety, as the user
+  // can forget to assign the property from state.
+  // The alternative would be to remove this `init`, and the user would
+  // have no choice than to provide a value, and the only value they
+  // could get would be extracted from the state (as the init with
+  // wrappedValue and keyPath is inaccessible to them):
+  // _count = state.binding.$count
+  
+  // This would be removed too if init with $ is not kept.
   public init(projectedValue: Self) { self = projectedValue }
-  // This init is internal
+  // This init is internal, and the only
   init<State>(
     wrappedValue: Value,
     keyPath: WritableKeyPath<State, BindableState<Value>>) {
-    self.wrappedValue = wrappedValue
+    self.value = wrappedValue
     self.keyPath = keyPath
   }
 }
 extension BindingViewState: Equatable where Value: Equatable {}
+// I'm leaning toward disallowing init by projectedValue, as the alternative is safer
+// and only requires to use `_` instead of `$`.
+// It would only work if the binding values are assigned at the end of the init, after
+// the regular variables.
 
 extension ViewStore {
   public subscript<Value>(dynamicMember keyPath: KeyPath<ViewState, BindingViewState<Value>>)

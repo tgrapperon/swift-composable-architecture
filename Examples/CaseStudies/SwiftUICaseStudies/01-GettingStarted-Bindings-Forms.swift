@@ -58,10 +58,10 @@ struct BindingFormView: View {
     @BindingViewState var text: String
     @BindingViewState var toggleIsOn: Bool
     init(state: BindingForm.State) {
-      _sliderValue = state.binding.$sliderValue
-      _stepCount = state.binding.$stepCount
-      _text = state.binding.$text
-      _toggleIsOn = state.binding.$toggleIsOn
+      $sliderValue = state.binding.$sliderValue
+      $stepCount = state.binding.$stepCount
+      $text = state.binding.$text
+      $toggleIsOn = state.binding.$toggleIsOn
     }
   }
   

@@ -1,4 +1,19 @@
 import Combine
+//func test() {
+//// let s =  store.scope(state: Observed.as(SomeViewState.self))
+//}
+//
+//struct SomeState: BindableStateProtocol {
+//  @BindingState var x: Int
+//  var y: String
+//}
+//
+//struct SomeViewState {
+//  @BindingViewState var x: Int
+//  init(state: SomeState) {
+//    self._x = state.bindings.$x
+//  }
+//}
 import SwiftUI
 
 /// A `ViewStore` is an object that can observe state changes and send actions. They are most
@@ -755,5 +770,67 @@ private final class ObservedState<Value>: ObservableObject {
   init(initialValue: Value, send: @escaping (Value) -> Void) {
     self.wrappedValue = initialValue
     self.cancellable = self.$wrappedValue.dropFirst().sink(receiveValue: send)
+  }
+}
+
+/// It's 2023!
+public typealias BindingState = BindableState
+
+/// Placeholder until `BindableState` would be freed.
+public protocol BindableStateProtocol {}
+extension BindableStateProtocol {
+  // A nanespace to extract BindingViewState
+  public var binding: StateBinding<Self> {
+    .init(state: self)
+  }
+}
+
+@dynamicMemberLookup
+public struct StateBinding<State> {
+  private let state: State
+  init(state: State) {
+    self.state = state
+  }
+  public subscript<Value>(dynamicMember keyPath: WritableKeyPath<State, BindingState<Value>>)
+    -> BindingViewState<Value>
+  {
+    return .init(
+      wrappedValue: self.state[keyPath: keyPath].wrappedValue,
+      keyPath: keyPath
+    )
+  }
+}
+
+@propertyWrapper
+public struct BindingViewState<Value> {
+  let keyPath: AnyKeyPath
+  public var wrappedValue: Value
+  public var projectedValue: Self {
+    get { self }
+    set { self = newValue }
+  }
+  // Trying to get $value = state.binding.$value to work,
+  // but unsuccessfully right now.
+  public init(projectedValue: Self) { self = projectedValue }
+  // This init is internal
+  init<State>(
+    wrappedValue: Value,
+    keyPath: WritableKeyPath<State, BindableState<Value>>) {
+    self.wrappedValue = wrappedValue
+    self.keyPath = keyPath
+  }
+}
+extension BindingViewState: Equatable where Value: Equatable {}
+
+extension ViewStore {
+  public subscript<Value>(dynamicMember keyPath: KeyPath<ViewState, BindingViewState<Value>>)
+    -> Binding<Value> where ViewAction: BindableAction, Value: Equatable
+  {
+    let stateKeyPath =
+    self.state[keyPath: keyPath].keyPath
+      as! WritableKeyPath<ViewAction.State, BindableState<Value>>
+    // We read from `ViewState`, but send to `State`.
+    return self.binding(
+      get: { $0[keyPath: keyPath].wrappedValue }, send: { .set(stateKeyPath, $0) })
   }
 }

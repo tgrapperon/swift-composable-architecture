@@ -16,11 +16,11 @@ private let readMe = """
 // MARK: - Feature domain
 
 struct BindingForm: ReducerProtocol {
-  struct State: Equatable {
-    @BindableState var sliderValue = 5.0
-    @BindableState var stepCount = 10
-    @BindableState var text = ""
-    @BindableState var toggleIsOn = false
+  struct State: Equatable, BindableStateProtocol {
+    @BindingState var sliderValue = 5.0
+    @BindingState var stepCount = 10
+    @BindingState var text = ""
+    @BindingState var toggleIsOn = false
   }
 
   enum Action: BindableAction, Equatable {
@@ -51,31 +51,44 @@ struct BindingForm: ReducerProtocol {
 
 struct BindingFormView: View {
   let store: StoreOf<BindingForm>
-
+  
+  struct ViewState: Equatable {
+    @BindingViewState var sliderValue: Double
+    @BindingViewState var stepCount: Int
+    @BindingViewState var text: String
+    @BindingViewState var toggleIsOn: Bool
+    init(state: BindingForm.State) {
+      _sliderValue = state.binding.$sliderValue
+      _stepCount = state.binding.$stepCount
+      _text = state.binding.$text
+      _toggleIsOn = state.binding.$toggleIsOn
+    }
+  }
+  
   var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
+    WithViewStore(self.store, observe: ViewState.init) { viewStore in
       Form {
         Section {
           AboutView(readMe: readMe)
         }
 
         HStack {
-          TextField("Type here", text: viewStore.binding(\.$text))
+          TextField("Type here", text: viewStore.$text)
             .disableAutocorrection(true)
             .foregroundStyle(viewStore.toggleIsOn ? Color.secondary : .primary)
           Text(alternate(viewStore.text))
         }
         .disabled(viewStore.toggleIsOn)
 
-        Toggle(
+                Toggle(
           "Disable other controls",
-          isOn: viewStore.binding(\.$toggleIsOn)
+          isOn: viewStore.$toggleIsOn
             .resignFirstResponder()
         )
 
         Stepper(
           "Max slider value: \(viewStore.stepCount)",
-          value: viewStore.binding(\.$stepCount),
+          value: viewStore.$stepCount,
           in: 0...100
         )
         .disabled(viewStore.toggleIsOn)
@@ -83,7 +96,7 @@ struct BindingFormView: View {
         HStack {
           Text("Slider value: \(Int(viewStore.sliderValue))")
 
-          Slider(value: viewStore.binding(\.$sliderValue), in: 0...Double(viewStore.stepCount))
+          Slider(value: viewStore.$sliderValue, in: 0...Double(viewStore.stepCount))
             .tint(.accentColor)
         }
         .disabled(viewStore.toggleIsOn)

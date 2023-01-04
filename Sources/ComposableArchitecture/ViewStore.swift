@@ -1,19 +1,4 @@
 import Combine
-//func test() {
-//// let s =  store.scope(state: Observed.as(SomeViewState.self))
-//}
-//
-//struct SomeState: BindableStateProtocol {
-//  @BindingState var x: Int
-//  var y: String
-//}
-//
-//struct SomeViewState {
-//  @BindingViewState var x: Int
-//  init(state: SomeState) {
-//    self._x = state.bindings.$x
-//  }
-//}
 import SwiftUI
 
 /// A `ViewStore` is an object that can observe state changes and send actions. They are most

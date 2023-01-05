@@ -462,6 +462,7 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
   ///   - valueToAction: A function that transforms the binding's value into an action that can be
   ///     sent to the store.
   /// - Returns: A binding.
+  @MainActor
   public func binding<Value>(
     get: @escaping (ViewState) -> Value,
     send valueToAction: @escaping (Value) -> ViewAction
@@ -501,6 +502,7 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
   ///   - get: A function to get the state for the binding from the view store's full state.
   ///   - action: The action to send when the binding is written to.
   /// - Returns: A binding.
+  @MainActor
   public func binding<Value>(
     get: @escaping (ViewState) -> Value,
     send action: ViewAction
@@ -533,6 +535,7 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
   ///   - valueToAction: A function that transforms the binding's value into an action that can be
   ///     sent to the store.
   /// - Returns: A binding.
+  @MainActor
   public func binding(
     send valueToAction: @escaping (ViewState) -> ViewAction
   ) -> Binding<ViewState> {
@@ -562,6 +565,7 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
   /// - Parameters:
   ///   - action: The action to send when the binding is written to.
   /// - Returns: A binding.
+  @MainActor
   public func binding(send action: ViewAction) -> Binding<ViewState> {
     self.binding(send: { _ in action })
   }

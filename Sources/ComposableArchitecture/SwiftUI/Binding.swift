@@ -309,6 +309,7 @@ where Value: CustomDebugStringConvertible {
 
 // `BindingViewState` dynamic member lookup.
 extension ViewStore where ViewAction: BindableAction {
+  @MainActor
   public subscript<Value: Equatable>(
     dynamicMember keyPath: KeyPath<ViewState, BindingViewState<Value>>
   ) -> Binding<Value> {
@@ -351,6 +352,7 @@ where
   ViewAction.State == ViewState,
   ViewAction.State: BindableStateProtocol
 {
+  @MainActor
   public subscript<Value>(dynamicMember keyPath: WritableKeyPath<ViewState, BindingState<Value>>)
     -> Binding<Value> where Value: Equatable
   {

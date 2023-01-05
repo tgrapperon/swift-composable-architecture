@@ -45,6 +45,7 @@ extension ViewStore where ViewAction: BindableAction, ViewAction.State == ViewSt
       Deriving bindings from binding state via `viewStore.binding(\\.$value)` is deprecated. Use dynamic member lookup directly on the `viewStore` instead: `viewStore.$value`.
       """
   )
+  @MainActor
   public func binding<Value: Equatable>(
     _ keyPath: WritableKeyPath<ViewState, BindingState<Value>>,
     file: StaticString = #file,

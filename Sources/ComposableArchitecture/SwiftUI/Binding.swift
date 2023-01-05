@@ -138,33 +138,6 @@ extension BindingState: CustomDebugStringConvertible where Value: CustomDebugStr
 
 extension BindingState: Sendable where Value: Sendable {}
 
-/// A type from which you can generate ``BindingViewState``'s pointing to its `State` using dynamic
-/// member lookup.
-///
-/// You don't create values of this type directly, but you can extract one using the
-/// ``BindableStateProtocol/bindings`` property that is available when your state
-@dynamicMemberLookup
-public struct BindingViewStates<State> {
-  private let state: State
-
-  fileprivate init(state: State) {
-    self.state = state
-  }
-
-  public subscript<Value>(
-    dynamicMember keyPath: WritableKeyPath<State, BindingState<Value>>
-  ) -> BindingViewState<Value> {
-    let bindingState = self.state[keyPath: keyPath]
-    return .init(
-      wrappedValue: bindingState.wrappedValue,
-      keyPath: keyPath,
-      file: bindingState.file,
-      fileID: bindingState.fileID,
-      line: bindingState.line
-    )
-  }
-}
-
 /// A marker protocol that a feature's `State` should conform to in order to easily derive SwiftUI
 /// bindings from any fields marked with the ``BindingState`` property wrapper.
 ///
@@ -175,29 +148,6 @@ public struct BindingViewStates<State> {
 /// protocol will also be a requirement of ``BindingReducer``'s `State`, so you're encouraged to
 /// conform states hosting `@BindingState` properties to this protocol already.
 public protocol BindableStateProtocol {}
-
-extension BindableStateProtocol {
-  /// A ``BindingViewStates`` value from which you can derive ``BindingViewState`` using dynamic
-  /// member lookup:
-  ///
-  /// ```swift
-  /// struct State: BindableStateProtocol {
-  ///   @BindingState var text = ""
-  ///   // More properties that do not need bindings.
-  /// }
-  ///
-  /// struct ViewState: Equatable {
-  ///   @BindingViewState var text: String
-  ///
-  ///   init(state: State) {
-  ///     self._text = state.bindings.$text
-  ///   }
-  /// }
-  /// ```
-  public var bindings: BindingViewStates<Self> {
-    .init(state: self)
-  }
-}
 
 /// An action type that exposes a `binding` case that holds a ``BindingAction``.
 ///
@@ -248,22 +198,28 @@ extension BindableAction {
 ///
 /// Read <doc:Bindings> for more information.
 @propertyWrapper
-public struct BindingViewState<Value> {
+public struct BoundViewState<State, Value> {
   let keyPath: AnyKeyPath
-  public var wrappedValue: Value
+  private var value: Value?
+  public var wrappedValue: Value {
+    get { value! }
+    set { value = newValue }
+  }
+  
   public var projectedValue: Self { self }
   let file: StaticString
   let fileID: StaticString
   let line: UInt
-
-  internal init<State>(
-    wrappedValue: Value,
-    keyPath: WritableKeyPath<State, BindingState<Value>>,
-    file: StaticString,
-    fileID: StaticString,
-    line: UInt
+  
+  public init(
+    _ keyPath: WritableKeyPath<State, BindingState<Value>>,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) {
-    self.wrappedValue = wrappedValue
+    if let state = StateContainer.state as? State {
+      self.value = state[keyPath: keyPath].wrappedValue
+    }
     self.keyPath = keyPath
     self.file = file
     self.fileID = fileID
@@ -271,13 +227,34 @@ public struct BindingViewState<Value> {
   }
 }
 
-extension BindingViewState: Equatable where Value: Equatable {
-  public static func == (lhs: BindingViewState<Value>, rhs: BindingViewState<Value>) -> Bool {
+extension BoundViewState: Equatable where Value: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.wrappedValue == rhs.wrappedValue && lhs.keyPath == rhs.keyPath
   }
 }
 
-extension BindingViewState: Hashable where Value: Hashable {
+public protocol ViewStateProtocol {
+  associatedtype State
+  init(state: State)
+  init(_ state: State)
+}
+enum StateContainer {
+  @TaskLocal static var state: Any?
+}
+extension ViewStateProtocol {
+  public init(state: State) {
+    self.init(state)
+  }
+  public init(_ state: State) {
+    self.init(state: state)
+  }
+}
+
+extension ViewStateProtocol {
+  public typealias BindingViewState<Value> = BoundViewState<State, Value>
+}
+
+extension BoundViewState: Hashable where Value: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(wrappedValue)
     hasher.combine(keyPath)
@@ -286,21 +263,21 @@ extension BindingViewState: Hashable where Value: Hashable {
 
 // NB: Safe to use @unchecked Sendable because AnyKeyPath and Value are both Sendable, and they
 //     are the only stored properties on the struct.
-extension BindingViewState: @unchecked Sendable where Value: Sendable {}
+extension BoundViewState: @unchecked Sendable where Value: Sendable {}
 
-extension BindingViewState: CustomReflectable {
+extension BoundViewState: CustomReflectable {
   public var customMirror: Mirror {
     Mirror(reflecting: self.wrappedValue)
   }
 }
 
-extension BindingViewState: CustomDumpRepresentable {
+extension BoundViewState: CustomDumpRepresentable {
   public var customDumpValue: Any {
     self.wrappedValue
   }
 }
 
-extension BindingViewState: CustomDebugStringConvertible
+extension BoundViewState: CustomDebugStringConvertible
 where Value: CustomDebugStringConvertible {
   public var debugDescription: String {
     self.wrappedValue.debugDescription
@@ -310,7 +287,7 @@ where Value: CustomDebugStringConvertible {
 // `BindingViewState` dynamic member lookup.
 extension ViewStore where ViewAction: BindableAction {
   public subscript<Value: Equatable>(
-    dynamicMember keyPath: KeyPath<ViewState, BindingViewState<Value>>
+    dynamicMember keyPath: KeyPath<ViewState, BoundViewState<ViewAction.State, Value>>
   ) -> Binding<Value> {
     let bindingViewState = self.state[keyPath: keyPath]
     let stateKeyPath =

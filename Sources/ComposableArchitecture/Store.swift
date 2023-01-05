@@ -297,6 +297,12 @@ public final class Store<State, Action> {
   ) -> Store<ChildState, ChildAction> {
     self.threadCheck(status: .scope)
 
+    let toChildState = { state in
+      StateContainer.$state.withValue(state) {
+        toChildState(state)
+      }
+    }
+    
     #if swift(>=5.7)
       return self.reducer.rescope(self, state: toChildState, action: fromChildAction)
     #else

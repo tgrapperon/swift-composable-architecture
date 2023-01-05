@@ -103,7 +103,7 @@ struct Todos: ReducerProtocol {
 struct AppView: View {
   let store: StoreOf<Todos>
 
-  struct ViewState: Equatable, ViewStateProtocol {
+  struct ViewState: BindableViewState, Equatable {
     @BindingViewState(\.$editMode) var editMode
     @BindingViewState(\.$filter) var filter
     let isClearCompletedButtonDisabled: Bool

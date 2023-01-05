@@ -298,7 +298,7 @@ public final class Store<State, Action> {
     self.threadCheck(status: .scope)
 
     let toChildState = { state in
-      StateContainer.$state.withValue(state) {
+      BindableStateValue.$state.withValue(state) {
         toChildState(state)
       }
     }

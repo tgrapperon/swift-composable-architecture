@@ -52,6 +52,7 @@ public struct ObservedBindableValue<State, Value> {
   public var wrappedValue: Value {
     value!
   }
+  public var projectedValue: Self { self }
   public init(_ keyPath: WritableKeyPath<State, BindableState<Value>>) {
     if let localState = WithTaskLocalState.state as? State {
       self.value = localState[keyPath: keyPath].wrappedValue
@@ -69,15 +70,5 @@ extension ViewStateProtocol {
 }
 
 extension ViewStore {
-  public subscript<Value: Equatable>(
-    dynamicMember keyPath: KeyPath<ViewState, ObservedBindableValue<ViewAction.State, Value>>
-  ) -> Binding<Value> where ViewAction: BindableAction {
-    let stateKeyPath = self.state[keyPath: keyPath].keyPath
-    return self.binding(
-      get: { $0[keyPath: keyPath].wrappedValue },
-      send: { newValue in
-        .set(stateKeyPath, newValue)
-      }
-    )
-  }
+
 }

@@ -8,31 +8,30 @@ import TwoFactorSwiftUI
 public struct LoginView: View {
   let store: StoreOf<Login>
 
-  struct ViewState: Equatable {
+  struct ViewState: Equatable, ViewStateProtocol {
     var alert: AlertState<Login.Action>?
-    var email: String
+    @Bind(\.$email) var email: String
     var isActivityIndicatorVisible: Bool
     var isFormDisabled: Bool
     var isLoginButtonDisabled: Bool
-    var password: String
+    @Bind(\.$password) var password: String
     var isTwoFactorActive: Bool
 
     init(state: Login.State) {
       self.alert = state.alert
-      self.email = state.email
       self.isActivityIndicatorVisible = state.isLoginRequestInFlight
       self.isFormDisabled = state.isLoginRequestInFlight
       self.isLoginButtonDisabled = !state.isFormValid
-      self.password = state.password
       self.isTwoFactorActive = state.twoFactor != nil
     }
   }
 
-  enum ViewAction {
+  enum ViewAction: BindableAction {
+    case binding(BindingAction<Login.State>)
     case alertDismissed
-    case emailChanged(String)
+//    case emailChanged(String)
     case loginButtonTapped
-    case passwordChanged(String)
+//    case passwordChanged(String)
     case twoFactorDismissed
   }
 
@@ -54,7 +53,7 @@ public struct LoginView: View {
         Section {
           TextField(
             "blob@pointfree.co",
-            text: viewStore.binding(get: \.email, send: ViewAction.emailChanged)
+            text: viewStore.$email
           )
           .autocapitalization(.none)
           .keyboardType(.emailAddress)
@@ -62,7 +61,7 @@ public struct LoginView: View {
 
           SecureField(
             "••••••••",
-            text: viewStore.binding(get: \.password, send: ViewAction.passwordChanged)
+            text: viewStore.$password
           )
         }
 
@@ -108,12 +107,14 @@ extension Login.Action {
       self = .alertDismissed
     case .twoFactorDismissed:
       self = .twoFactorDismissed
-    case let .emailChanged(email):
-      self = .emailChanged(email)
+    case .binding(let binding):
+      self = .binding(binding)
+//    case let .emailChanged(email):
+//      self = .emailChanged(email)
     case .loginButtonTapped:
       self = .loginButtonTapped
-    case let .passwordChanged(password):
-      self = .passwordChanged(password)
+//    case let .passwordChanged(password):
+//      self = .passwordChanged(password)
     }
   }
 }

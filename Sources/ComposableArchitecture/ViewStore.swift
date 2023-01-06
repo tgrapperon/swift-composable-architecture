@@ -256,6 +256,18 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
   public subscript<Value>(dynamicMember keyPath: KeyPath<ViewState, Value>) -> Value {
     self._state.value[keyPath: keyPath]
   }
+  
+  public subscript<Value: Equatable>(
+    dynamicMember keyPath: KeyPath<ViewState, ObservedBindableValue<ViewAction.State, Value>>
+  ) -> Binding<Value> where ViewAction: BindableAction {
+    let stateKeyPath = self.state[keyPath: keyPath].keyPath
+    return self.binding(
+      get: { $0[keyPath: keyPath].wrappedValue },
+      send: { newValue in
+        .set(stateKeyPath, newValue)
+      }
+    )
+  }
 
   /// Sends an action to the store.
   ///

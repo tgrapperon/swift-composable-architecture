@@ -6,17 +6,19 @@ import TwoFactorCore
 public struct Login: ReducerProtocol, Sendable {
   public struct State: Equatable {
     public var alert: AlertState<Action>?
-    public var email = ""
+    @BindableState public var email = ""
     public var isFormValid = false
     public var isLoginRequestInFlight = false
-    public var password = ""
+    @BindableState public var password = ""
     public var twoFactor: TwoFactor.State?
 
     public init() {}
   }
 
-  public enum Action: Equatable {
+  public enum Action: Equatable, BindableAction {
     case alertDismissed
+    case binding(BindingAction<Login.State>)
+
     case emailChanged(String)
     case passwordChanged(String)
     case loginButtonTapped
@@ -36,6 +38,14 @@ public struct Login: ReducerProtocol, Sendable {
         state.alert = nil
         return .none
 
+      case .binding(\.$email):
+        state.isFormValid = !state.email.isEmpty && !state.password.isEmpty
+        return .none
+      case .binding(\.$password):
+        state.isFormValid = !state.email.isEmpty && !state.password.isEmpty
+        return .none
+      case .binding: return .none
+        
       case let .emailChanged(email):
         state.email = email
         state.isFormValid = !state.email.isEmpty && !state.password.isEmpty

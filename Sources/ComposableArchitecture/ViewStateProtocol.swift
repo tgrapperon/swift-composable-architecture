@@ -41,11 +41,6 @@ public struct ObservedValue<State, Value> {
       self.value = transform(localState)
     }
   }
-  public init(_ keyPath: KeyPath<State, Value>) {
-    if let localState = WithTaskLocalState.state as? State {
-      self.value = localState[keyPath: keyPath]
-    }
-  }
 }
 
 @propertyWrapper

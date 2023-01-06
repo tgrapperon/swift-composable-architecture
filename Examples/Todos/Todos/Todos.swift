@@ -103,16 +103,12 @@ struct Todos: ReducerProtocol {
 struct AppView: View {
   let store: StoreOf<Todos>
 
-  struct ViewState: Equatable {
-    @BindingViewState var editMode: EditMode
-    @BindingViewState var filter: Filter
-    let isClearCompletedButtonDisabled: Bool
+  struct ViewState: Equatable, ViewStateProtocol {
+    @Bind(\.$editMode) var editMode: EditMode
+    @Bind(\.$filter) var filter: Filter
+    @Observe({ $0.todos.contains(where: \.isComplete) })  var isClearCompletedButtonDisabled: Bool
 
-    init(store: BindingViewStore<Todos.State>) {
-      self._editMode = store.$editMode
-      self._filter = store.$filter
-      self.isClearCompletedButtonDisabled = !store.todos.contains(where: \.isComplete)
-    }
+    init(state: BindingViewStore<Todos.State>) {}
   }
 
   var body: some View {

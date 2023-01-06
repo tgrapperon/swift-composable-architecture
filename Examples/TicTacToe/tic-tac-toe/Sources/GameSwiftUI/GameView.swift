@@ -5,23 +5,19 @@ import SwiftUI
 public struct GameView: View {
   let store: StoreOf<Game>
 
-  struct ViewState: Equatable, Sendable {
-    var board: [[String]]
-    var isGameDisabled: Bool
-    var isPlayAgainButtonVisible: Bool
-    var title: String
-
-    init(state: Game.State) {
-      self.board = state.board.map { $0.map { $0?.label ?? "" } }
-      self.isGameDisabled = state.board.hasWinner || state.board.isFilled
-      self.isPlayAgainButtonVisible = state.board.hasWinner || state.board.isFilled
-      self.title =
-        state.board.hasWinner
-        ? "Winner! Congrats \(state.currentPlayerName)!"
-        : state.board.isFilled
+  struct ViewState: Equatable, ViewStateProtocol {
+    @Observe({ $0.board.map { $0.map { $0?.label ?? "" } } }) var board
+    @Observe({ $0.board.hasWinner || $0.board.isFilled }) var isGameDisabled
+    @Observe({ $0.board.hasWinner || $0.board.isFilled }) var isPlayAgainButtonVisible
+    @Observe({
+      $0.board.hasWinner
+        ? "Winner! Congrats \($0.currentPlayerName)!"
+        : $0.board.isFilled
           ? "Tied game!"
-          : "\(state.currentPlayerName), place your \(state.currentPlayer.label)"
-    }
+          : "\($0.currentPlayerName), place your \($0.currentPlayer.label)"
+    }) var title: String
+
+    init(state: Game.State) {}
   }
 
   public init(store: StoreOf<Game>) {

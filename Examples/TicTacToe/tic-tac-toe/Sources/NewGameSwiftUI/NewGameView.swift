@@ -7,18 +7,13 @@ import SwiftUI
 public struct NewGameView: View {
   let store: StoreOf<NewGame>
 
-  struct ViewState: Equatable {
-    var isGameActive: Bool
-    var isLetsPlayButtonDisabled: Bool
-    var oPlayerName: String
-    var xPlayerName: String
+  struct ViewState: Equatable, ViewStateProtocol {
+    @Observe({ $0.game != nil }) var isGameActive
+    @Observe( { $0.oPlayerName.isEmpty || $0.xPlayerName.isEmpty }) var isLetsPlayButtonDisabled
+    @Observe(\.oPlayerName) var oPlayerName
+    @Observe(\.xPlayerName) var xPlayerName
 
-    init(state: NewGame.State) {
-      self.isGameActive = state.game != nil
-      self.isLetsPlayButtonDisabled = state.oPlayerName.isEmpty || state.xPlayerName.isEmpty
-      self.oPlayerName = state.oPlayerName
-      self.xPlayerName = state.xPlayerName
-    }
+    init(state: NewGame.State) {}
   }
 
   enum ViewAction {

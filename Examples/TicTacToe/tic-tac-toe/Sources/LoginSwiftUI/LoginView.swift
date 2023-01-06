@@ -8,24 +8,16 @@ import TwoFactorSwiftUI
 public struct LoginView: View {
   let store: StoreOf<Login>
 
-  struct ViewState: Equatable {
-    var alert: AlertState<Login.Action>?
-    @BindingViewState var email: String
-    var isActivityIndicatorVisible: Bool
-    var isFormDisabled: Bool
-    var isLoginButtonDisabled: Bool
-    @BindingViewState var password: String
-    var isTwoFactorActive: Bool
+  struct ViewState: Equatable, ViewStateProtocol {
+    @Observe(\.alert) var alert
+    @Bind(\.$email) var email
+    @Observe(\.isLoginRequestInFlight) var isActivityIndicatorVisible
+    @Observe(\.isLoginRequestInFlight) var isFormDisabled
+    @Observe( { !$0.isFormValid }) var isLoginButtonDisabled
+    @Bind(\.$password) var password
+    @Observe({ $0.twoFactor != nil }) var isTwoFactorActive
 
-    init(state: BindingViewStore<Login.State>) {
-      self.alert = state.alert
-      self._email = state.$email
-      self.isActivityIndicatorVisible = state.isLoginRequestInFlight
-      self.isFormDisabled = state.isLoginRequestInFlight
-      self.isLoginButtonDisabled = !state.isFormValid
-      self._password = state.$password
-      self.isTwoFactorActive = state.twoFactor != nil
-    }
+    init(state: BindingViewStore<Login.State>) {}
   }
 
   public init(store: StoreOf<Login>) {

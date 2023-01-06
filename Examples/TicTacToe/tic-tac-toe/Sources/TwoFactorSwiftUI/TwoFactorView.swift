@@ -6,20 +6,14 @@ import TwoFactorCore
 public struct TwoFactorView: View {
   let store: StoreOf<TwoFactor>
 
-  struct ViewState: Equatable {
-    var alert: AlertState<TwoFactor.Action>?
-    @BindingViewState var code: String
-    var isActivityIndicatorVisible: Bool
-    var isFormDisabled: Bool
-    var isSubmitButtonDisabled: Bool
+  struct ViewState: Equatable, ViewStateProtocol {
+    @Observe(\.alert) var alert
+    @Bind(\.$code) var code
+    @Observe(\.isTwoFactorRequestInFlight) var isActivityIndicatorVisible: Bool
+    @Observe(\.isTwoFactorRequestInFlight) var isFormDisabled: Bool
+    @Observe({ !$0.isFormValid }) var isSubmitButtonDisabled: Bool
 
-    init(store: BindingViewStore<TwoFactor.State>) {
-      self.alert = store.alert
-      self._code = store.$code
-      self.isActivityIndicatorVisible = store.isTwoFactorRequestInFlight
-      self.isFormDisabled = store.isTwoFactorRequestInFlight
-      self.isSubmitButtonDisabled = !store.isFormValid
-    }
+    init(state: BindingViewStore<TwoFactor.State>) {}
   }
 
   public init(store: StoreOf<TwoFactor>) {

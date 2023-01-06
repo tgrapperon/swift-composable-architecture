@@ -114,14 +114,12 @@ struct AppView: View {
     self.viewStore = ViewStore(self.store.scope(state: ViewState.init(state:)))
   }
 
-  struct ViewState: Equatable {
-    let editMode: EditMode
-    let filter: Filter
+  struct ViewState: Equatable, ViewStateProtocol {
+    @Observe(\.editMode) var editMode: EditMode
+    @Observe(\.filter) var filter
     let isClearCompletedButtonDisabled: Bool
 
     init(state: Todos.State) {
-      self.editMode = state.editMode
-      self.filter = state.filter
       self.isClearCompletedButtonDisabled = !state.todos.contains(where: \.isComplete)
     }
   }

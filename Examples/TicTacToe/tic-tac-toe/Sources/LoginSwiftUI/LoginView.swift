@@ -10,12 +10,12 @@ public struct LoginView: View {
 
   struct ViewState: Equatable, ViewStateProtocol {
     @Observe(\.alert) var alert
-    @Bind(\.$email) var email: String
-    @Observe(\.isLoginRequestInFlight) var isActivityIndicatorVisible: Bool
-    @Observe(\.isLoginRequestInFlight) var isFormDisabled: Bool
-    @Observe({ !$0.isFormValid }) var isLoginButtonDisabled: Bool
-    @Bind(\.$password) var password: String
-    @Observe({ $0.twoFactor != nil }) var isTwoFactorActive: Bool
+    @Bind(\.$email) var email
+    @Observe(\.isLoginRequestInFlight) var isActivityIndicatorVisible
+    @Observe(\.isLoginRequestInFlight) var isFormDisabled
+    @Observe({ !$0.isFormValid }) var isLoginButtonDisabled
+    @Bind(\.$password) var password
+    @Observe({ $0.twoFactor != nil }) var isTwoFactorActive
 
     init(state: Login.State) {}
   }

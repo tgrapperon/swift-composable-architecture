@@ -124,13 +124,10 @@ struct AppView: View {
 
   struct ViewState: Equatable, ViewStateProtocol {
     @Bind(\.$filter2) var filter2
-    @Observe(\.editMode) var editMode: EditMode
+    @Observe(\.editMode) var editMode
     @Observe(\.filter) var filter
-    let isClearCompletedButtonDisabled: Bool
-
-    init(state: Todos.State) {
-      self.isClearCompletedButtonDisabled = !state.todos.contains(where: \.isComplete)
-    }
+    @Observe({ !$0.todos.contains(where: \.isComplete) }) var isClearCompletedButtonDisabled
+    init(state: Todos.State) {}
   }
 
   var body: some View {

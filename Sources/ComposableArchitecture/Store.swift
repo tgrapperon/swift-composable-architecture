@@ -314,7 +314,7 @@ public final class Store<State, Action> {
   public func scope<ChildState>(
     state toChildState: @escaping (State) -> ChildState
   ) -> Store<ChildState, Action> {
-    self.scope(state: withTaskLocalState(toChildState), action: { $0 })
+    self.scope(state: toChildState, action: { $0 })
   }
 
   @_spi(Internals) public func send(

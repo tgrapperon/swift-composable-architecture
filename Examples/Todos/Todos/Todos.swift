@@ -10,8 +10,12 @@ enum Filter: LocalizedStringKey, CaseIterable, Hashable {
 struct Todos: ReducerProtocol {
   struct State: Equatable {
     var editMode: EditMode = .inactive
-    var filter: Filter = .all
+    var filter: Filter {
+      get { filter2 }
+      set { filter2 = newValue }
+    }
     var todos: IdentifiedArrayOf<Todo.State> = []
+    @BindableState var filter2: Filter = .all
 
     var filteredTodos: IdentifiedArrayOf<Todo.State> {
       switch filter {
@@ -22,7 +26,8 @@ struct Todos: ReducerProtocol {
     }
   }
 
-  enum Action: Equatable {
+  enum Action: Equatable, BindableAction {
+    case binding(BindingAction<State>)
     case addTodoButtonTapped
     case clearCompletedButtonTapped
     case delete(IndexSet)
@@ -38,8 +43,11 @@ struct Todos: ReducerProtocol {
   private enum TodoCompletionID {}
 
   var body: some ReducerProtocol<State, Action> {
+    BindingReducer()
     Reduce { state, action in
       switch action {
+      case .binding:
+        return .none
       case .addTodoButtonTapped:
         state.todos.insert(Todo.State(id: self.uuid()), at: 0)
         return .none
@@ -115,6 +123,7 @@ struct AppView: View {
   }
 
   struct ViewState: Equatable, ViewStateProtocol {
+    @Bind(\.$filter2) var filter2
     @Observe(\.editMode) var editMode: EditMode
     @Observe(\.filter) var filter
     let isClearCompletedButtonDisabled: Bool
@@ -127,6 +136,20 @@ struct AppView: View {
   var body: some View {
     NavigationView {
       VStack(alignment: .leading) {
+        Picker(
+          "Filter",
+          selection: self.viewStore.binding(
+            get: \.filter,
+            send: Todos.Action.filterPicked
+          )
+          .animation()
+        ) {
+          ForEach(Filter.allCases, id: \.self) { filter in
+            Text(filter.rawValue).tag(filter)
+          }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
         Picker(
           "Filter",
           selection: self.viewStore.binding(

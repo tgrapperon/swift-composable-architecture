@@ -1,3 +1,5 @@
+import SwiftUI
+
 public protocol ViewStateProtocol {
   associatedtype State
   init(_ state: State)
@@ -15,8 +17,8 @@ extension ViewStateProtocol {
 
 enum WithTaskLocalState {
   @TaskLocal static var state: Any?
-  
-  static func `in`<State, Result>(_ operation: @escaping (State) -> Result)  -> (State) -> Result {
+
+  static func `in`<State, Result>(_ operation: @escaping (State) -> Result) -> (State) -> Result {
     if (Result.self as Any) is any ViewStateProtocol.Type {
       return { state in
         WithTaskLocalState.$state.withValue(state) {
@@ -43,8 +45,39 @@ public struct ObservedValue<State, Value> {
   }
 }
 
+@propertyWrapper
+public struct ObservedBindableValue<State, Value> {
+  var value: Value?
+  let keyPath: WritableKeyPath<State, BindableState<Value>>
+  public var wrappedValue: Value {
+    value!
+  }
+  public init(_ keyPath: WritableKeyPath<State, BindableState<Value>>) {
+    if let localState = WithTaskLocalState.state as? State {
+      self.value = localState[keyPath: keyPath].wrappedValue
+    }
+    self.keyPath = keyPath
+  }
+}
+
 extension ObservedValue: Equatable where Value: Equatable {}
+extension ObservedBindableValue: Equatable where Value: Equatable {}
 
 extension ViewStateProtocol {
   public typealias Observe<Value> = ObservedValue<State, Value>
+  public typealias Bind<Value> = ObservedBindableValue<State, Value>
+}
+
+extension ViewStore {
+  public subscript<Value: Equatable>(
+    dynamicMember keyPath: KeyPath<ViewState, ObservedBindableValue<ViewAction.State, Value>>
+  ) -> Binding<Value> where ViewAction: BindableAction {
+    let stateKeyPath = self.state[keyPath: keyPath].keyPath
+    return self.binding(
+      get: { $0[keyPath: keyPath].wrappedValue },
+      send: { newValue in
+        .set(stateKeyPath, newValue)
+      }
+    )
+  }
 }

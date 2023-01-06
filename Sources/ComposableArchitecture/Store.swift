@@ -298,10 +298,10 @@ public final class Store<State, Action> {
     self.threadCheck(status: .scope)
 
     #if swift(>=5.7)
-      return self.reducer.rescope(self, state: WithTaskLocalState.in(toChildState), action: fromChildAction)
+      return self.reducer.rescope(self, state: withTaskLocalState(toChildState), action: fromChildAction)
     #else
       return (self.scope ?? StoreScope(root: self))
-        .rescope(self, state: WithTaskLocalState.in(toChildState), action: fromChildAction)
+        .rescope(self, state: withTaskLocalState(toChildState), action: fromChildAction)
     #endif
   }
 
@@ -314,7 +314,7 @@ public final class Store<State, Action> {
   public func scope<ChildState>(
     state toChildState: @escaping (State) -> ChildState
   ) -> Store<ChildState, Action> {
-    self.scope(state: WithTaskLocalState.in(toChildState), action: { $0 })
+    self.scope(state: withTaskLocalState(toChildState), action: { $0 })
   }
 
   @_spi(Internals) public func send(

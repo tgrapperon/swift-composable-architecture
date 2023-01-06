@@ -15,19 +15,19 @@ extension ViewStateProtocol {
   }
 }
 
-enum WithTaskLocalState {
+fileprivate enum WithTaskLocalState {
   @TaskLocal static var state: Any?
+}
 
-  static func `in`<State, Result>(_ operation: @escaping (State) -> Result) -> (State) -> Result {
-    if (Result.self as Any) is any ViewStateProtocol.Type {
-      return { state in
-        WithTaskLocalState.$state.withValue(state) {
-          operation(state)
-        }
+func withTaskLocalState<State, Result>(_ operation: @escaping (State) -> Result) -> (State) -> Result {
+  if (Result.self as Any) is any ViewStateProtocol.Type {
+    return { state in
+      WithTaskLocalState.$state.withValue(state) {
+        operation(state)
       }
     }
-    return operation
   }
+  return operation
 }
 
 @propertyWrapper

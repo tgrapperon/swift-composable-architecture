@@ -33,15 +33,18 @@ enum WithTaskLocalState {
 @propertyWrapper
 public struct ObservedValue<State, Value> {
   var value: Value?
-  let keyPath: KeyPath<State, Value>
   public var wrappedValue: Value {
     value!
+  }
+  public init(_ transform: (State) -> Value) {
+    if let localState = WithTaskLocalState.state as? State {
+      self.value = transform(localState)
+    }
   }
   public init(_ keyPath: KeyPath<State, Value>) {
     if let localState = WithTaskLocalState.state as? State {
       self.value = localState[keyPath: keyPath]
     }
-    self.keyPath = keyPath
   }
 }
 

@@ -9,29 +9,21 @@ public struct LoginView: View {
   let store: StoreOf<Login>
 
   struct ViewState: Equatable, ViewStateProtocol {
-    var alert: AlertState<Login.Action>?
+    @Observe(\.alert) var alert
     @Bind(\.$email) var email: String
-    var isActivityIndicatorVisible: Bool
-    var isFormDisabled: Bool
-    var isLoginButtonDisabled: Bool
+    @Observe(\.isLoginRequestInFlight) var isActivityIndicatorVisible: Bool
+    @Observe(\.isLoginRequestInFlight) var isFormDisabled: Bool
+    @Observe({ !$0.isFormValid }) var isLoginButtonDisabled: Bool
     @Bind(\.$password) var password: String
-    var isTwoFactorActive: Bool
+    @Observe({ $0.twoFactor != nil }) var isTwoFactorActive: Bool
 
-    init(state: Login.State) {
-      self.alert = state.alert
-      self.isActivityIndicatorVisible = state.isLoginRequestInFlight
-      self.isFormDisabled = state.isLoginRequestInFlight
-      self.isLoginButtonDisabled = !state.isFormValid
-      self.isTwoFactorActive = state.twoFactor != nil
-    }
+    init(state: Login.State) {}
   }
 
   enum ViewAction: BindableAction {
     case binding(BindingAction<Login.State>)
     case alertDismissed
-//    case emailChanged(String)
     case loginButtonTapped
-//    case passwordChanged(String)
     case twoFactorDismissed
   }
 
@@ -109,12 +101,8 @@ extension Login.Action {
       self = .twoFactorDismissed
     case .binding(let binding):
       self = .binding(binding)
-//    case let .emailChanged(email):
-//      self = .emailChanged(email)
     case .loginButtonTapped:
       self = .loginButtonTapped
-//    case let .passwordChanged(password):
-//      self = .passwordChanged(password)
     }
   }
 }

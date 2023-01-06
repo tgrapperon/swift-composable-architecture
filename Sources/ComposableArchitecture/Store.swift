@@ -298,10 +298,10 @@ public final class Store<State, Action> {
     self.threadCheck(status: .scope)
 
     #if swift(>=5.7)
-      return self.reducer.rescope(self, state: toChildState, action: fromChildAction)
+      return self.reducer.rescope(self, state: withTaskLocalState(toChildState), action: fromChildAction)
     #else
       return (self.scope ?? StoreScope(root: self))
-        .rescope(self, state: toChildState, action: fromChildAction)
+        .rescope(self, state: withTaskLocalState(toChildState), action: fromChildAction)
     #endif
   }
 

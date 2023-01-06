@@ -241,9 +241,7 @@ public struct BindingViewStore<State> {
     self.wrappedValue[keyPath: keyPath]
   }
 
-  public subscript<Value: Equatable>(
-    dynamicMember keyPath: WritableKeyPath<State, BindingState<Value>>
-  ) -> BindingViewState<Value> {
+  func bindingViewState<Value: Equatable>(keyPath: WritableKeyPath<State, BindingState<Value>>) -> BindingViewState<Value> {
     BindingViewState(
       binding: ViewStore(self.store, removeDuplicates: { _, _ in false }).binding(
         get: { $0[keyPath: keyPath].wrappedValue },
@@ -269,6 +267,12 @@ public struct BindingViewStore<State> {
       )
     )
   }
+  
+  public subscript<Value: Equatable>(
+    dynamicMember keyPath: WritableKeyPath<State, BindingState<Value>>
+  ) -> BindingViewState<Value> {
+    self.bindingViewState(keyPath: keyPath)
+  }
 }
 
 extension WithViewStore where Content: View {
@@ -284,11 +288,9 @@ extension WithViewStore where Content: View {
     self.init(
       store,
       observe: { (_: State) in
-        toViewState(
-          BindingViewStore(
-            store: store.scope(state: { $0 }, action: fromViewAction)
-          )
-        )
+        withTaskLocalBindingViewStore(BindingViewStore(
+          store: store.scope(state: { $0 }, action: fromViewAction)
+        ), toViewState)
       },
       send: fromViewAction,
       removeDuplicates: isDuplicate,

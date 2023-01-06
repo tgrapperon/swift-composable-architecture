@@ -9,13 +9,9 @@ enum Filter: LocalizedStringKey, CaseIterable, Hashable {
 
 struct Todos: ReducerProtocol {
   struct State: Equatable {
-    var editMode: EditMode = .inactive
-    var filter: Filter {
-      get { filter2 }
-      set { filter2 = newValue }
-    }
+    @BindableState var editMode: EditMode = .inactive
+    @BindableState var filter: Filter = .all
     var todos: IdentifiedArrayOf<Todo.State> = []
-    @BindableState var filter2: Filter = .all
 
     var filteredTodos: IdentifiedArrayOf<Todo.State> {
       switch filter {
@@ -31,8 +27,6 @@ struct Todos: ReducerProtocol {
     case addTodoButtonTapped
     case clearCompletedButtonTapped
     case delete(IndexSet)
-    case editModeChanged(EditMode)
-    case filterPicked(Filter)
     case move(IndexSet, Int)
     case sortCompletedTodos
     case todo(id: Todo.State.ID, action: Todo.Action)
@@ -62,15 +56,6 @@ struct Todos: ReducerProtocol {
           state.todos.remove(id: filteredTodos[index].id)
         }
         return .none
-
-      case let .editModeChanged(editMode):
-        state.editMode = editMode
-        return .none
-
-      case let .filterPicked(filter):
-        state.filter = filter
-        return .none
-
       case var .move(source, destination):
         if state.filter == .completed {
           source = IndexSet(
@@ -123,9 +108,8 @@ struct AppView: View {
   }
 
   struct ViewState: Equatable, ViewStateProtocol {
-    @Bind(\.$filter2) var filter2
-    @Observe(\.editMode) var editMode
-    @Observe(\.filter) var filter
+    @Bind(\.$filter) var filter
+    @Bind(\.$editMode) var editMode
     @Observe({ !$0.todos.contains(where: \.isComplete) }) var isClearCompletedButtonDisabled
     init(state: Todos.State) {}
   }
@@ -135,11 +119,7 @@ struct AppView: View {
       VStack(alignment: .leading) {
         Picker(
           "Filter",
-          selection: self.viewStore.binding(
-            get: \.filter,
-            send: Todos.Action.filterPicked
-          )
-          .animation()
+          selection: self.viewStore.$filter.animation()
         ) {
           ForEach(Filter.allCases, id: \.self) { filter in
             Text(filter.rawValue).tag(filter)
@@ -147,21 +127,6 @@ struct AppView: View {
         }
         .pickerStyle(.segmented)
         .padding(.horizontal)
-        Picker(
-          "Filter",
-          selection: self.viewStore.binding(
-            get: \.filter,
-            send: Todos.Action.filterPicked
-          )
-          .animation()
-        ) {
-          ForEach(Filter.allCases, id: \.self) { filter in
-            Text(filter.rawValue).tag(filter)
-          }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
-
         List {
           ForEachStore(
             self.store.scope(state: \.filteredTodos, action: Todos.Action.todo(id:action:))
@@ -183,10 +148,7 @@ struct AppView: View {
           Button("Add Todo") { self.viewStore.send(.addTodoButtonTapped, animation: .default) }
         }
       )
-      .environment(
-        \.editMode,
-        self.viewStore.binding(get: \.editMode, send: Todos.Action.editModeChanged)
-      )
+      .environment(\.editMode, self.viewStore.$editMode)
     }
     .navigationViewStyle(.stack)
   }

@@ -30,11 +30,10 @@ public class LoginViewController: UIViewController {
     }
   }
 
-  enum ViewAction {
+  enum ViewAction: BindableAction {
     case alertDismissed
-    case emailChanged(String?)
+    case binding(BindingAction<Login.State>)
     case loginButtonTapped
-    case passwordChanged(String?)
     case twoFactorDismissed
   }
 
@@ -186,11 +185,11 @@ public class LoginViewController: UIViewController {
   }
 
   @objc private func emailTextFieldChanged(sender: UITextField) {
-    self.viewStore.send(.emailChanged(sender.text))
+    self.viewStore.send(.binding(.set(\.$email, sender.text ?? "")))
   }
 
   @objc private func passwordTextFieldChanged(sender: UITextField) {
-    self.viewStore.send(.passwordChanged(sender.text))
+    self.viewStore.send(.binding(.set(\.$password, sender.text ?? "")))
   }
 }
 
@@ -199,12 +198,10 @@ extension Login.Action {
     switch action {
     case .alertDismissed:
       self = .alertDismissed
-    case let .emailChanged(email):
-      self = .emailChanged(email ?? "")
+    case .binding(let binding):
+      self = .binding(binding)
     case .loginButtonTapped:
       self = .loginButtonTapped
-    case let .passwordChanged(password):
-      self = .passwordChanged(password ?? "")
     case .twoFactorDismissed:
       self = .twoFactorDismissed
     }

@@ -18,9 +18,6 @@ public struct Login: ReducerProtocol, Sendable {
   public enum Action: Equatable, BindableAction {
     case alertDismissed
     case binding(BindingAction<Login.State>)
-
-    case emailChanged(String)
-    case passwordChanged(String)
     case loginButtonTapped
     case loginResponse(TaskResult<AuthenticationResponse>)
     case twoFactor(TwoFactor.Action)
@@ -32,6 +29,7 @@ public struct Login: ReducerProtocol, Sendable {
   public init() {}
 
   public var body: some ReducerProtocol<State, Action> {
+    BindingReducer()
     Reduce { state, action in
       switch action {
       case .alertDismissed:
@@ -45,11 +43,6 @@ public struct Login: ReducerProtocol, Sendable {
         state.isFormValid = !state.email.isEmpty && !state.password.isEmpty
         return .none
       case .binding: return .none
-        
-      case let .emailChanged(email):
-        state.email = email
-        state.isFormValid = !state.email.isEmpty && !state.password.isEmpty
-        return .none
 
       case let .loginResponse(.success(response)):
         state.isLoginRequestInFlight = false
@@ -61,11 +54,6 @@ public struct Login: ReducerProtocol, Sendable {
       case let .loginResponse(.failure(error)):
         state.alert = AlertState { TextState(error.localizedDescription) }
         state.isLoginRequestInFlight = false
-        return .none
-
-      case let .passwordChanged(password):
-        state.password = password
-        state.isFormValid = !state.email.isEmpty && !state.password.isEmpty
         return .none
 
       case .loginButtonTapped:

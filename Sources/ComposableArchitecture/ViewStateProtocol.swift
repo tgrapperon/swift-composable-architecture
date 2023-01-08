@@ -7,6 +7,7 @@ public protocol ViewStateProtocol<State> {
 }
 
 // Doesn't work as `struct ViewState: ViewStateOf<Login>` (or even `ViewStateOf<Login.State>`)
+// https://github.com/apple/swift/issues/62906
 //public typealias BindableViewStateOf<R: ReducerProtocol> = ViewStateProtocol<BindingViewStore<R.State>>
 //public typealias ViewStateOf<R: ReducerProtocol> = ViewStateProtocol<R.State>
 
@@ -20,12 +21,9 @@ extension ViewStateProtocol {
   }
 }
 
-private enum WithTaskLocalState {
+private enum WithTaskLocals {
   @TaskLocal static var state: Any?
-}
-
-private enum WithTaskLocalBindingViewStore {
-  @TaskLocal static var store: Any?
+  @TaskLocal static var bindingStore: Any?
 }
 
 // Used in Store.scope
@@ -34,7 +32,7 @@ func withTaskLocalState<State, ChildState>(_ operation: @escaping (State) -> Chi
 {
   if (ChildState.self as Any) is any ViewStateProtocol.Type {
     return { state in
-      WithTaskLocalState.$state.withValue(state) {
+      WithTaskLocals.$state.withValue(state) {
         operation(state)
       }
     }
@@ -46,8 +44,16 @@ func withTaskLocalState<State, ChildState>(_ operation: @escaping (State) -> Chi
 func withTaskLocalBindingViewStore<State, ChildState>(_ bindingViewStore: BindingViewStore<State>, _ operation: @escaping (BindingViewStore<State>) -> ChildState) ->
   ChildState
 {
-  WithTaskLocalBindingViewStore.$store.withValue(bindingViewStore) {
+  WithTaskLocals.$bindingStore.withValue(bindingViewStore) {
     operation(bindingViewStore)
+  }
+}
+
+func withTaskLocalBindingViewStore<State, ChildState>(_ bindingViewStore: BindingViewStore<State>, _ operation: @escaping (State) -> ChildState) ->
+  (State) -> ChildState
+{
+  WithTaskLocals.$bindingStore.withValue(bindingViewStore) {
+    {  operation($0) }
   }
 }
 
@@ -60,17 +66,17 @@ public struct ObservedValue<State, Value> {
   
   // This one activates in `ViewStoreProtocol<State>
   public init(_ transform: (State) -> Value) {
-    if let localState = WithTaskLocalState.state as? State {
+    if let localState = WithTaskLocals.state as? State {
       self.value = transform(localState)
-    } else if let localState = WithTaskLocalState.state as? BindingViewStore<State> {
+    } else if let localState = WithTaskLocals.state as? BindingViewStore<State> {
       self.value = transform(localState.wrappedValue)
     }
   }
   // This one activates in `ViewStoreProtocol<BindingViewStore<State>>
   public init<S>(_ transform: (S) -> Value) where State == BindingViewStore<S> {
-    if let localState = WithTaskLocalState.state as? State {
+    if let localState = WithTaskLocals.state as? State {
       self.value = transform(localState.wrappedValue)
-    } else if let localState = WithTaskLocalState.state as? S {
+    } else if let localState = WithTaskLocals.state as? S {
       self.value = transform(localState)
     }
   }
@@ -87,8 +93,8 @@ public struct ObservedBindingValue<State, Value: Equatable> {
     bindingViewState.binding
   }
 
-  public init<S>(_ keyPath: WritableKeyPath<S, BindingState<Value>>) where State == BindingViewStore<S> {
-    if let bindingViewStore = WithTaskLocalBindingViewStore.store as? BindingViewStore<S> {
+  public init(_ keyPath: WritableKeyPath<State, BindingState<Value>>) {
+    if let bindingViewStore = WithTaskLocals.bindingStore as? BindingViewStore<State> {
       self.bindingViewState = bindingViewStore.bindingViewState(keyPath: keyPath)
     } else {
       fatalError()

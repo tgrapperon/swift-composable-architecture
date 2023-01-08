@@ -57,7 +57,8 @@ public struct BindingState<Value> {
   @available(
     *,
     deprecated,
-    message: """
+    message:
+      """
       Chaining onto properties of bindable state is deprecated. Push '@BindingState' use to the child state, instead.
       """
   )
@@ -241,7 +242,9 @@ public struct BindingViewStore<State> {
     self.wrappedValue[keyPath: keyPath]
   }
 
-  func bindingViewState<Value: Equatable>(keyPath: WritableKeyPath<State, BindingState<Value>>) -> BindingViewState<Value> {
+  func bindingViewState<Value: Equatable>(keyPath: WritableKeyPath<State, BindingState<Value>>)
+    -> BindingViewState<Value>
+  {
     BindingViewState(
       binding: ViewStore(self.store, removeDuplicates: { _, _ in false }).binding(
         get: { $0[keyPath: keyPath].wrappedValue },
@@ -267,7 +270,7 @@ public struct BindingViewStore<State> {
       )
     )
   }
-  
+
   public subscript<Value: Equatable>(
     dynamicMember keyPath: WritableKeyPath<State, BindingState<Value>>
   ) -> BindingViewState<Value> {
@@ -278,7 +281,7 @@ public struct BindingViewStore<State> {
 extension WithViewStore where Content: View {
   public init<State, Action>(
     _ store: Store<State, Action>,
-    observe toViewState: @escaping (BindingViewStore<State>) -> ViewState,
+    observe toViewState: @escaping (State) -> ViewState,
     send fromViewAction: @escaping (ViewAction) -> Action,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
@@ -286,11 +289,15 @@ extension WithViewStore where Content: View {
     line: UInt = #line
   ) where ViewAction: BindableAction, ViewAction.State == State {
     self.init(
-      store,
-      observe: { (_: State) in
-        withTaskLocalBindingViewStore(BindingViewStore(
-          store: store.scope(state: { $0 }, action: fromViewAction)
-        ), toViewState)
+      store: store,
+      observe: { (state: State) in
+        let bindingViewStore = BindingViewStore(
+          store: store.scope(state: { $0 }, action: fromViewAction),
+          file: file, line: line)
+
+        return withTaskLocalBindingViewStore(bindingViewStore) { _ in
+          toViewState(state)
+        }
       },
       send: fromViewAction,
       removeDuplicates: isDuplicate,
@@ -302,7 +309,7 @@ extension WithViewStore where Content: View {
 
   public init<State>(
     _ store: Store<State, ViewAction>,
-    observe toViewState: @escaping (BindingViewStore<State>) -> ViewState,
+    observe toViewState: @escaping (State) -> ViewState,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
@@ -323,7 +330,7 @@ extension WithViewStore where Content: View {
 extension WithViewStore where ViewState: Equatable, Content: View {
   public init<State, Action>(
     _ store: Store<State, Action>,
-    observe toViewState: @escaping (BindingViewStore<State>) -> ViewState,
+    observe toViewState: @escaping (State) -> ViewState,
     send fromViewAction: @escaping (ViewAction) -> Action,
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
@@ -342,7 +349,7 @@ extension WithViewStore where ViewState: Equatable, Content: View {
 
   public init<State>(
     _ store: Store<State, ViewAction>,
-    observe toViewState: @escaping (BindingViewStore<State>) -> ViewState,
+    observe toViewState: @escaping (State) -> ViewState,
     @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
     file: StaticString = #fileID,
     line: UInt = #line
@@ -381,7 +388,9 @@ extension ViewStore where ViewAction: BindableAction, ViewAction.State == ViewSt
             debugger.wasCalled = true
           }
         #else
-          let set: @Sendable (inout ViewState) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
+          let set: @Sendable (inout ViewState) -> Void = {
+            $0[keyPath: keyPath].wrappedValue = value
+          }
         #endif
         return .binding(.init(keyPath: keyPath, set: set, value: value))
       }
@@ -415,7 +424,9 @@ extension ViewStore where ViewAction: BindableAction, ViewAction.State == ViewSt
             debugger.wasCalled = true
           }
         #else
-          let set: @Sendable (inout ViewState) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
+          let set: @Sendable (inout ViewState) -> Void = {
+            $0[keyPath: keyPath].wrappedValue = value
+          }
         #endif
         return .binding(.init(keyPath: keyPath, set: set, value: value))
       }

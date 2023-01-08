@@ -17,7 +17,7 @@ public struct LoginView: View {
     @Bind(\.$password) var password
     @Observe({ $0.twoFactor != nil }) var isTwoFactorActive
 
-    init(state: BindingViewStore<Login.State>) {}
+    init(state:Login.State) {}
   }
 
   public init(store: StoreOf<Login>) {

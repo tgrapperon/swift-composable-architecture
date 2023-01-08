@@ -13,7 +13,7 @@ public struct TwoFactorView: View {
     @Observe(\.isTwoFactorRequestInFlight) var isFormDisabled: Bool
     @Observe({ !$0.isFormValid }) var isSubmitButtonDisabled: Bool
 
-    init(state: BindingViewStore<TwoFactor.State>) {}
+    init(state: TwoFactor.State) {}
   }
 
   public init(store: StoreOf<TwoFactor>) {

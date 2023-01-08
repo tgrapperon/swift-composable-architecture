@@ -272,6 +272,24 @@ extension WithViewStore: View where Content: View {
       line: line
     )
   }
+  
+  init<State, Action>(
+    store: Store<State, Action>,
+    observe toViewState: @escaping (State) -> ViewState,
+    send fromViewAction: @escaping (ViewAction) -> Action,
+    removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool,
+    @ViewBuilder content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+    file: StaticString = #fileID,
+    line: UInt = #line
+  ) {
+    self.init(
+      store: store.scope(state: toViewState, action: fromViewAction),
+      removeDuplicates: isDuplicate,
+      content: content,
+      file: file,
+      line: line
+    )
+  }
 
   /// Initializes a structure that transforms a ``Store`` into an observable ``ViewStore`` in order
   /// to compute views from state.

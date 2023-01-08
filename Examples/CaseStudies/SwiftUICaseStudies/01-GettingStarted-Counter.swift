@@ -60,7 +60,7 @@ struct CounterView: View {
   }
 }
 
-struct CounterDemoView: View {
+struct CounterDemoView {
   let store: StoreOf<Counter>
 
   var body: some View {

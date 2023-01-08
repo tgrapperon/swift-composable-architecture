@@ -91,9 +91,9 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool
   ) {
     self._send = { store.send($0) }
-    self._state = CurrentValueRelay(toViewState(store.state.value))
+    self._state = CurrentValueRelay(withTaskLocalState(toViewState)(store.state.value))
     self.viewCancellable = store.state
-      .map(toViewState)
+      .map(withTaskLocalState(toViewState))
       .removeDuplicates(by: isDuplicate)
       .sink { [weak objectWillChange = self.objectWillChange, weak _state = self._state] in
         guard let objectWillChange = objectWillChange, let _state = _state else { return }
@@ -124,9 +124,9 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool
   ) {
     self._send = { store.send(fromViewAction($0)) }
-    self._state = CurrentValueRelay(toViewState(store.state.value))
+    self._state = CurrentValueRelay(withTaskLocalState(toViewState)(store.state.value))
     self.viewCancellable = store.state
-      .map(toViewState)
+      .map(withTaskLocalState(toViewState))
       .removeDuplicates(by: isDuplicate)
       .sink { [weak objectWillChange = self.objectWillChange, weak _state = self._state] in
         guard let objectWillChange = objectWillChange, let _state = _state else { return }

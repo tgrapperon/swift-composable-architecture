@@ -1,6 +1,6 @@
 import SwiftUI
 
-public protocol ObservedState<State> {
+public protocol ObservableState<State> {
   associatedtype State
   init(state: State)
 }
@@ -16,7 +16,7 @@ private enum WithTaskLocal {
 func withTaskLocalState<Parent, Child>(_ operation: @escaping (Parent) -> Child) -> (Parent) ->
 Child
 {
-  if (Child.self as Any) is any ObservedState.Type {
+  if (Child.self as Any) is any ObservableState.Type {
     return { parent in
       WithTaskLocal.$state.withValue(parent) {
         operation(parent)
@@ -47,7 +47,7 @@ public struct ObservedValue<State, Value> {
 extension ObservedValue: Equatable where Value: Equatable {}
 //extension ObservedBindingValue: Equatable where Value: Equatable {}
 
-extension ObservedState {
+extension ObservableState {
   public typealias Observe<Value> = ObservedValue<State, Value>
 //  public typealias Bind<Value: Equatable> = ObservedBindingValue<State, Value>
 }

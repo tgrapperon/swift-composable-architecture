@@ -114,7 +114,7 @@ struct AppView: View {
     self.viewStore = ViewStore(self.store.scope(state: ViewState.init(state:)))
   }
 
-  struct ViewState: Equatable, ObservedState {
+  struct ViewState: Equatable, ObservableState {
     let editMode: EditMode
     let filter: Filter
     

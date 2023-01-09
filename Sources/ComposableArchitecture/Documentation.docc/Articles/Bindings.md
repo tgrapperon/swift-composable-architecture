@@ -235,7 +235,7 @@ Binding actions are constructed and sent to the store by calling
 ``ViewStore/binding(_:file:fileID:line:)`` with a key path to the bindable state:
 
 ```swift
-TextField("Display name", text: viewStore.binding(\.$displayName))
+TextField("Display name", text: viewStore.$displayName)
 ```
 
 Should you need to layer additional functionality over these bindings, your reducer can pattern

@@ -41,7 +41,7 @@ public struct BindingState<Value> {
   /// `@BindingState`. To get the `projectedValue`, prefix the property with `$`:
   ///
   /// ```swift
-  /// TextField("Display name", text: viewStore.binding(\.$displayName))
+  /// TextField("Display name", text: viewStore.$displayName)
   /// ```
   ///
   /// See ``BindingState`` for more details.
@@ -502,7 +502,7 @@ extension BindingAction {
   /// WithViewStore(
   ///   self.store, observe: \.view, send: MyFeature.Action.view
   /// ) { viewStore in
-  ///   Stepper("\(viewStore.count)", viewStore.binding(\.$count))
+  ///   Stepper("\(viewStore.count)", viewStore.$count)
   ///   Button("Get number fact") { viewStore.send(.factButtonTapped) }
   ///   if let fact = viewStore.fact {
   ///     Text(fact)

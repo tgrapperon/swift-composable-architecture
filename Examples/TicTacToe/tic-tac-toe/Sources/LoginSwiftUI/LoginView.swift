@@ -9,20 +9,16 @@ public struct LoginView: View {
   let store: StoreOf<Login>
 
   struct ViewState: ObservableState, Equatable {
-    var alert: AlertState<Login.Action>?
+    @Observe(\.alert) var alert: AlertState<Login.Action>?
     @Bind(\.$email) var email: String
-    var isActivityIndicatorVisible: Bool
-    var isFormDisabled: Bool
-    var isLoginButtonDisabled: Bool
+    @Observe(\.isLoginRequestInFlight) var isActivityIndicatorVisible: Bool
+    @Observe(\.isLoginRequestInFlight) var isFormDisabled: Bool // With or without type
+    var isLoginButtonDisabled: Bool // Property wrappers can be mixed with bare properties
     @Bind(\.$password) var password: String
-    var isTwoFactorActive: Bool
+    @Observe({ $0.twoFactor != nil }) var isTwoFactorActive: Bool
 
     init(state: Login.State) {
-      self.alert = state.alert
-      self.isActivityIndicatorVisible = state.isLoginRequestInFlight
-      self.isFormDisabled = state.isLoginRequestInFlight
       self.isLoginButtonDisabled = !state.isFormValid
-      self.isTwoFactorActive = state.twoFactor != nil
     }
   }
 

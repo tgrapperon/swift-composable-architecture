@@ -5,16 +5,27 @@ public protocol ObservableState<State> {
   init(state: State)
 }
 
+// ObservableState is required to get autocompletion for the keyPath in the two specialized
+// typaliases below:
+extension ObservableState {
+  public typealias Observe<Value> = _ObservedValue<State, Value>
+  public typealias Bind<Value: Equatable> = _ObservedBindingValue<State, Value>
+}
+
+// End of public APIs
+
 private enum WithTaskLocal {
   @TaskLocal static var state: Any?
   @TaskLocal static var bindingViewStore: Any?
 }
-// We chose  tosupport only `observe` variants of `WithViewStore` and `ViewStore`, as this allows to
+
+// We chose to support only `observe` variants of `WithViewStore` and `ViewStore`, as this allows to
 // keep this transform on the UI layer. Otherwise, we would need to push it into `store.scope`
-// (which is likely not as problematic as it is inelegant).
+// (which is likely not as problematic as it is inelegant). I made the change in `store.scope to
+// demonstrate where it would be required, but it should be removed without issues, as `WithViewStore`
+// and `ViewStore` init have already been updated to perform the operation automatically.
 func withTaskLocalState<ParentState, ChildState>(_ operation: @escaping (ParentState) -> ChildState)
-  -> (ParentState) ->
-  ChildState
+  -> (ParentState) -> ChildState
 {
   if ChildState.self is any ObservableState.Type {
     return { parentState in
@@ -25,6 +36,7 @@ func withTaskLocalState<ParentState, ChildState>(_ operation: @escaping (ParentS
   }
   return operation
 }
+
 // Note: Debug context should be reworked: `fileID` is used for `file` in
 // WithViewStore`, and nothing is used in `ViewStore`.
 func withTaskLocalBindingViewStore<ParentState, ParentAction, ChildState, ChildAction>(
@@ -35,7 +47,6 @@ func withTaskLocalBindingViewStore<ParentState, ParentAction, ChildState, ChildA
   fileID: StaticString = #fileID,
   line: UInt = #line
 ) -> (ParentState) -> ChildState {
-  
   guard
     let bindingStore = store.bindingStore(send: fromViewAction),
     let bindingViewStore = BindingViewStore(
@@ -55,7 +66,7 @@ func withTaskLocalBindingViewStore<ParentState, ParentAction, ChildState, ChildA
 }
 
 extension Store {
-  func bindingStore<ViewAction>(
+  fileprivate func bindingStore<ViewAction>(
     send fromViewAction: @escaping (ViewAction) -> Action
   ) -> Store<State, ViewAction>? {
     guard
@@ -67,7 +78,7 @@ extension Store {
 }
 
 extension BindingViewStore {
-  init?<Action>(
+  fileprivate init?<Action>(
     store: Store<State, Action>,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
@@ -92,7 +103,9 @@ extension BindingViewStore {
 }
 
 extension BindableAction {
-  static func castBinding<S, A>(state: S.Type, action: A.Type) -> ((BindingAction<S>) -> A)? {
+  fileprivate static func castBinding<S, A>(state: S.Type, action: A.Type) -> (
+    (BindingAction<S>) -> A
+  )? {
     guard
       S.self == State.self,
       A.self == Self.self
@@ -101,29 +114,29 @@ extension BindableAction {
       self.binding($0 as! BindingAction<State>) as! A
     }
   }
-  static func isBinding<S>(_ state: S.Type) -> Bool {
+  fileprivate static func isBinding<S>(_ state: S.Type) -> Bool {
     S.self == State.self
   }
 }
 
+// Property wrappers with unresolved `State`:
 @propertyWrapper
-public struct ObservedValue<State, Value> {
+public struct _ObservedValue<State, Value> {
   var value: Value
   public var wrappedValue: Value {
     value
   }
-
   public init(_ transform: (State) -> Value) {
     if let localState = WithTaskLocal.state as? State {
       self.value = transform(localState)
     } else {
-      fatalError("This property wrapper should only be used in `ViewState`")
+      fatalError("This property wrapper should only be used in a `ViewState`")
     }
   }
 }
 
 @propertyWrapper
-public struct ObservedBindingValue<State, Value: Equatable> {
+public struct _ObservedBindingValue<State, Value: Equatable> {
   var bindingViewState: BindingViewState<Value>
   public var wrappedValue: Value {
     bindingViewState.wrappedValue
@@ -139,71 +152,13 @@ public struct ObservedBindingValue<State, Value: Equatable> {
     } else {
       // Note: A BindingState requirement could prevent this property
       // wrapper to be built in imcompatible contexts.
-      fatalError("This property wrapper should only be used in `ViewState` of a \"Bindable\" state")
+      fatalError(
+        "This property wrapper should only be used in a `ViewState` of a \"Bindable\" state")
     }
   }
 }
 
-
-
-extension ObservedValue: Equatable where Value: Equatable {}
-extension ObservedBindingValue: Equatable where Value: Equatable {}
-
-extension ObservableState {
-  public typealias Observe<Value> = ObservedValue<State, Value>
-    public typealias Bind<Value: Equatable> = ObservedBindingValue<State, Value>
-}
-
-
-#if DEBUG
-  private final class BindableActionViewStoreDebugger<Value> {
-    enum Context {
-      case bindingState
-      case bindingStore
-      case viewStore
-    }
-
-    let value: Value
-    let bindableActionType: Any.Type
-    let context: Context
-    let file: StaticString
-    let fileID: StaticString
-    let line: UInt
-    var wasCalled = false
-
-    init(
-      value: Value,
-      bindableActionType: Any.Type,
-      context: Context,
-      file: StaticString,
-      fileID: StaticString,
-      line: UInt
-    ) {
-      self.value = value
-      self.bindableActionType = bindableActionType
-      self.context = context
-      self.file = file
-      self.fileID = fileID
-      self.line = line
-    }
-
-    deinit {
-      guard self.wasCalled else {
-        runtimeWarn(
-          """
-          A binding action sent from a view store at "\(self.fileID):\(self.line)" was not \
-          handled. …
-
-            Action:
-              \(typeName(self.bindableActionType)).binding(.set(_, \(self.value)))
-
-          To fix this, invoke "BindingReducer()" from your feature reducer's "body".
-          """,
-          file: self.file,
-          line: self.line
-        )
-        return
-      }
-    }
-  }
-#endif
+extension _ObservedValue: Equatable where Value: Equatable {}
+extension _ObservedBindingValue: Equatable where Value: Equatable {}
+extension _ObservedValue: Hashable where Value: Hashable {}
+extension _ObservedBindingValue: Hashable where Value: Hashable {}

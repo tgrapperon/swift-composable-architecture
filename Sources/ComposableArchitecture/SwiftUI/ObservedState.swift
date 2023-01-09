@@ -1,5 +1,7 @@
 import SwiftUI
 
+public typealias BindingState = BindableState
+
 public protocol ObservableState<State> {
   associatedtype State
   init(state: State)
@@ -66,7 +68,6 @@ extension Store {
   }
 }
 
-@dynamicMemberLookup
 struct BindingViewStore<State> {
   let store: Store<State, BindingAction<State>>
   #if DEBUG
@@ -123,10 +124,58 @@ struct BindingViewStore<State> {
     set { self = newValue }
   }
 
-  public subscript<Value: Equatable>(
-    dynamicMember keyPath: WritableKeyPath<State, Value>
-  ) -> Value {
-    self.state[keyPath: keyPath]
+  func bindingViewState<Value: Equatable>(keyPath: WritableKeyPath<State, BindingState<Value>>)
+    -> BindingViewState<Value>
+  {
+    BindingViewState(
+      binding: ViewStore(self.store, removeDuplicates: { _, _ in false }).binding(
+        get: { $0[keyPath: keyPath].wrappedValue },
+        send: { value in
+          #if DEBUG
+            let debugger = BindableActionViewStoreDebugger(
+              value: value,
+              bindableActionType: self.bindableActionType,
+              context: .bindingStore,
+              file: self.file,
+              fileID: self.fileID,
+              line: self.line
+            )
+            let set: @Sendable (inout State) -> Void = {
+              $0[keyPath: keyPath].wrappedValue = value
+              debugger.wasCalled = true
+            }
+          #else
+            let set: @Sendable (inout State) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
+          #endif
+          return .init(keyPath: keyPath, set: set, value: value)
+        }
+      )
+    )
+  }
+}
+
+public struct BindingViewState<Value> {
+  let binding: Binding<Value>
+
+  public var wrappedValue: Value {
+    get { self.binding.wrappedValue }
+    set { self.binding.wrappedValue = newValue }
+  }
+
+  public var projectedValue: Binding<Value> {
+    self.binding
+  }
+}
+
+extension BindingViewState: Equatable where Value: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.wrappedValue == rhs.wrappedValue
+  }
+}
+
+extension BindingViewState: Hashable where Value: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(self.wrappedValue)
   }
 }
 
@@ -147,25 +196,102 @@ extension BindableAction {
 
 @propertyWrapper
 public struct ObservedValue<State, Value> {
-  var value: Value?
+  var value: Value
   public var wrappedValue: Value {
-    value!
+    value
   }
 
-  // This one activates in `ViewStoreProtocol<State>
   public init(_ transform: (State) -> Value) {
     if let localState = WithTaskLocal.state as? State {
       self.value = transform(localState)
     } else {
-      runtimeWarn("This property wrapper should only be used in `ViewState`")
+      fatalError("This property wrapper should only be used in `ViewState`")
     }
   }
 }
 
+@propertyWrapper
+public struct ObservedBindingValue<State, Value: Equatable> {
+  var bindingViewState: BindingViewState<Value>
+  public var wrappedValue: Value {
+    bindingViewState.wrappedValue
+  }
+
+  public var projectedValue: Binding<Value> {
+    bindingViewState.binding
+  }
+
+  public init(_ keyPath: WritableKeyPath<State, BindingState<Value>>) {
+    if let bindingViewStore = WithTaskLocal.bindingViewStore as? BindingViewStore<State> {
+      self.bindingViewState = bindingViewStore.bindingViewState(keyPath: keyPath)
+    } else {
+      // Note: A BindableState requirement could prevent this property
+      // wrapper to be built in imcompatible contexts.
+      fatalError("This property wrapper should only be used in `ViewState` of a \"Bindable\" state")
+    }
+  }
+}
+
+
+
 extension ObservedValue: Equatable where Value: Equatable {}
-//extension ObservedBindingValue: Equatable where Value: Equatable {}
+extension ObservedBindingValue: Equatable where Value: Equatable {}
 
 extension ObservableState {
   public typealias Observe<Value> = ObservedValue<State, Value>
-  //  public typealias Bind<Value: Equatable> = ObservedBindingValue<State, Value>
+    public typealias Bind<Value: Equatable> = ObservedBindingValue<State, Value>
 }
+
+
+#if DEBUG
+  private final class BindableActionViewStoreDebugger<Value> {
+    enum Context {
+      case bindingState
+      case bindingStore
+      case viewStore
+    }
+
+    let value: Value
+    let bindableActionType: Any.Type
+    let context: Context
+    let file: StaticString
+    let fileID: StaticString
+    let line: UInt
+    var wasCalled = false
+
+    init(
+      value: Value,
+      bindableActionType: Any.Type,
+      context: Context,
+      file: StaticString,
+      fileID: StaticString,
+      line: UInt
+    ) {
+      self.value = value
+      self.bindableActionType = bindableActionType
+      self.context = context
+      self.file = file
+      self.fileID = fileID
+      self.line = line
+    }
+
+    deinit {
+      guard self.wasCalled else {
+        runtimeWarn(
+          """
+          A binding action sent from a view store at "\(self.fileID):\(self.line)" was not \
+          handled. …
+
+            Action:
+              \(typeName(self.bindableActionType)).binding(.set(_, \(self.value)))
+
+          To fix this, invoke "BindingReducer()" from your feature reducer's "body".
+          """,
+          file: self.file,
+          line: self.line
+        )
+        return
+      }
+    }
+  }
+#endif

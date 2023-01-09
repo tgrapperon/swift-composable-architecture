@@ -35,7 +35,7 @@ struct Counter: ReducerProtocol {
 
 // MARK: - Feature view
 
-struct CounterDemoView: View {
+struct CounterView: View {
   let store: StoreOf<Counter>
 
   var body: some View {
@@ -60,9 +60,28 @@ struct CounterDemoView: View {
   }
 }
 
+struct CounterDemoView: View {
+  let store: StoreOf<Counter>
+
+  var body: some View {
+    Form {
+      Section {
+        AboutView(readMe: readMe)
+      }
+
+      Section {
+        CounterView(store: self.store)
+          .frame(maxWidth: .infinity)
+      }
+    }
+    .buttonStyle(.borderless)
+    .navigationTitle("Counter demo")
+  }
+}
+
 // MARK: - SwiftUI previews
 
-struct CounterDemoView_Previews: PreviewProvider {
+struct CounterView_Previews: PreviewProvider {
   static var previews: some View {
     NavigationView {
       CounterDemoView(

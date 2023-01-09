@@ -6,26 +6,14 @@ import TwoFactorCore
 public struct TwoFactorView: View {
   let store: StoreOf<TwoFactor>
 
-  struct ViewState: Equatable {
-    var alert: AlertState<TwoFactor.Action>?
-    var code: String
-    var isActivityIndicatorVisible: Bool
-    var isFormDisabled: Bool
-    var isSubmitButtonDisabled: Bool
+  struct ViewState: ObservableState, Equatable {
+    @Observe(\.alert) var alert
+    @Bind(\.$code) var code
+    @Observe(\.isTwoFactorRequestInFlight) var isActivityIndicatorVisible
+    @Observe(\.isTwoFactorRequestInFlight) var isFormDisabled
+    @Observe({ !$0.isFormValid }) var isSubmitButtonDisabled
 
-    init(state: TwoFactor.State) {
-      self.alert = state.alert
-      self.code = state.code
-      self.isActivityIndicatorVisible = state.isTwoFactorRequestInFlight
-      self.isFormDisabled = state.isTwoFactorRequestInFlight
-      self.isSubmitButtonDisabled = !state.isFormValid
-    }
-  }
-
-  enum ViewAction: Equatable {
-    case alertDismissed
-    case codeChanged(String)
-    case submitButtonTapped
+    init(state: TwoFactor.State) {}
   }
 
   public init(store: StoreOf<TwoFactor>) {
@@ -33,18 +21,13 @@ public struct TwoFactorView: View {
   }
 
   public var body: some View {
-    WithViewStore(
-      self.store, observe: ViewState.init, send: TwoFactor.Action.init
-    ) { viewStore in
+    WithViewStore(self.store, observe: ViewState.init) { viewStore in
       Form {
         Text(#"To confirm the second factor enter "1234" into the form."#)
 
         Section {
-          TextField(
-            "1234",
-            text: viewStore.binding(get: \.code, send: ViewAction.codeChanged)
-          )
-          .keyboardType(.numberPad)
+          TextField("1234", text: viewStore.$code)
+            .keyboardType(.numberPad)
         }
 
         HStack {
@@ -69,19 +52,6 @@ public struct TwoFactorView: View {
       .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
       .disabled(viewStore.isFormDisabled)
       .navigationTitle("Confirmation Code")
-    }
-  }
-}
-
-extension TwoFactor.Action {
-  init(action: TwoFactorView.ViewAction) {
-    switch action {
-    case .alertDismissed:
-      self = .alertDismissed
-    case let .codeChanged(code):
-      self = .codeChanged(code)
-    case .submitButtonTapped:
-      self = .submitButtonTapped
     }
   }
 }

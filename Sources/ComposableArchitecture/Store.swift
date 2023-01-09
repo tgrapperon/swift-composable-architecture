@@ -297,12 +297,23 @@ public final class Store<State, Action> {
   ) -> Store<ChildState, ChildAction> {
     self.threadCheck(status: .scope)
 
-    // Required change to also support `ViewStore(scopedStore)`
+    // Required `withTaskLocalState` to also support `ViewStore(scopedStore)`.
+    // This can be removed if only `ViewStore(store, observe:…` variants are supported.
+    // In any case, `withTaskLocalBindingViewstore` which is itself scoping would require
+    // more work (a dedicated scope) to avoid infinite recursion throught these lines.
     #if swift(>=5.7)
-      return self.reducer.rescope(self, state: withTaskLocalState(toChildState), action: fromChildAction)
+      return self.reducer.rescope(
+        self,
+        state: withTaskLocalState(toChildState),
+        action: fromChildAction
+      )
     #else
       return (self.scope ?? StoreScope(root: self))
-        .rescope(self, state: withTaskLocalState(toChildState), action: fromChildAction)
+        .rescope(
+          self,
+          state: withTaskLocalState(toChildState),
+          action: fromChildAction
+        )
     #endif
   }
 

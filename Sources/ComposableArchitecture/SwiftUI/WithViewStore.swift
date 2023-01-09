@@ -265,7 +265,17 @@ extension WithViewStore: View where Content: View {
     line: UInt = #line
   ) {
     self.init(
-      store: store.scope(state: withTaskLocalState(toViewState), action: fromViewAction),
+      store: store.scope(
+        state: withTaskLocalBindingViewStore(
+          store: store,
+          send: fromViewAction,
+          withTaskLocalState(toViewState),
+          file: file,
+          fileID: file,
+          line: line
+        ),
+        action: fromViewAction
+      ),
       removeDuplicates: isDuplicate,
       content: content,
       file: file,
@@ -350,7 +360,16 @@ extension WithViewStore: View where Content: View {
     line: UInt = #line
   ) {
     self.init(
-      store: store.scope(state: withTaskLocalState(toViewState)),
+      store: store.scope(
+        state: withTaskLocalBindingViewStore(
+          store: store,
+          send: { $0 },
+          withTaskLocalState(toViewState),
+          file: file,
+          fileID: file,
+          line: line
+        )
+      ),
       removeDuplicates: isDuplicate,
       content: content,
       file: file,
@@ -518,7 +537,17 @@ extension WithViewStore where ViewState: Equatable, Content: View {
     line: UInt = #line
   ) {
     self.init(
-      store: store.scope(state: withTaskLocalState(toViewState), action: fromViewAction),
+      store: store.scope(
+        state: withTaskLocalBindingViewStore(
+          store: store,
+          send: fromViewAction,
+          withTaskLocalState(toViewState),
+          file: file,
+          fileID: file,
+          line: line
+        ),
+        action: fromViewAction
+      ),
       removeDuplicates: ==,
       content: content,
       file: file,
@@ -602,7 +631,16 @@ extension WithViewStore where ViewState: Equatable, Content: View {
     line: UInt = #line
   ) {
     self.init(
-      store: store.scope(state: withTaskLocalState(toViewState)),
+      store: store.scope(
+        state: withTaskLocalBindingViewStore(
+          store: store,
+          send: { $0 },
+          withTaskLocalState(toViewState),
+          file: file,
+          fileID: file,
+          line: line
+        )
+      ),
       removeDuplicates: ==,
       content: content,
       file: file,

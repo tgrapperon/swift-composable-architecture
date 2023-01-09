@@ -83,7 +83,7 @@ struct Todos: ReducerProtocol {
         state.todos.sort { $1.isComplete && !$0.isComplete }
         return .none
 
-      case .todo(id: _, action: .checkBoxToggled):
+      case .todo(id: _, action: .binding(\.$isComplete)):
         return .run { send in
           try await self.clock.sleep(for: .seconds(1))
           await send(.sortCompletedTodos, animation: .default)
@@ -111,12 +111,9 @@ struct AppView: View {
   }
 
   struct ViewState: Equatable, ObservableState {
-    @Bind(\.$editMode) var editMode: EditMode
-    @Bind(\.$filter) var filter: Filter
-
-    @Observe({ !$0.todos.contains(where: \.isComplete) })
-    var isClearCompletedButtonDisabled: Bool
-
+    @Bind(\.$editMode) var editMode
+    @Bind(\.$filter) var filter
+    @Observe({ !$0.todos.contains(where: \.isComplete) }) var isClearCompletedButtonDisabled
     init(state: Todos.State) {}
   }
 

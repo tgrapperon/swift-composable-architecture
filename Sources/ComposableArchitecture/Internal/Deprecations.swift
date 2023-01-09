@@ -3,22 +3,10 @@ import Combine
 import SwiftUI
 import XCTestDynamicOverlay
 
-// MARK: - Deprecated after 0.47.2
+// MARK: - Deprecated after 0.47.2:
 
-extension ActorIsolated {
-  @available(
-    *,
-    deprecated,
-    message: "Use the non-async version of 'withValue'."
-  )
-  public func withValue<T: Sendable>(
-    _ operation: @Sendable (inout Value) async throws -> T
-  ) async rethrows -> T {
-    var value = self.value
-    defer { self.value = value }
-    return try await operation(&value)
-  }
-}
+@available(*, deprecated, renamed: "BindingState")
+public typealias BindableState = BindingState
 
 // MARK: - Deprecated after 0.45.0:
 
@@ -959,28 +947,6 @@ extension Store {
   }
 }
 
-extension ViewStore where ViewAction: BindableAction, ViewAction.State == ViewState {
-  @available(
-    *, deprecated,
-    message:
-      """
-      Dynamic member lookup is no longer supported for bindable state. Instead of dot-chaining on \
-      the view store, e.g. 'viewStore.$value', invoke the 'binding' method on view store with a \
-      key path to the value, e.g. 'viewStore.binding(\\.$value)'. For more on this change, see: \
-      https://github.com/pointfreeco/swift-composable-architecture/pull/810
-      """
-  )
-  @MainActor
-  public subscript<Value: Equatable>(
-    dynamicMember keyPath: WritableKeyPath<ViewState, BindableState<Value>>
-  ) -> Binding<Value> {
-    self.binding(
-      get: { $0[keyPath: keyPath].wrappedValue },
-      send: { .binding(.set(keyPath, $0)) }
-    )
-  }
-}
-
 // MARK: - Deprecated after 0.25.0:
 
 extension BindingAction {
@@ -988,18 +954,18 @@ extension BindingAction {
     *, deprecated,
     message:
       """
-      For improved safety, bindable properties must now be wrapped explicitly in 'BindableState', \
-      and accessed via key paths to that 'BindableState', like '\\.$value'
+      For improved safety, bindable properties must now be wrapped explicitly in 'BindingState', \
+      and accessed via key paths to that 'BindingState', like '\\.$value'
       """
   )
-  public static func set<Value: Equatable>(
+  public static func set<Value: Equatable & Sendable>(
     _ keyPath: WritableKeyPath<Root, Value>,
     _ value: Value
   ) -> Self {
     .init(
       keyPath: keyPath,
       set: { $0[keyPath: keyPath] = value },
-      value: value,
+      value: AnySendable(value),
       valueIsEqualTo: { $0 as? Value == value }
     )
   }
@@ -1008,8 +974,8 @@ extension BindingAction {
     *, deprecated,
     message:
       """
-      For improved safety, bindable properties must now be wrapped explicitly in 'BindableState', \
-      and accessed via key paths to that 'BindableState', like '\\.$value'
+      For improved safety, bindable properties must now be wrapped explicitly in 'BindingState', \
+      and accessed via key paths to that 'BindingState', like '\\.$value'
       """
   )
   public static func ~= <Value>(
@@ -1042,8 +1008,8 @@ extension ViewStore {
     *, deprecated,
     message:
       """
-      For improved safety, bindable properties must now be wrapped explicitly in 'BindableState'. \
-      Bindings are now derived via 'ViewStore.binding' with a key path to that 'BindableState' \
+      For improved safety, bindable properties must now be wrapped explicitly in 'BindingState'. \
+      Bindings are now derived via 'ViewStore.binding' with a key path to that 'BindingState' \
       (for example, 'viewStore.binding(\\.$value)'). For dynamic member lookup to be available, \
       the view store's 'Action' type must also conform to 'BindableAction'.
       """

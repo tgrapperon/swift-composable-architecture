@@ -1,7 +1,5 @@
 import SwiftUI
 
-public typealias BindingState = BindableState
-
 public protocol ObservableState<State> {
   associatedtype State
   init(state: State)
@@ -68,30 +66,7 @@ extension Store {
   }
 }
 
-struct BindingViewStore<State> {
-  let store: Store<State, BindingAction<State>>
-  #if DEBUG
-    let bindableActionType: Any.Type
-    let file: StaticString
-    let fileID: StaticString
-    let line: UInt
-  #endif
-
-  init<Action: BindableAction>(
-    store: Store<State, Action>,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) where Action.State == State {
-    self.store = store.scope(state: { $0 }, action: Action.binding)
-    #if DEBUG
-      self.bindableActionType = type(of: Action.self)
-      self.file = file
-      self.fileID = fileID
-      self.line = line
-    #endif
-  }
-
+extension BindingViewStore {
   init?<Action>(
     store: Store<State, Action>,
     file: StaticString = #file,
@@ -113,69 +88,6 @@ struct BindingViewStore<State> {
       self.fileID = fileID
       self.line = line
     #endif
-  }
-
-  var state: State {
-    self.store.state.value
-  }
-
-  public var projectedValue: Self {
-    get { self }
-    set { self = newValue }
-  }
-
-  func bindingViewState<Value: Equatable>(keyPath: WritableKeyPath<State, BindingState<Value>>)
-    -> BindingViewState<Value>
-  {
-    BindingViewState(
-      binding: ViewStore(self.store, removeDuplicates: { _, _ in false }).binding(
-        get: { $0[keyPath: keyPath].wrappedValue },
-        send: { value in
-          #if DEBUG
-            let debugger = BindableActionViewStoreDebugger(
-              value: value,
-              bindableActionType: self.bindableActionType,
-              context: .bindingStore,
-              file: self.file,
-              fileID: self.fileID,
-              line: self.line
-            )
-            let set: @Sendable (inout State) -> Void = {
-              $0[keyPath: keyPath].wrappedValue = value
-              debugger.wasCalled = true
-            }
-          #else
-            let set: @Sendable (inout State) -> Void = { $0[keyPath: keyPath].wrappedValue = value }
-          #endif
-          return .init(keyPath: keyPath, set: set, value: value)
-        }
-      )
-    )
-  }
-}
-
-public struct BindingViewState<Value> {
-  let binding: Binding<Value>
-
-  public var wrappedValue: Value {
-    get { self.binding.wrappedValue }
-    set { self.binding.wrappedValue = newValue }
-  }
-
-  public var projectedValue: Binding<Value> {
-    self.binding
-  }
-}
-
-extension BindingViewState: Equatable where Value: Equatable {
-  public static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.wrappedValue == rhs.wrappedValue
-  }
-}
-
-extension BindingViewState: Hashable where Value: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(self.wrappedValue)
   }
 }
 
@@ -225,7 +137,7 @@ public struct ObservedBindingValue<State, Value: Equatable> {
     if let bindingViewStore = WithTaskLocal.bindingViewStore as? BindingViewStore<State> {
       self.bindingViewState = bindingViewStore.bindingViewState(keyPath: keyPath)
     } else {
-      // Note: A BindableState requirement could prevent this property
+      // Note: A BindingState requirement could prevent this property
       // wrapper to be built in imcompatible contexts.
       fatalError("This property wrapper should only be used in `ViewState` of a \"Bindable\" state")
     }

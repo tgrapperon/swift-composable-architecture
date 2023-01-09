@@ -9,8 +9,8 @@ enum Filter: LocalizedStringKey, CaseIterable, Hashable {
 
 struct Todos: ReducerProtocol {
   struct State: Equatable {
-    var editMode: EditMode = .inactive
-    var filter: Filter = .all
+    @BindingState var editMode: EditMode = .inactive
+    @BindingState var filter: Filter = .all
     var todos: IdentifiedArrayOf<Todo.State> = []
 
     var filteredTodos: IdentifiedArrayOf<Todo.State> {
@@ -22,12 +22,11 @@ struct Todos: ReducerProtocol {
     }
   }
 
-  enum Action: Equatable {
+  enum Action: Equatable, BindableAction {
+    case binding(BindingAction<State>)
     case addTodoButtonTapped
     case clearCompletedButtonTapped
     case delete(IndexSet)
-    case editModeChanged(EditMode)
-    case filterPicked(Filter)
     case move(IndexSet, Int)
     case sortCompletedTodos
     case todo(id: Todo.State.ID, action: Todo.Action)
@@ -38,10 +37,14 @@ struct Todos: ReducerProtocol {
   private enum TodoCompletionID {}
 
   var body: some ReducerProtocol<State, Action> {
+    BindingReducer()
     Reduce { state, action in
       switch action {
       case .addTodoButtonTapped:
         state.todos.insert(Todo.State(id: self.uuid()), at: 0)
+        return .none
+
+      case .binding:
         return .none
 
       case .clearCompletedButtonTapped:
@@ -53,14 +56,6 @@ struct Todos: ReducerProtocol {
         for index in indexSet {
           state.todos.remove(id: filteredTodos[index].id)
         }
-        return .none
-
-      case let .editModeChanged(editMode):
-        state.editMode = editMode
-        return .none
-
-      case let .filterPicked(filter):
-        state.filter = filter
         return .none
 
       case var .move(source, destination):
@@ -111,20 +106,18 @@ struct AppView: View {
 
   init(store: StoreOf<Todos>) {
     self.store = store
-    self.viewStore = ViewStore(self.store.scope(state: ViewState.init(state:)))
+    // Bindings are not supported with `ViewStore(store.scope…)`
+    self.viewStore = ViewStore(self.store, observe: ViewState.init)
   }
 
   struct ViewState: Equatable, ObservableState {
-    let editMode: EditMode
-    let filter: Filter
-    
+    @Bind(\.$editMode) var editMode: EditMode
+    @Bind(\.$filter) var filter: Filter
+
     @Observe({ !$0.todos.contains(where: \.isComplete) })
     var isClearCompletedButtonDisabled: Bool
 
-    init(state: Todos.State) {
-      self.editMode = state.editMode
-      self.filter = state.filter
-    }
+    init(state: Todos.State) {}
   }
 
   var body: some View {
@@ -132,11 +125,7 @@ struct AppView: View {
       VStack(alignment: .leading) {
         Picker(
           "Filter",
-          selection: self.viewStore.binding(
-            get: \.filter,
-            send: Todos.Action.filterPicked
-          )
-          .animation()
+          selection: self.viewStore.$filter.animation()
         ) {
           ForEach(Filter.allCases, id: \.self) { filter in
             Text(filter.rawValue).tag(filter)
@@ -166,10 +155,7 @@ struct AppView: View {
           Button("Add Todo") { self.viewStore.send(.addTodoButtonTapped, animation: .default) }
         }
       )
-      .environment(
-        \.editMode,
-        self.viewStore.binding(get: \.editMode, send: Todos.Action.editModeChanged)
-      )
+      .environment(\.editMode, self.viewStore.$editMode)
     }
     .navigationViewStyle(.stack)
   }

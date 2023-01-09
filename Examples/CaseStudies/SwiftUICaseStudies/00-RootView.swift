@@ -10,7 +10,7 @@ struct RootView: View {
         Section(header: Text("Getting started")) {
           NavigationLink(
             "Basics",
-            destination: CounterView(
+            destination: CounterDemoView(
               store: self.store.scope(
                 state: \.counter,
                 action: Root.Action.counter

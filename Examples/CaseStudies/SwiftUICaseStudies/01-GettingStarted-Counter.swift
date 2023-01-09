@@ -35,7 +35,7 @@ struct Counter: ReducerProtocol {
 
 // MARK: - Feature view
 
-struct CounterView: View {
+struct CounterDemoView: View {
   let store: StoreOf<Counter>
 
   var body: some View {
@@ -62,10 +62,10 @@ struct CounterView: View {
 
 // MARK: - SwiftUI previews
 
-struct CounterView_Previews: PreviewProvider {
+struct CounterDemoView_Previews: PreviewProvider {
   static var previews: some View {
     NavigationView {
-      CounterView(
+      CounterDemoView(
         store: Store(
           initialState: Counter.State(),
           reducer: Counter()

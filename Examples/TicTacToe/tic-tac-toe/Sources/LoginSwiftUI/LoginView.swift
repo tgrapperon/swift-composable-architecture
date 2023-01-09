@@ -8,32 +8,22 @@ import TwoFactorSwiftUI
 public struct LoginView: View {
   let store: StoreOf<Login>
 
-  struct ViewState: Equatable {
+  struct ViewState: ObservableState, Equatable {
     var alert: AlertState<Login.Action>?
-    var email: String
+    @Bind(\.$email) var email: String
     var isActivityIndicatorVisible: Bool
     var isFormDisabled: Bool
     var isLoginButtonDisabled: Bool
-    var password: String
+    @Bind(\.$password) var password: String
     var isTwoFactorActive: Bool
 
     init(state: Login.State) {
       self.alert = state.alert
-      self.email = state.email
       self.isActivityIndicatorVisible = state.isLoginRequestInFlight
       self.isFormDisabled = state.isLoginRequestInFlight
       self.isLoginButtonDisabled = !state.isFormValid
-      self.password = state.password
       self.isTwoFactorActive = state.twoFactor != nil
     }
-  }
-
-  enum ViewAction {
-    case alertDismissed
-    case emailChanged(String)
-    case loginButtonTapped
-    case passwordChanged(String)
-    case twoFactorDismissed
   }
 
   public init(store: StoreOf<Login>) {
@@ -41,7 +31,7 @@ public struct LoginView: View {
   }
 
   public var body: some View {
-    WithViewStore(self.store, observe: ViewState.init, send: Login.Action.init) { viewStore in
+    WithViewStore(self.store, observe: ViewState.init) { viewStore in
       Form {
         Text(
           """
@@ -52,18 +42,12 @@ public struct LoginView: View {
         )
 
         Section {
-          TextField(
-            "blob@pointfree.co",
-            text: viewStore.binding(get: \.email, send: ViewAction.emailChanged)
-          )
-          .autocapitalization(.none)
-          .keyboardType(.emailAddress)
-          .textContentType(.emailAddress)
+          TextField("blob@pointfree.co", text: viewStore.$email)
+            .autocapitalization(.none)
+            .keyboardType(.emailAddress)
+            .textContentType(.emailAddress)
 
-          SecureField(
-            "••••••••",
-            text: viewStore.binding(get: \.password, send: ViewAction.passwordChanged)
-          )
+          SecureField("••••••••", text: viewStore.$password)
         }
 
         NavigationLink(
@@ -98,23 +82,6 @@ public struct LoginView: View {
       .alert(self.store.scope(state: \.alert), dismiss: .alertDismissed)
     }
     .navigationTitle("Login")
-  }
-}
-
-extension Login.Action {
-  init(action: LoginView.ViewAction) {
-    switch action {
-    case .alertDismissed:
-      self = .alertDismissed
-    case .twoFactorDismissed:
-      self = .twoFactorDismissed
-    case let .emailChanged(email):
-      self = .emailChanged(email)
-    case .loginButtonTapped:
-      self = .loginButtonTapped
-    case let .passwordChanged(password):
-      self = .passwordChanged(password)
-    }
   }
 }
 

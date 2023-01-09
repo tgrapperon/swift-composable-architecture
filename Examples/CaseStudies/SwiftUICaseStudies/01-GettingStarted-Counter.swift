@@ -60,31 +60,12 @@ struct CounterView: View {
   }
 }
 
-struct CounterDemoView {
-  let store: StoreOf<Counter>
-
-  var body: some View {
-    Form {
-      Section {
-        AboutView(readMe: readMe)
-      }
-
-      Section {
-        CounterView(store: self.store)
-          .frame(maxWidth: .infinity)
-      }
-    }
-    .buttonStyle(.borderless)
-    .navigationTitle("Counter demo")
-  }
-}
-
 // MARK: - SwiftUI previews
 
 struct CounterView_Previews: PreviewProvider {
   static var previews: some View {
     NavigationView {
-      CounterDemoView(
+      CounterView(
         store: Store(
           initialState: Counter.State(),
           reducer: Counter()

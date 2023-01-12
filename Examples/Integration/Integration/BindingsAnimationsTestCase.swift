@@ -16,7 +16,7 @@ final class VanillaModel: ObservableObject {
 let mediumAnimation = Animation.linear(duration: 0.75)
 let fastAnimation = Animation.linear(duration: 0.25)
 
-struct BindingsAnimationsTestBench: View {
+struct BindingsAnimationsTestCase: View {
   let viewStore: ViewStoreOf<BindingsAnimations>
   let vanillaModel = VanillaModel()
 
@@ -26,9 +26,6 @@ struct BindingsAnimationsTestBench: View {
 
   var body: some View {
     List {
-      Button("Reset") {
-        NotificationCenter.default.post(AnimationDurationModifier.resetNotification)
-      }
       Section {
         SideBySide {
           AnimatedWithObservation.ObservedObjectBinding()
@@ -63,6 +60,15 @@ struct BindingsAnimationsTestBench: View {
         Text("Animated from binding with observation.")
       } footer: {
         Text("Should animate with the \"medium\" animation.")
+      }
+    }
+    .toolbar {
+      ToolbarItem {
+        Button("Reset") {
+          NotificationCenter.default
+            .post(AnimationDurationModifier.resetNotification)
+        }
+        .accessibilityLabel("Reset")
       }
     }
     .headerProminence(.increased)
@@ -126,6 +132,7 @@ struct AnimatedWithObservation {
           .measureWidthChangeAnimation(label: "AnimatedWithObservation_OO")
           .animation(mediumAnimation, value: vanillaModel.flag)
         Toggle("", isOn: $vanillaModel.flag)
+          .accessibilityLabel("AnimatedWithObservation_OO_Toggle")
       }
     }
   }
@@ -138,6 +145,7 @@ struct AnimatedWithObservation {
           .measureWidthChangeAnimation(label: "AnimatedWithObservation_VS")
           .animation(mediumAnimation, value: viewStore.state)
         Toggle("", isOn: viewStore.binding(send: ()))
+          .accessibilityLabel("AnimatedWithObservation_VS_Toggle")
       }
     }
   }
@@ -151,6 +159,7 @@ struct AnimatedFromBinding {
         ContentView(flag: $vanillaModel.flag)
           .measureWidthChangeAnimation(label: "AnimatedFromBinding_OO")
         Toggle("", isOn: $vanillaModel.flag.animation(fastAnimation))
+          .accessibilityLabel("AnimatedFromBinding_OO_Toggle")
       }
     }
   }
@@ -162,6 +171,7 @@ struct AnimatedFromBinding {
         ContentView(flag: viewStore.binding(send: ()))
           .measureWidthChangeAnimation(label: "AnimatedFromBinding_VS")
         Toggle("", isOn: viewStore.binding(send: ()).animation(fastAnimation))
+          .accessibilityLabel("AnimatedFromBinding_VS_Toggle")
       }
     }
   }
@@ -176,6 +186,7 @@ struct AnimatedFromBindingWithObservation {
           .measureWidthChangeAnimation(label: "AnimatedFromBindingWithObservation_OO")
           .animation(mediumAnimation, value: vanillaModel.flag)
         Toggle("", isOn: $vanillaModel.flag.animation(fastAnimation))
+          .accessibilityLabel("AnimatedFromBindingWithObservation_OO_Toggle")
       }
     }
   }
@@ -188,6 +199,7 @@ struct AnimatedFromBindingWithObservation {
           .measureWidthChangeAnimation(label: "AnimatedFromBindingWithObservation_VS")
           .animation(mediumAnimation, value: viewStore.state)
         Toggle("", isOn: viewStore.binding(send: ()).animation(fastAnimation))
+          .accessibilityLabel("AnimatedFromBindingWithObservation_Vs_Toggle")
       }
     }
   }
@@ -378,13 +390,15 @@ struct MeasureView: UIViewRepresentable {
   }
 }
 
-struct BindingsAnimationsTestBench_Previews: PreviewProvider {
+struct BindingsAnimationsTestCase_Previews: PreviewProvider {
   static var previews: some View {
-    BindingsAnimationsTestBench(
-      store: .init(
-        initialState: false,
-        reducer: BindingsAnimations()
+    NavigationStack {
+      BindingsAnimationsTestCase(
+        store: .init(
+          initialState: false,
+          reducer: BindingsAnimations()
+        )
       )
-    )
+    }
   }
 }

@@ -92,7 +92,7 @@ final class BindingsAnimationsTests: XCTestCase {
     XCTAssertEqual(ob_vs, "?")
 
     collectionViewsQuery.switches["AnimatedFromBindingWithObservation_OO_Toggle"].tap()
-    collectionViewsQuery.switches["AnimatedFromBindingWithObservation_Vs_Toggle"].tap()
+    collectionViewsQuery.switches["AnimatedFromBindingWithObservation_VS_Toggle"].tap()
 
     Thread.sleep(forTimeInterval: 1)
 

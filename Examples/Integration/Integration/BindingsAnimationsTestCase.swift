@@ -129,7 +129,7 @@ struct AnimatedWithObservation {
     var body: some View {
       ZStack {
         ContentView(flag: $vanillaModel.flag)
-          .measureWidthChangeAnimation(label: "AnimatedWithObservation_OO")
+          .timeWidthChangeAnimation(label: "AnimatedWithObservation_OO")
           .animation(mediumAnimation, value: vanillaModel.flag)
         Toggle("", isOn: $vanillaModel.flag)
           .accessibilityLabel("AnimatedWithObservation_OO_Toggle")
@@ -142,7 +142,7 @@ struct AnimatedWithObservation {
     var body: some View {
       ZStack {
         ContentView(flag: viewStore.binding(send: ()))
-          .measureWidthChangeAnimation(label: "AnimatedWithObservation_VS")
+          .timeWidthChangeAnimation(label: "AnimatedWithObservation_VS")
           .animation(mediumAnimation, value: viewStore.state)
         Toggle("", isOn: viewStore.binding(send: ()))
           .accessibilityLabel("AnimatedWithObservation_VS_Toggle")
@@ -157,7 +157,7 @@ struct AnimatedFromBinding {
     var body: some View {
       ZStack {
         ContentView(flag: $vanillaModel.flag)
-          .measureWidthChangeAnimation(label: "AnimatedFromBinding_OO")
+          .timeWidthChangeAnimation(label: "AnimatedFromBinding_OO")
         Toggle("", isOn: $vanillaModel.flag.animation(fastAnimation))
           .accessibilityLabel("AnimatedFromBinding_OO_Toggle")
       }
@@ -169,7 +169,7 @@ struct AnimatedFromBinding {
     var body: some View {
       ZStack {
         ContentView(flag: viewStore.binding(send: ()))
-          .measureWidthChangeAnimation(label: "AnimatedFromBinding_VS")
+          .timeWidthChangeAnimation(label: "AnimatedFromBinding_VS")
         Toggle("", isOn: viewStore.binding(send: ()).animation(fastAnimation))
           .accessibilityLabel("AnimatedFromBinding_VS_Toggle")
       }
@@ -183,7 +183,7 @@ struct AnimatedFromBindingWithObservation {
     var body: some View {
       ZStack {
         ContentView(flag: $vanillaModel.flag)
-          .measureWidthChangeAnimation(label: "AnimatedFromBindingWithObservation_OO")
+          .timeWidthChangeAnimation(label: "AnimatedFromBindingWithObservation_OO")
           .animation(mediumAnimation, value: vanillaModel.flag)
         Toggle("", isOn: $vanillaModel.flag.animation(fastAnimation))
           .accessibilityLabel("AnimatedFromBindingWithObservation_OO_Toggle")
@@ -196,10 +196,10 @@ struct AnimatedFromBindingWithObservation {
     var body: some View {
       ZStack {
         ContentView(flag: viewStore.binding(send: ()))
-          .measureWidthChangeAnimation(label: "AnimatedFromBindingWithObservation_VS")
+          .timeWidthChangeAnimation(label: "AnimatedFromBindingWithObservation_VS")
           .animation(mediumAnimation, value: viewStore.state)
         Toggle("", isOn: viewStore.binding(send: ()).animation(fastAnimation))
-          .accessibilityLabel("AnimatedFromBindingWithObservation_Vs_Toggle")
+          .accessibilityLabel("AnimatedFromBindingWithObservation_VS_Toggle")
       }
     }
   }
@@ -314,7 +314,7 @@ func effectiveAnimationDuration(progresses: [AnimationProgress]) -> EffectiveAni
 
 // View Modifier
 extension View {
-  func measureWidthChangeAnimation(label: String) -> some View {
+  func timeWidthChangeAnimation(label: String) -> some View {
     self.modifier(AnimationDurationModifier(label: label))
   }
 }

@@ -1,4 +1,4 @@
-import ComposableArchitecture
+@_spi(Instruments) import ComposableArchitecture
 @preconcurrency import SwiftUI
 
 var appViewInitCount = 0
@@ -113,7 +113,7 @@ struct AppView: View {
   @ObservedObject var viewStore: ViewStore<ViewState, Todos.Action>
 
   init(store: StoreOf<Todos>) {
-    let _ = instrument(&appViewInitCount, label: "AppView.init")
+    Instrumentation.shared.log("\(Self.self)",subject: .view, event: .`init`)
     self.store = store
     self.viewStore = ViewStore(self.store.scope(state: ViewState.init(state:)))
   }
@@ -131,7 +131,7 @@ struct AppView: View {
   }
 
   var body: some View {
-    let _ = instrument(&appViewBodyCount, label: "AppView.body")
+    let _ = Instrumentation.shared.log("\(Self.self)",subject: .view, event: .body)
     NavigationView {
       VStack(alignment: .leading) {
         Picker(

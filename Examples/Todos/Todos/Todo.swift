@@ -1,4 +1,4 @@
-import ComposableArchitecture
+@_spi(Instruments) import ComposableArchitecture
 import SwiftUI
 
 var todoViewInitCount = 0
@@ -33,12 +33,12 @@ struct TodoView: View {
   let store: StoreOf<Todo>
 
   init(store: StoreOf<Todo>) {
-    let _ = instrument(&todoViewInitCount, label: "TodoView.init")
+    Instrumentation.shared.log("\(Self.self)", subject: .view, event: .`init`)
     self.store = store
   }
 
   var body: some View {
-    let _ = instrument(&todoViewBodyCount, label: "TodoView.body")
+    let _ = Instrumentation.shared.log("\(Self.self)", subject: .view, event: .body)
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       HStack {
         Button(action: { viewStore.send(.checkBoxToggled) }) {

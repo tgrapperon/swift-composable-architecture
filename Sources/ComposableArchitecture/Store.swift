@@ -1,14 +1,14 @@
 import Combine
 import Foundation
 
-var storeInitCount = 0
-var storeScopeCount = 0
-var viewStoreInitCount = 0
-var viewStoreObjectWillChangeCount = 0
-public func instrument(_ count: inout Int, label: String) {
-  count += 1
-  print("Instrumentation", label, count)
-}
+//var storeInitCount = 0
+//var storeScopeCount = 0
+//var viewStoreInitCount = 0
+//var viewStoreObjectWillChangeCount = 0
+//public func instrument(_ count: inout Int, label: String) {
+//  count += 1
+//  print("Instrumentation", label, count)
+//}
 
 /// A store represents the runtime that powers the application. It is the object that you will pass
 /// around to views that need to interact with the application.
@@ -305,8 +305,7 @@ public final class Store<State, Action> {
     action fromChildAction: @escaping (ChildAction) -> Action
   ) -> Store<ChildState, ChildAction> {
     self.threadCheck(status: .scope)
-
-    instrument(&storeScopeCount, label: "Store.scope")
+    Instrumentation.shared.log("<\(typeName(State.self)), \(typeName(Action.self))> -> Store<\(typeName(ChildState.self)), \(typeName(ChildAction.self))>", subject: .store, event: .scope)
 
     #if swift(>=5.7)
       return self.reducer.rescope(self, state: toChildState, action: fromChildAction)
@@ -540,7 +539,7 @@ public final class Store<State, Action> {
     reducer: R,
     mainThreadChecksEnabled: Bool
   ) where R.State == State, R.Action == Action {
-    instrument(&storeInitCount, label: "Store.init")
+    Instrumentation.shared.log("<\(typeName(State.self)), \(typeName(Action.self))>", subject: .store, event: .`init`)
     self.state = CurrentValueSubject(initialState)
     #if swift(>=5.7)
       self.reducer = reducer

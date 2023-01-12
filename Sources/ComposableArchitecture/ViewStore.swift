@@ -114,7 +114,7 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
     send fromViewAction: @escaping (ViewAction) -> Action,
     removeDuplicates isDuplicate: @escaping (ViewState, ViewState) -> Bool
   ) {
-    instrument(&viewStoreInitCount, label: "ViewStore.init")
+    Instrumentation.shared.log("<\(typeName(ViewState.self)), \(typeName(ViewAction.self))>", subject: .viewstore, event: .`init`)
 
     self._send = { store.send(fromViewAction($0)) }
     self._state = CurrentValueRelay(toViewState(store.state.value))
@@ -123,7 +123,7 @@ public final class ViewStore<ViewState, ViewAction>: ObservableObject {
       .removeDuplicates(by: isDuplicate)
       .sink { [weak objectWillChange = self.objectWillChange, weak _state = self._state] in
         guard let objectWillChange = objectWillChange, let _state = _state else { return }
-        instrument(&viewStoreObjectWillChangeCount, label: "ViewStore.objectWillChange")
+        Instrumentation.shared.log("<\(typeName(ViewState.self)), \(typeName(ViewAction.self))>", subject: .viewstore, event: .objectWillChange)
         objectWillChange.send()
         _state.value = $0
       }

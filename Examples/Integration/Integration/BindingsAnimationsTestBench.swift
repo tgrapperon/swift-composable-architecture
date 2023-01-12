@@ -107,10 +107,17 @@ struct ContentView: View {
         .fill(.red.opacity(0.25))
       Circle()
         .strokeBorder(.red.opacity(0.5), lineWidth: 2)
+      //      MeasureView()
+//      MeasureView { width, instant in
+//        print(width, instant)
+//      }
     }
     .frame(width: flag ? 100 : 75)
+
   }
 }
+
+
 
 struct AnimatedWithObservation {
   struct ObservedObjectBinding: View {

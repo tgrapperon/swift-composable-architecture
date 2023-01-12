@@ -192,7 +192,7 @@ func processEvents(_ events: OrderedDictionary<Instrumentation.Event.Tag, [Instr
       }) {
         rows[index].count += 1
       } else if let lifecycleEvent = event.lifecycleEvent {
-        rows.append(.init(label: event.tag.label, subject: event.tag.subject, lifecycleEvent: lifecycleEvent, count: 0))
+        rows.append(.init(label: event.tag.label, subject: event.tag.subject, lifecycleEvent: lifecycleEvent, count: 1))
       }
     }
   }

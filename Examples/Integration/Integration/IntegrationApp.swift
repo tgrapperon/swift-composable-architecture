@@ -46,10 +46,6 @@ struct IntegrationApp: App {
               )
             )
           }
-          
-          NavigationLink("BindingsAnimationsTestCase") {
-            BindingAnimationTestCase()
-          }
         }
       }
     }

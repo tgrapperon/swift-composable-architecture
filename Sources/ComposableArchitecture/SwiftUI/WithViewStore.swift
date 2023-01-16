@@ -110,14 +110,20 @@ import SwiftUI
 /// }
 /// ```
 public struct WithViewStore<ViewState, ViewAction, Content> {
+  final class LazyViewStore {
+    let initialValue: () -> ViewStore<ViewState, ViewAction>
+    lazy var viewStore = initialValue()
+    init(initialValue: @escaping @autoclosure () -> ViewStore<ViewState, ViewAction>) {
+      self.initialValue = initialValue
+    }
+  }
   private let content: (ViewStore<ViewState, ViewAction>) -> Content
   #if DEBUG
     private let file: StaticString
     private let line: UInt
     private var prefix: String?
-    private var previousState: (ViewState) -> ViewState?
   #endif
-  @ObservedObject private var viewStore: ViewStore<ViewState, ViewAction>
+  @SwiftUI.State private var lazyViewStore: LazyViewStore
 
   init(
     store: Store<ViewState, ViewAction>,
@@ -130,13 +136,8 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
     #if DEBUG
       self.file = file
       self.line = line
-      var previousState: ViewState? = nil
-      self.previousState = { currentState in
-        defer { previousState = currentState }
-        return previousState
-      }
     #endif
-    self.viewStore = ViewStore(store, removeDuplicates: isDuplicate)
+    self.lazyViewStore = .init(initialValue: ViewStore(store, removeDuplicates: isDuplicate))
   }
 
   /// Prints debug information to the console whenever the view is computed.
@@ -151,7 +152,57 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
     return view
   }
 
-  public var body: Content {
+  public var body: ObservedContent {
+    #if DEBUG
+      ObservedContent(
+        viewStore: lazyViewStore.viewStore,
+        content: content,
+        prefix: prefix,
+        file: file,
+        line: line
+      )
+    #else
+      ObservedContent(
+        viewStore: lazyViewStore.viewStore,
+        content: content
+      )
+    #endif
+  }
+
+  public struct ObservedContent {
+    @ObservedObject var viewStore: ViewStore<ViewState, ViewAction>
+    let content: (ViewStore<ViewState, ViewAction>) -> Content
+    #if DEBUG
+      let file: StaticString
+      let line: UInt
+      var prefix: String?
+      var previousState: (ViewState) -> ViewState?
+    #endif
+    init(
+      viewStore: ViewStore<ViewState, ViewAction>,
+      content: @escaping (ViewStore<ViewState, ViewAction>) -> Content,
+      prefix: String?,
+      file: StaticString,
+      line: UInt
+    ) {
+      self.viewStore = viewStore
+      self.content = content
+      #if DEBUG
+        self.prefix = prefix
+        var previousState: ViewState? = nil
+        self.previousState = { currentState in
+          defer { previousState = currentState }
+          return previousState
+        }
+        self.file = file
+        self.line = line
+      #endif
+    }
+  }
+}
+
+extension WithViewStore.ObservedContent: View where Content: View {
+  public var body: some View {
     #if DEBUG
       if let prefix = self.prefix {
         var stateDump = ""
@@ -727,6 +778,6 @@ where
   public typealias Data = ViewState
 
   public var data: ViewState {
-    self.viewStore.state
+    self.lazyViewStore.viewStore.state
   }
 }

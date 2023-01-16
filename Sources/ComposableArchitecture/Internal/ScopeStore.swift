@@ -1,15 +1,16 @@
 import SwiftUI
 
-public struct _ScopeStore<ParentState, ParentAction, ChildState, ChildAction, Content: View>: View {
-  final class LazyScopedStore {
-    let initialValue: () -> Store<ChildState, ChildAction>
-    lazy var store = initialValue()
-    init(initialValue: @escaping @autoclosure () -> Store<ChildState, ChildAction>) {
-      self.initialValue = initialValue
-    }
+final class _Lazy<Value> {
+  let initialValue: () -> Value
+  lazy var wrappedValue = initialValue()
+  init(initialValue: @escaping @autoclosure () -> Value) {
+    self.initialValue = initialValue
   }
+}
+
+public struct _ScopeStore<ParentState, ParentAction, ChildState, ChildAction, Content: View>: View {
   //  let scopedStore: Store<ChildState, ChildAction>
-  @State var scopedStore: LazyScopedStore
+  @State var scopedStore: _Lazy<Store<ChildState, ChildAction>>
   let content: (Store<ChildState, ChildAction>) -> Content
 
   init(
@@ -24,6 +25,6 @@ public struct _ScopeStore<ParentState, ParentAction, ChildState, ChildAction, Co
   }
 
   public var body: some View {
-    self.content(self.scopedStore.store)
+    self.content(self.scopedStore.wrappedValue)
   }
 }

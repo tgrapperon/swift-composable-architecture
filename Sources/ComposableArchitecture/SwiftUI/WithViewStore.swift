@@ -110,20 +110,13 @@ import SwiftUI
 /// }
 /// ```
 public struct WithViewStore<ViewState, ViewAction, Content> {
-  final class LazyViewStore {
-    let initialValue: () -> ViewStore<ViewState, ViewAction>
-    lazy var viewStore = initialValue()
-    init(initialValue: @escaping @autoclosure () -> ViewStore<ViewState, ViewAction>) {
-      self.initialValue = initialValue
-    }
-  }
   private let content: (ViewStore<ViewState, ViewAction>) -> Content
   #if DEBUG
     private let file: StaticString
     private let line: UInt
     private var prefix: String?
   #endif
-  @SwiftUI.State private var lazyViewStore: LazyViewStore
+  @SwiftUI.State private var viewStore: _Lazy<ViewStore<ViewState, ViewAction>>
 
   init(
     store: Store<ViewState, ViewAction>,
@@ -137,7 +130,7 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
       self.file = file
       self.line = line
     #endif
-    self.lazyViewStore = .init(initialValue: ViewStore(store, removeDuplicates: isDuplicate))
+    self.viewStore = .init(initialValue: ViewStore(store, removeDuplicates: isDuplicate))
   }
 
   /// Prints debug information to the console whenever the view is computed.
@@ -155,7 +148,7 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
   public var body: ObservedContent {
     #if DEBUG
       ObservedContent(
-        viewStore: lazyViewStore.viewStore,
+        viewStore: viewStore.wrappedValue,
         content: content,
         prefix: prefix,
         file: file,
@@ -163,7 +156,7 @@ public struct WithViewStore<ViewState, ViewAction, Content> {
       )
     #else
       ObservedContent(
-        viewStore: lazyViewStore.viewStore,
+        viewStore: viewStore.viewStore,
         content: content
       )
     #endif
@@ -778,6 +771,6 @@ where
   public typealias Data = ViewState
 
   public var data: ViewState {
-    self.lazyViewStore.viewStore.state
+    self.viewStore.wrappedValue.state
   }
 }

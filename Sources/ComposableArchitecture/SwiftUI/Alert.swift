@@ -10,16 +10,16 @@ extension View {
   ///     as when an alert is automatically dismissed by the system. Use this action to `nil` out
   ///     the associated alert state.
   @ViewBuilder public func alert<Action>(
-    _ store: Store<AlertState<Action>?, Action>,
+    _ store: @escaping @autoclosure () -> Store<AlertState<Action>?, Action>,
     dismiss: Action
   ) -> some View {
     if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
       self.modifier(
-        NewAlertModifier(store: store, dismiss: dismiss)
+        NewAlertModifier(store: .init(initialValue: store()), dismiss: dismiss)
       )
     } else {
       self.modifier(
-        OldAlertModifier(store: store, dismiss: dismiss))
+        OldAlertModifier(store: .init(initialValue: store()), dismiss: dismiss))
     }
   }
 }
@@ -27,11 +27,11 @@ extension View {
 // NB: Workaround for iOS 14 runtime crashes during iOS 15 availability checks.
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 private struct NewAlertModifier<Action>: ViewModifier {
-  let store: Store<AlertState<Action>?, Action>
+  @State var store: _Lazy<Store<AlertState<Action>?, Action>>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+    WithViewStore(store.wrappedValue, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
       content.alert(
         (viewStore.state?.title).map { Text($0) } ?? Text(""),
         isPresented: viewStore.binding(send: dismiss).isPresent(),
@@ -48,11 +48,11 @@ private struct NewAlertModifier<Action>: ViewModifier {
 }
 
 private struct OldAlertModifier<Action>: ViewModifier {
-  let store: Store<AlertState<Action>?, Action>
+  @State var store: _Lazy<Store<AlertState<Action>?, Action>>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+    WithViewStore(store.wrappedValue, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
       content.alert(item: viewStore.binding(send: dismiss)) { state in
         Alert(state) { viewStore.send($0) }
       }

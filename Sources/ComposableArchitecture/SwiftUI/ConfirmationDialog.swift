@@ -14,14 +14,16 @@ extension View {
   @available(tvOS 13, *)
   @available(watchOS 6, *)
   @ViewBuilder public func confirmationDialog<Action>(
-    _ store: Store<ConfirmationDialogState<Action>?, Action>,
+    _ store: @escaping @autoclosure () -> Store<ConfirmationDialogState<Action>?, Action>,
     dismiss: Action
   ) -> some View {
     if #available(iOS 15, tvOS 15, watchOS 8, *) {
-      self.modifier(NewConfirmationDialogModifier(store: store, dismiss: dismiss))
+      self.modifier(
+        NewConfirmationDialogModifier(store: .init(initialValue: store()), dismiss: dismiss))
     } else {
       #if !os(macOS)
-        self.modifier(OldConfirmationDialogModifier(store: store, dismiss: dismiss))
+        self.modifier(
+          OldConfirmationDialogModifier(store: .init(initialValue: store()), dismiss: dismiss))
       #endif
     }
   }
@@ -30,11 +32,12 @@ extension View {
 // NB: Workaround for iOS 14 runtime crashes during iOS 15 availability checks.
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 private struct NewConfirmationDialogModifier<Action>: ViewModifier {
-  let store: Store<ConfirmationDialogState<Action>?, Action>
+  @State var store: _Lazy<Store<ConfirmationDialogState<Action>?, Action>>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+    WithViewStore(store.wrappedValue, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) {
+      viewStore in
       content.confirmationDialog(
         (viewStore.state?.title).map { Text($0) } ?? Text(""),
         isPresented: viewStore.binding(send: dismiss).isPresent(),
@@ -56,11 +59,12 @@ private struct NewConfirmationDialogModifier<Action>: ViewModifier {
 @available(tvOS 13, *)
 @available(watchOS 6, *)
 private struct OldConfirmationDialogModifier<Action>: ViewModifier {
-  let store: Store<ConfirmationDialogState<Action>?, Action>
+  @State var store: _Lazy<Store<ConfirmationDialogState<Action>?, Action>>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+    WithViewStore(store.wrappedValue, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) {
+      viewStore in
       #if !os(macOS)
         return content.actionSheet(item: viewStore.binding(send: dismiss)) {
           ActionSheet($0) { viewStore.send($0) }

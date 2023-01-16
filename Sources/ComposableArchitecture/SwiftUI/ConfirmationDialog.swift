@@ -18,20 +18,10 @@ extension View {
     dismiss: Action
   ) -> some View {
     if #available(iOS 15, tvOS 15, watchOS 8, *) {
-      self.modifier(
-        NewConfirmationDialogModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
-          dismiss: dismiss
-        )
-      )
+      self.modifier(NewConfirmationDialogModifier(store: store, dismiss: dismiss))
     } else {
       #if !os(macOS)
-        self.modifier(
-          OldConfirmationDialogModifier(
-            viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
-            dismiss: dismiss
-          )
-        )
+        self.modifier(OldConfirmationDialogModifier(store: store, dismiss: dismiss))
       #endif
     }
   }
@@ -40,22 +30,24 @@ extension View {
 // NB: Workaround for iOS 14 runtime crashes during iOS 15 availability checks.
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 private struct NewConfirmationDialogModifier<Action>: ViewModifier {
-  @ObservedObject var viewStore: ViewStore<ConfirmationDialogState<Action>?, Action>
+  let store: Store<ConfirmationDialogState<Action>?, Action>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    content.confirmationDialog(
-      (viewStore.state?.title).map { Text($0) } ?? Text(""),
-      isPresented: viewStore.binding(send: dismiss).isPresent(),
-      titleVisibility: viewStore.state.map { .init($0.titleVisibility) } ?? .automatic,
-      presenting: viewStore.state,
-      actions: {
-        ForEach($0.buttons) {
-          Button($0, action: { viewStore.send($0) })
-        }
-      },
-      message: { $0.message.map { Text($0) } }
-    )
+    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+      content.confirmationDialog(
+        (viewStore.state?.title).map { Text($0) } ?? Text(""),
+        isPresented: viewStore.binding(send: dismiss).isPresent(),
+        titleVisibility: viewStore.state.map { .init($0.titleVisibility) } ?? .automatic,
+        presenting: viewStore.state,
+        actions: {
+          ForEach($0.buttons) {
+            Button($0, action: { viewStore.send($0) })
+          }
+        },
+        message: { $0.message.map { Text($0) } }
+      )
+    }
   }
 }
 
@@ -64,16 +56,18 @@ private struct NewConfirmationDialogModifier<Action>: ViewModifier {
 @available(tvOS 13, *)
 @available(watchOS 6, *)
 private struct OldConfirmationDialogModifier<Action>: ViewModifier {
-  @ObservedObject var viewStore: ViewStore<ConfirmationDialogState<Action>?, Action>
+  let store: Store<ConfirmationDialogState<Action>?, Action>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    #if !os(macOS)
-      return content.actionSheet(item: viewStore.binding(send: dismiss)) {
-        ActionSheet($0) { viewStore.send($0) }
-      }
-    #else
-      return EmptyView()
-    #endif
+    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+      #if !os(macOS)
+        return content.actionSheet(item: viewStore.binding(send: dismiss)) {
+          ActionSheet($0) { viewStore.send($0) }
+        }
+      #else
+        return EmptyView()
+      #endif
+    }
   }
 }

@@ -15,18 +15,11 @@ extension View {
   ) -> some View {
     if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
       self.modifier(
-        NewAlertModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
-          dismiss: dismiss
-        )
+        NewAlertModifier(store: store, dismiss: dismiss)
       )
     } else {
       self.modifier(
-        OldAlertModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
-          dismiss: dismiss
-        )
-      )
+        OldAlertModifier(store: store, dismiss: dismiss))
     }
   }
 }
@@ -34,31 +27,35 @@ extension View {
 // NB: Workaround for iOS 14 runtime crashes during iOS 15 availability checks.
 @available(iOS 15, macOS 12, tvOS 15, watchOS 8, *)
 private struct NewAlertModifier<Action>: ViewModifier {
-  @ObservedObject var viewStore: ViewStore<AlertState<Action>?, Action>
+  let store: Store<AlertState<Action>?, Action>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    content.alert(
-      (viewStore.state?.title).map { Text($0) } ?? Text(""),
-      isPresented: viewStore.binding(send: dismiss).isPresent(),
-      presenting: viewStore.state,
-      actions: {
-        ForEach($0.buttons) {
-          Button($0) { viewStore.send($0) }
-        }
-      },
-      message: { $0.message.map { Text($0) } }
-    )
+    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+      content.alert(
+        (viewStore.state?.title).map { Text($0) } ?? Text(""),
+        isPresented: viewStore.binding(send: dismiss).isPresent(),
+        presenting: viewStore.state,
+        actions: {
+          ForEach($0.buttons) {
+            Button($0) { viewStore.send($0) }
+          }
+        },
+        message: { $0.message.map { Text($0) } }
+      )
+    }
   }
 }
 
 private struct OldAlertModifier<Action>: ViewModifier {
-  @ObservedObject var viewStore: ViewStore<AlertState<Action>?, Action>
+  let store: Store<AlertState<Action>?, Action>
   let dismiss: Action
 
   func body(content: Content) -> some View {
-    content.alert(item: viewStore.binding(send: dismiss)) { state in
-      Alert(state) { viewStore.send($0) }
+    WithViewStore(store, observe: { $0 }, removeDuplicates: { $0?.id == $1?.id }) { viewStore in
+      content.alert(item: viewStore.binding(send: dismiss)) { state in
+        Alert(state) { viewStore.send($0) }
+      }
     }
   }
 }

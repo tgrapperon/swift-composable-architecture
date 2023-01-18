@@ -15,5 +15,6 @@ final class ForEachBindingTests: XCTestCase {
     app.buttons["Remove last"].tap()
 
     XCTAssertFalse(app.textFields["C"].exists)
+    XCTAssertFalse(app.staticTexts["TestFailure"].exists)
   }
 }

@@ -27,16 +27,27 @@ struct ForEachBindingTestCase: ReducerProtocol {
 
 struct ForEachBindingTestCaseView: View {
   let store: StoreOf<ForEachBindingTestCase>
-
+  @State var didFail: Bool = false
   var body: some View {
     WithViewStore(self.store, observe: { $0 }) { viewStore in
       VStack {  // ⚠️ Must use VStack, not List.
+        if didFail {
+          Text("Fatal error: Index out of range")
+            .accessibility(label: Text("TestFailure"))
+        }
         ForEach(Array(viewStore.values.enumerated()), id: \.offset) { offset, value in
           HStack {  // ⚠️ Must wrap in an HStack.
             TextField(  // ⚠️ Must use a TextField.
               "\(value)",
               text: viewStore.binding(
-                get: { $0.values[offset] },
+                get: {
+                  if !$0.values.indices.contains(offset) {
+                    XCTFail("Failing with: `Fatal error: Index out of range`")
+                    DispatchQueue.main.async { didFail = true }
+                    return ""
+                  }
+                  return $0.values[offset]
+                },
                 send: { .change(offset: offset, value: $0) }
               )
             )

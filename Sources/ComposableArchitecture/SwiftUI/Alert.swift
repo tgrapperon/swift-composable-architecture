@@ -16,7 +16,7 @@ extension View {
     if #available(iOS 15, macOS 12, tvOS 15, watchOS 8, *) {
       self.modifier(
         NewAlertModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
+          store: store,
           dismiss: dismiss
         )
       )
@@ -36,6 +36,11 @@ extension View {
 private struct NewAlertModifier<Action>: ViewModifier {
   @StateObject var viewStore: ViewStore<AlertState<Action>?, Action>
   let dismiss: Action
+  
+  init(store: Store<AlertState<Action>?, Action>, dismiss: Action) {
+    self._viewStore = .init(wrappedValue: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }))
+    self.dismiss = dismiss
+  }
 
   func body(content: Content) -> some View {
     content.alert(

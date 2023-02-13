@@ -20,7 +20,7 @@ extension View {
     if #available(iOS 15, tvOS 15, watchOS 8, *) {
       self.modifier(
         NewConfirmationDialogModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
+          store: store,
           dismiss: dismiss
         )
       )
@@ -42,6 +42,11 @@ extension View {
 private struct NewConfirmationDialogModifier<Action>: ViewModifier {
   @StateObject var viewStore: ViewStore<ConfirmationDialogState<Action>?, Action>
   let dismiss: Action
+  
+  init(store: Store<ConfirmationDialogState<Action>?, Action>, dismiss: Action) {
+    self._viewStore = .init(wrappedValue: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }))
+    self.dismiss = dismiss
+  }
 
   func body(content: Content) -> some View {
     content.confirmationDialog(

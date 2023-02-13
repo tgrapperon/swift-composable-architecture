@@ -18,9 +18,10 @@ extension View {
     dismiss: Action
   ) -> some View {
     if #available(iOS 15, tvOS 15, watchOS 8, *) {
+      let viewStore = ViewStore(store, removeDuplicates: { $0?.id == $1?.id })
       self.modifier(
         NewConfirmationDialogModifier(
-          viewStore: ViewStore(store, removeDuplicates: { $0?.id == $1?.id }),
+          viewStore: viewStore,
           dismiss: dismiss
         )
       )

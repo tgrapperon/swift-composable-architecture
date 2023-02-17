@@ -76,6 +76,22 @@ extension EffectPublisher {
   /// > }
   /// > ```
   ///
+  /// - Note: The `values` async sequence only requests one element to the publisher. In a few
+  /// cases, like the NSObject's Key-Value Observation publisher `.publisher(for: options:)` for
+  /// example, the sequence will only generate one element, and you may want to override the request
+  /// to `.unlimited` to receive all the events you were receiving when using Combine. You can use
+  /// the `handleEvents` method for this purpose:
+  ///
+  /// ```swift
+  /// return .run { send in
+  ///   for await value in publisher.handleEvents(
+  ///     receiveSubscription: { $0.request(.unlimited) }
+  ///   ).values {
+  ///     send(.response(value))
+  ///   }
+  /// }
+  /// ```
+  ///
   /// - Parameter publisher: A publisher.
   @available(
     iOS, deprecated: 9999.0,

@@ -115,7 +115,7 @@ public enum PresentationAction<State, Action> {
   public static var present: Self { .present() }
 }
 
-public func ~= <State, Action, ID: Hashable> (
+public func ~= <State, Action, ID: Hashable>(
   lhs: ID, rhs: PresentationAction<State, Action>
 ) -> Bool {
   guard case .present(AnyHashable(lhs), _) = rhs else { return false }
@@ -133,14 +133,17 @@ extension PresentationAction: Hashable where State: Hashable, Action: Hashable {
 
 extension ReducerProtocol {
   @inlinable
-  public func presentationDestination<Destination: ReducerProtocol>(
-    _ toPresentedState: WritableKeyPath<State, PresentationStateOf<Destination>>,
-    action toPresentedAction: CasePath<Action, PresentationActionOf<Destination>>,
-    @ReducerBuilderOf<Destination> destination: () -> Destination,
+  public func presentationDestination<DestinationState, DestinationAction, Destination: ReducerProtocol>(
+    _ toPresentedState: WritableKeyPath<State, PresentationState<DestinationState>>,
+    action toPresentedAction: CasePath<
+      Action, PresentationAction<DestinationState, DestinationAction>
+    >,
+    @ReducerBuilder<DestinationState, DestinationAction> destination: () -> Destination,
     file: StaticString = #file,
     fileID: StaticString = #fileID,
     line: UInt = #line
-  ) -> _PresentationDestinationReducer<Self, Destination> {
+  ) -> _PresentationDestinationReducer<Self, Destination>
+  where DestinationState == Destination.State, DestinationAction == Destination.Action {
     _PresentationDestinationReducer(
       presenter: self,
       presented: destination(),
@@ -287,9 +290,8 @@ public struct _PresentationDestinationReducer<
       effects.append(.cancel(id: id))
     }
 
-    let updatedPresentedState = state[keyPath: self.toPresentedState] // TODO: write tests
-    if
-      let id = updatedPresentedState.id,
+    let updatedPresentedState = state[keyPath: self.toPresentedState]  // TODO: write tests
+    if let id = updatedPresentedState.id,
       id != currentPresentedState.id,
       // NB: Don't start lifecycle effect for alerts
       //     TODO: handle confirmation dialogs too
@@ -505,7 +507,7 @@ public struct PresentedView<
   let destination: (Store<DestinationState, DestinationAction>) -> Destination
   let dismissed: Dismissed
 
-  public init( 
+  public init(
     _ store: Store<PresentationState<State>, PresentationAction<State, Action>>,
     state toDestinationState: @escaping (State) -> DestinationState?,
     action fromDestinationAction: @escaping (DestinationAction) -> Action,

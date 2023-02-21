@@ -130,6 +130,53 @@ final class DependencyKeyWritingReducerTests: XCTestCase {
     }
     await store.receive(.otherResponse(42))
   }
+  
+  func testStoreWithDependencies() {
+    let storeWithDependencies = withDependencies {
+      $0.myValue = 42
+    } operation: {
+      Store(initialState: Feature.State(), reducer: ParentFeature())
+    }
+    let storeWithPreparedDependencies = Store(initialState: Feature.State(), reducer: ParentFeature()) {
+      $0.myValue = 42
+    }
+    
+    let vswd = ViewStore(storeWithDependencies)
+    let vspd = ViewStore(storeWithPreparedDependencies)
+    vswd.send(.tap)
+    vspd.send(.tap)
+    
+    XCTAssertEqual(vswd.value, 42)
+    XCTAssertEqual(vspd.value, 42)
+  }
+  
+  func testTestStoreWithDependencies() {
+    let testStoreWithDependencies = withDependencies {
+      $0.myValue = 42
+    } operation: {
+      TestStore(initialState: Feature.State(), reducer: ParentFeature())
+    }
+    let testStoreWithPreparedDependencies = TestStore(initialState: Feature.State(), reducer: ParentFeature()) {
+      $0.myValue = 42
+    }
+    
+    testStoreWithDependencies.send(.tap) {
+      $0.value = 42
+    }
+    
+    testStoreWithPreparedDependencies.send(.tap) {
+      $0.value = 42
+    }
+  }
+}
+
+private struct ParentFeature: ReducerProtocol {
+  typealias State = Feature.State
+  typealias Action = Feature.Action
+  
+  var body: some ReducerProtocol<State, Action> {
+    Feature()
+  }
 }
 
 private struct Feature: ReducerProtocol {

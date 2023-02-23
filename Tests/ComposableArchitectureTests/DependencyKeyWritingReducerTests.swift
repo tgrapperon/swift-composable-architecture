@@ -130,6 +130,73 @@ final class DependencyKeyWritingReducerTests: XCTestCase {
     }
     await store.receive(.otherResponse(42))
   }
+
+  func testStoreWithDependencies() {
+    let storeWithDependencies = withDependencies {
+      $0.myValue = 42
+    } operation: {
+      Store(initialState: .init(), reducer: ParentFeature())
+    }
+    let storePrepareDependencies = Store(initialState: .init(), reducer: ParentFeature()) {
+      $0.myValue = 42
+    }
+
+    let viewStoreWithDependencies = ViewStore(storeWithDependencies)
+    let viewStorePrepareDependencies = ViewStore(storePrepareDependencies)
+    
+    viewStoreWithDependencies.send(.tap)
+    viewStorePrepareDependencies.send(.tap)
+
+    XCTAssertEqual(viewStoreWithDependencies.initialStateFromDependency, 42)
+    XCTAssertEqual(viewStorePrepareDependencies.initialStateFromDependency, 42)
+    
+    XCTAssertEqual(viewStoreWithDependencies.feature.value, 42)
+    XCTAssertEqual(viewStorePrepareDependencies.feature.value, 42)
+  }
+
+  func testTestStoreWithDependencies() {
+    let testStoreWithDependencies = withDependencies {
+      $0.myValue = 42
+    } operation: {
+      TestStore(initialState: .init(), reducer: ParentFeature())
+    }
+    let testStorePrepareDependencies = TestStore(
+      initialState: .init(), reducer: ParentFeature()
+    ) {
+      $0.myValue = 42
+    }
+    
+    XCTAssertEqual(testStoreWithDependencies.state.initialStateFromDependency, 42)
+    XCTAssertEqual(testStorePrepareDependencies.state.initialStateFromDependency, 42)
+
+    testStoreWithDependencies.send(.tap) {
+      $0.feature.value = 42
+    }
+
+    testStorePrepareDependencies.send(.tap) {
+      $0.feature.value = 42
+    }
+  }
+}
+
+private struct ParentFeature: ReducerProtocol {
+  struct State: Equatable {
+    var initialStateFromDependency: Int
+    var feature: Feature.State
+
+    init() {
+      @Dependency(\.myValue) var myValue: Int
+      self.initialStateFromDependency = myValue
+      self.feature = .init()
+    }
+  }
+  typealias Action = Feature.Action
+
+  var body: some ReducerProtocol<State, Action> {
+    Scope(state: \.feature, action: /.self) {
+      Feature()
+    }
+  }
 }
 
 private struct Feature: ReducerProtocol {

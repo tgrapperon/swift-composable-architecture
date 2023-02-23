@@ -1,4 +1,5 @@
 import Combine
+@_spi(Internals) import Dependencies
 import Foundation
 
 /// A store represents the runtime that powers the application. It is the object that you will pass
@@ -146,10 +147,20 @@ public final class Store<State, Action> {
     reducer: R,
     prepareDependencies: ((inout DependencyValues) -> Void)? = nil
   ) where R.State == State, R.Action == Action {
+    @Dependency(\.self) var dependencies: DependencyValues
     if let prepareDependencies = prepareDependencies {
       self.init(
         initialState: withDependencies(prepareDependencies) { initialState() },
-        reducer: reducer.transformDependency(\.self, transform: prepareDependencies),
+        reducer:
+          reducer
+          .transformDependency(\.self, transform: prepareDependencies)
+          .dependency(\.self, dependencies),
+        mainThreadChecksEnabled: true
+      )
+    } else if !dependencies.isEmpty {
+      self.init(
+        initialState: initialState(),
+        reducer: reducer.dependency(\.self, dependencies),
         mainThreadChecksEnabled: true
       )
     } else {

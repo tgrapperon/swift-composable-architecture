@@ -55,8 +55,8 @@ final class SerialPrinter {
   static let shared = SerialPrinter()
   var task: Task<Void, Never>?
   init() {
-    self.task = Task {
-      for await printOperation in self.streamAndContinuation.stream {
+    self.task = Task { [stream = self.streamAndContinuation.stream] in
+      for await printOperation in stream {
         await printOperation()
       }
     }

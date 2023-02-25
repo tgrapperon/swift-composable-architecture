@@ -135,6 +135,9 @@ public final class Store<State, Action> {
   #if DEBUG
     private let mainThreadChecksEnabled: Bool
   #endif
+  #if DEBUG
+    private let stateComparator = StateComparator()
+  #endif
 
   /// Initializes a store from an initial state and a reducer.
   ///
@@ -371,9 +374,9 @@ public final class Store<State, Action> {
       defer { index += 1 }
       let action = self.bufferedActions[index]
       #if DEBUG
-      let stateBeforeReduction = currentState
+        let previousState = currentState
       #endif
-      
+
       #if swift(>=5.7)
         let effect = self.reducer.reduce(into: &currentState, action: action)
       #else
@@ -383,18 +386,11 @@ public final class Store<State, Action> {
       switch effect.operation {
       case .none:
         #if DEBUG
-        if _isEqual(stateBeforeReduction, currentState) == true {
-          runtimeWarn(
-            """
-            A \(typeName(Action.self)) action sent was not handled. …
-
-              Action:
-                \(debugCaseOutput(action))
-
-            TODO: Explain issue…
-            """
-          )
-        }
+          if self.parentCancellable == nil {
+            self.stateComparator.streamAndContinuation.continuation.yield(
+              (action, previousState, currentState)
+            )
+          }
         #endif
         break
       case let .publisher(publisher):
@@ -786,6 +782,40 @@ public typealias StoreOf<R: ReducerProtocol> = Store<R.State, R.Action>
         }
       )
       return rescopedStore
+    }
+  }
+#endif
+
+#if DEBUG
+  extension Store {
+    final class StateComparator {
+      let streamAndContinuation = AsyncStream.streamWithContinuation((Action, State, State).self)
+      var task: Task<Void, Never>?
+      init() {
+        self.task = .init { [stream = self.streamAndContinuation.stream] in
+          for await (action, previousState, currentState) in stream {
+            if _isEqual(previousState, currentState) == true {
+              let debugCaseOuput = debugCaseOutput(action)
+              // Quick and dirty bypass of delegate-style calls.
+              // This is subotimal of course.
+              guard !debugCaseOuput.contains("elegate") else { continue }
+              runtimeWarn(
+                """
+                An action sent to the store was apparently not handled. …
+
+                  Action:
+                    \(debugCaseOutput(action))
+
+                TODO: Explain the nature of the issue…
+                """
+              )
+            }
+          }
+        }
+      }
+      deinit {
+        self.task?.cancel()
+      }
     }
   }
 #endif

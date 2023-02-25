@@ -136,7 +136,7 @@ public final class Store<State, Action> {
     private let mainThreadChecksEnabled: Bool
   #endif
   #if DEBUG
-    private let stateComparator = StateComparator()
+    private lazy var stateComparator = StateComparator()
   #endif
 
   /// Initializes a store from an initial state and a reducer.

@@ -24,9 +24,9 @@ struct TwoCounters: ReducerProtocol {
     Scope(state: \.counter1, action: /Action.counter1) {
       Counter()
     }
-    Scope(state: \.counter2, action: /Action.counter2) {
-      Counter()
-    }
+//    Scope(state: \.counter2, action: /Action.counter2) {
+//      Counter()
+//    }
   }
 }
 

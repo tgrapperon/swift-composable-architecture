@@ -377,6 +377,9 @@ public final class Store<State, Action> {
       #endif
 
       switch effect.operation {
+      case .none(false):
+        runtimeWarn("Unexpressed action: \(debugCaseOutput(action))")
+        break
       case .none:
         break
       case let .publisher(publisher):

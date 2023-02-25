@@ -235,7 +235,7 @@ public struct Scope<ParentState, ParentAction, Child: ReducerProtocol>: ReducerP
     into state: inout ParentState, action: ParentAction
   ) -> EffectTask<ParentAction> {
     guard let childAction = self.toChildAction.extract(from: action)
-    else { return .none }
+    else { return .unexpressed }
     switch self.toChildState {
     case let .casePath(toChildState, file, fileID, line):
       guard var childState = toChildState.extract(from: state) else {

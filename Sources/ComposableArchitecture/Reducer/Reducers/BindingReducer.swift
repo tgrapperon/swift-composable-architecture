@@ -17,7 +17,7 @@ where Action: BindableAction, State == Action.State {
     into state: inout State, action: Action
   ) -> EffectTask<Action> {
     guard let bindingAction = (/Action.binding).extract(from: action)
-    else { return .none }
+    else { return .unexpressed }
 
     bindingAction.set(&state)
     return .none

@@ -126,7 +126,7 @@ public struct _ForEachReducer<
   func reduceForEach(
     into state: inout Parent.State, action: Parent.Action
   ) -> EffectTask<Parent.Action> {
-    guard let (id, elementAction) = self.toElementAction.extract(from: action) else { return .none }
+    guard let (id, elementAction) = self.toElementAction.extract(from: action) else { return .unexpressed }
     if state[keyPath: self.toElementsState][id: id] == nil {
       runtimeWarn(
         """

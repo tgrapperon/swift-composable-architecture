@@ -70,7 +70,7 @@ struct Root: ReducerProtocol {
         return .none
 
       default:
-        return .none
+        return .unexpressed
       }
     }
 

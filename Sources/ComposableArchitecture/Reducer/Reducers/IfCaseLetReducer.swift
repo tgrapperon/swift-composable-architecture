@@ -121,7 +121,7 @@ public struct _IfCaseLetReducer<Parent: ReducerProtocol, Child: ReducerProtocol>
     into state: inout Parent.State, action: Parent.Action
   ) -> EffectTask<Parent.Action> {
     guard let childAction = self.toChildAction.extract(from: action)
-    else { return .none }
+    else { return .unexpressed }
     guard var childState = self.toChildState.extract(from: state) else {
       runtimeWarn(
         """

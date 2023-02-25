@@ -9,8 +9,8 @@ struct CaseStudiesApp: App {
         store: Store(
           initialState: Root.State(),
           reducer: Root()
-            .signpost()
-            ._printChanges()
+//            .signpost()
+//            ._printChanges()
         )
       )
     }

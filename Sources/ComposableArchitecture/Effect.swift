@@ -55,9 +55,12 @@ import XCTestDynamicOverlay
 public struct EffectPublisher<Action, Failure: Error> {
   @usableFromInline
   enum Operation {
-    case none
+    case none(expressed: Bool = true)
     case publisher(AnyPublisher<Action, Failure>)
     case run(TaskPriority? = nil, @Sendable (Send) async -> Void)
+    
+    @usableFromInline
+    static var none: Self { Operation.none(expressed: true) }
   }
 
   @usableFromInline
@@ -77,6 +80,19 @@ extension EffectPublisher {
   @inlinable
   public static var none: Self {
     Self(operation: .none)
+  }
+  
+  @inlinable
+  public static var unexpressed: Self {
+    Self(operation: .none(expressed: false))
+  }
+  
+  @inlinable
+  var expressingUnexpressed: Self {
+    switch self.operation {
+    case .none: return .none
+    default: return self
+    }
   }
 }
 
@@ -451,10 +467,12 @@ extension EffectPublisher {
   @inlinable
   public func merge(with other: Self) -> Self {
     switch (self.operation, other.operation) {
+    case (.none(false), .none(false)):
+      return .unexpressed
     case (_, .none):
-      return self
+      return self.expressingUnexpressed
     case (.none, _):
-      return other
+      return other.expressingUnexpressed
     case (.publisher, .publisher), (.run, .publisher), (.publisher, .run):
       return Self(operation: .publisher(Publishers.Merge(self, other).eraseToAnyPublisher()))
     case let (.run(lhsPriority, lhsOperation), .run(rhsPriority, rhsOperation)):
@@ -503,10 +521,12 @@ extension EffectPublisher {
   @_disfavoredOverload
   public func concatenate(with other: Self) -> Self {
     switch (self.operation, other.operation) {
+    case (.none(false), .none(false)):
+      return .unexpressed
     case (_, .none):
-      return self
+      return self.expressingUnexpressed
     case (.none, _):
-      return other
+      return other.expressingUnexpressed
     case (.publisher, .publisher), (.run, .publisher), (.publisher, .run):
       return Self(
         operation: .publisher(
@@ -539,6 +559,8 @@ extension EffectPublisher {
   @inlinable
   public func map<T>(_ transform: @escaping (Action) -> T) -> EffectPublisher<T, Failure> {
     switch self.operation {
+    case .none(false):
+      return .unexpressed
     case .none:
       return .none
     case let .publisher(publisher):

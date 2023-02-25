@@ -34,12 +34,12 @@ struct OptionalBasics: ReducerProtocol {
           : nil
         return .none
       case .optionalCounter:
-        return .none
+        return .unexpressed
       }
     }
-    .ifLet(\.optionalCounter, action: /Action.optionalCounter) {
-      Counter()
-    }
+//    .ifLet(\.optionalCounter, action: /Action.optionalCounter) {
+//      Counter()
+//    }
   }
 }
 

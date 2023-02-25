@@ -51,6 +51,8 @@ extension EffectPublisher {
     options: S.SchedulerOptions? = nil
   ) -> Self {
     switch self.operation {
+    case .none(false):
+      return .unexpressed
     case .none:
       return .none
     case .publisher, .run:

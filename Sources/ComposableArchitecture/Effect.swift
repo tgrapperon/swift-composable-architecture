@@ -78,6 +78,18 @@ extension EffectPublisher {
   public static var none: Self {
     Self(operation: .none)
   }
+  
+  // Workaround to allow scaffolding features without emitting runtime warnings:
+  @available(*, deprecated, message: "Placeholder: Provide an implementation, or return `.none`.")
+  @inlinable
+  public static var placeholder: Self {
+    #if DEBUG
+    Self(operation: .run{ _ in () })
+    #else
+    Self(operation: .none)
+    #endif
+  }
+  
 }
 
 /// A type that encapsulates a unit of work that can be run in the outside world, and can feed

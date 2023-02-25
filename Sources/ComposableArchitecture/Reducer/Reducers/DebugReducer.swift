@@ -47,6 +47,25 @@ extension _ReducerPrinter {
   }
 }
 
+@usableFromInline
+final class SerialPrinter {
+  @usableFromInline
+  let streamAndContinuation = AsyncStream.streamWithContinuation((@Sendable () async -> Void).self)
+  @usableFromInline
+  static let shared = SerialPrinter()
+  var task: Task<Void, Never>?
+  init() {
+    self.task = Task {
+      for await printOperation in self.streamAndContinuation.stream {
+        await printOperation()
+      }
+    }
+  }
+  deinit {
+    task?.cancel()
+  }
+}
+
 public struct _PrintChangesReducer<Base: ReducerProtocol>: ReducerProtocol {
   @usableFromInline
   let base: Base
@@ -71,11 +90,15 @@ public struct _PrintChangesReducer<Base: ReducerProtocol>: ReducerProtocol {
       if self.context != .test, let printer = self.printer {
         let oldState = state
         let effects = self.base.reduce(into: &state, action: action)
-        return effects.merge(
-          with: .fireAndForget { [newState = state] in
-            printer.printChange(receivedAction: action, oldState: oldState, newState: newState)
-          }
-        )
+        SerialPrinter.shared.streamAndContinuation.continuation.yield { [newState = state] in
+          printer.printChange(receivedAction: action, oldState: oldState, newState: newState)
+        }
+        return effects
+        //        return effects.merge(
+        //          with: .fireAndForget { [newState = state] in
+        //            printer.printChange(receivedAction: action, oldState: oldState, newState: newState)
+        //          }
+        //        )
       }
     #endif
     return self.base.reduce(into: &state, action: action)

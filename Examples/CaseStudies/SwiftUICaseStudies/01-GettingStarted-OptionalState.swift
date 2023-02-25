@@ -37,9 +37,9 @@ struct OptionalBasics: ReducerProtocol {
         return .none
       }
     }
-    .ifLet(\.optionalCounter, action: /Action.optionalCounter) {
-      Counter()
-    }
+//    .ifLet(\.optionalCounter, action: /Action.optionalCounter) {
+//      Counter()
+//    }
   }
 }
 

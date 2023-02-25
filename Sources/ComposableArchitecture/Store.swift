@@ -370,6 +370,10 @@ public final class Store<State, Action> {
     while index < self.bufferedActions.endIndex {
       defer { index += 1 }
       let action = self.bufferedActions[index]
+      #if DEBUG
+      let stateBeforeReduction = currentState
+      #endif
+      
       #if swift(>=5.7)
         let effect = self.reducer.reduce(into: &currentState, action: action)
       #else
@@ -378,6 +382,20 @@ public final class Store<State, Action> {
 
       switch effect.operation {
       case .none:
+        #if DEBUG
+        if _isEqual(stateBeforeReduction, currentState) == true {
+          runtimeWarn(
+            """
+            A \(typeName(Action.self)) action sent was not handled. …
+
+              Action:
+                \(debugCaseOutput(action))
+
+            TODO: Explain issue…
+            """
+          )
+        }
+        #endif
         break
       case let .publisher(publisher):
         var didComplete = false

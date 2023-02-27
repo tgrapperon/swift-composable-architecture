@@ -28,12 +28,12 @@ struct Refreshable: ReducerProtocol {
   }
 
   @Dependency(\.factClient) var factClient
-  private enum FactRequestID {}
+  @EffectID var factRequestID
 
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
     case .cancelButtonTapped:
-      return .cancel(id: FactRequestID.self)
+      return .cancel(id: factRequestID)
 
     case .decrementButtonTapped:
       state.count -= 1
@@ -57,7 +57,7 @@ struct Refreshable: ReducerProtocol {
         await .factResponse(TaskResult { try await self.factClient.fetch(count) })
       }
       .animation()
-      .cancellable(id: FactRequestID.self)
+      .cancellable(id: factRequestID)
     }
   }
 }

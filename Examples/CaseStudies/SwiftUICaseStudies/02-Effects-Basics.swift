@@ -37,7 +37,7 @@ struct EffectsBasics: ReducerProtocol {
 
   @Dependency(\.continuousClock) var clock
   @Dependency(\.factClient) var factClient
-  private enum DelayID {}
+  @EffectID var delayID
 
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
     switch action {
@@ -51,7 +51,7 @@ struct EffectsBasics: ReducerProtocol {
           try await self.clock.sleep(for: .seconds(1))
           return .decrementDelayResponse
         }
-        .cancellable(id: DelayID.self)
+        .cancellable(id: delayID)
 
     case .decrementDelayResponse:
       if state.count < 0 {
@@ -63,7 +63,7 @@ struct EffectsBasics: ReducerProtocol {
       state.count += 1
       state.numberFact = nil
       return state.count >= 0
-        ? .cancel(id: DelayID.self)
+        ? .cancel(id: delayID)
         : .none
 
     case .numberFactButtonTapped:

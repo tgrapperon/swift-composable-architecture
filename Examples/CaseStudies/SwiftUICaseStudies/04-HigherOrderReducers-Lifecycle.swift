@@ -65,7 +65,7 @@ struct LifecycleDemo: ReducerProtocol {
   }
 
   @Dependency(\.continuousClock) var clock
-  private enum CancelID {}
+  @EffectID var cancelID
 
   var body: some ReducerProtocol<State, Action> {
     Reduce { state, action in
@@ -87,8 +87,8 @@ struct LifecycleDemo: ReducerProtocol {
               await send(.tick)
             }
           }
-          .cancellable(id: CancelID.self),
-          onDisappear: .cancel(id: CancelID.self)
+          .cancellable(id: cancelID),
+          onDisappear: .cancel(id: cancelID)
         )
     }
   }

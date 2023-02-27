@@ -39,9 +39,8 @@ struct Animations: ReducerProtocol {
   }
 
   @Dependency(\.continuousClock) var clock
-
+  @EffectID var cancelID
   func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
-    enum CancelID {}
 
     switch action {
     case .alertDismissed:
@@ -59,7 +58,7 @@ struct Animations: ReducerProtocol {
           try await self.clock.sleep(for: .seconds(1))
         }
       }
-      .cancellable(id: CancelID.self)
+      .cancellable(id: cancelID)
 
     case .resetButtonTapped:
       state.alert = AlertState {
@@ -79,7 +78,7 @@ struct Animations: ReducerProtocol {
 
     case .resetConfirmationButtonTapped:
       state = State()
-      return .cancel(id: CancelID.self)
+      return .cancel(id: cancelID)
 
     case let .setColor(color):
       state.circleColor = color

@@ -25,7 +25,7 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "0.7.0"),
     .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "0.1.2"),
     .package(url: "https://github.com/pointfreeco/swift-identified-collections", from: "0.7.0"),
-    .package(url: "https://github.com/pointfreeco/swiftui-navigation", from: "0.6.0"),
+    .package(url: "https://github.com/tgrapperon/swiftui-navigation", branch: "no-underscore"),
     .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "0.5.0"),
   ],
   targets: [
@@ -38,7 +38,7 @@ let package = Package(
         .product(name: "Dependencies", package: "swift-dependencies"),
         .product(name: "IdentifiedCollections", package: "swift-identified-collections"),
         .product(name: "OrderedCollections", package: "swift-collections"),
-        .product(name: "_SwiftUINavigationState", package: "swiftui-navigation"),
+        .product(name: "SwiftUINavigationState", package: "swiftui-navigation"),
         .product(name: "XCTestDynamicOverlay", package: "xctest-dynamic-overlay"),
       ]
     ),

@@ -30,15 +30,18 @@ where Reader.State == State, Reader.Action == Action {
 
 @dynamicMemberLookup
 public struct StateProxy<State> {
+  public let value: State
+  @Dependency(\.self) var dependencies
+  
   @usableFromInline
   init(_ state: State) {
     self.value = state
   }
-  public let value: State
-  @Dependency(\.self) var dependencies
+  
   public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
     self.value[keyPath: keyPath]
   }
+  
   public subscript<Value>(dependency: KeyPath<DependencyValues, Value>) -> Value {
     self.dependencies[keyPath: dependency]
   }

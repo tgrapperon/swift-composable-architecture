@@ -11,7 +11,7 @@ where Reader.State == State, Reader.Action == Action {
   /// - Parameter reader: A reducer builder that has access to the current state and action.
   @inlinable
   public init(
-    @ReducerBuilder<StateProxy<State>, Action> _ reader: @escaping (StateProxy<State>, Action) ->
+    @ReducerBuilder<State, Action> _ reader: @escaping (StateProxy<State>, Action) ->
       Reader
   ) {
     self.init(internal: reader)
@@ -41,7 +41,6 @@ public struct StateProxy<State> {
   public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
     self.value[keyPath: keyPath]
   }
-  
   public subscript<Value>(dependency: KeyPath<DependencyValues, Value>) -> Value {
     self.dependencies[keyPath: dependency]
   }

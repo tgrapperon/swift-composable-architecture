@@ -4,43 +4,47 @@ import Dependencies
 public struct ReducerReader<State, Action, Reader: ReducerProtocol>: ReducerProtocol
 where Reader.State == State, Reader.Action == Action {
   @usableFromInline
-  let reader: (StateProxy<State>, Action) -> Reader
+  let reader: (ReducerProxy<State, Action>) -> Reader
 
   /// Initializes a reducer that builds a reducer from the current state and action.
   ///
   /// - Parameter reader: A reducer builder that has access to the current state and action.
   @inlinable
   public init(
-    @ReducerBuilder<State, Action> _ reader: @escaping (StateProxy<State>, Action) ->
+    @ReducerBuilder<State, Action> _ reader: @escaping (ReducerProxy<State, Action>) ->
       Reader
   ) {
     self.init(internal: reader)
   }
 
   @usableFromInline
-  init(internal reader: @escaping (StateProxy<State>, Action) -> Reader) {
+  init(internal reader: @escaping (ReducerProxy<State, Action>) -> Reader) {
     self.reader = reader
   }
 
   @inlinable
   public func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
-    self.reader(StateProxy(state), action).reduce(into: &state, action: action)
+    self.reader(ReducerProxy(state: state, action: action)).reduce(into: &state, action: action)
   }
 }
 
+// Example of a ReducerProxy (unused)
 @dynamicMemberLookup
-public struct StateProxy<State> {
-  public let value: State
-  @Dependency(\.self) var dependencies
-  
+public struct ReducerProxy<State, Action> {
+  public let state: State
+  public let action: Action
+  @Dependency(\.self) public var dependencies
+
   @usableFromInline
-  init(_ state: State) {
-    self.value = state
+  init(state: State, action: Action) {
+    self.state = state
+    self.action = action
   }
-  
+
   public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
-    self.value[keyPath: keyPath]
+    self.state[keyPath: keyPath]
   }
+
   public subscript<Value>(dependency: KeyPath<DependencyValues, Value>) -> Value {
     self.dependencies[keyPath: dependency]
   }

@@ -29,7 +29,6 @@ where Reader.State == State, Reader.Action == Action {
 }
 
 // Example of a ReducerProxy (unused)
-@dynamicMemberLookup
 public struct ReducerProxy<State, Action> {
   public let state: State
   public let action: Action
@@ -39,13 +38,5 @@ public struct ReducerProxy<State, Action> {
   init(state: State, action: Action) {
     self.state = state
     self.action = action
-  }
-
-  public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
-    self.state[keyPath: keyPath]
-  }
-
-  public subscript<Value>(dependency: KeyPath<DependencyValues, Value>) -> Value {
-    self.dependencies[keyPath: dependency]
   }
 }

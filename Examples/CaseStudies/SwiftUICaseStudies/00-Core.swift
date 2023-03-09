@@ -78,7 +78,15 @@ struct Root: ReducerProtocol {
       AlertAndConfirmationDialog()
     }
     Scope(state: \.animation, action: /Action.animation) {
-      Animations()
+      ReducerReader { proxy in
+        proxy.run {
+          print("State before: ", proxy.state)
+        }
+        Animations()
+        proxy.run {
+          print("State after: ", proxy.state)
+        }
+      }
     }
     Scope(state: \.bindingBasics, action: /Action.bindingBasics) {
       BindingBasics()
@@ -147,7 +155,19 @@ struct Root: ReducerProtocol {
       Timers()
     }
     Scope(state: \.twoCounters, action: /Action.twoCounters) {
-      TwoCounters()
+      ReducerReader { proxy in
+//        let stateBefore = proxy.state
+        TwoCounters()
+//        proxy.run {
+//          if proxy.state.counter2.count > count {
+//            return .fireAndForget {
+//              print("Count 2 is greater than count1")
+//            }
+//          }
+//          return .none
+//        }
+      }
+
     }
     Scope(state: \.webSocket, action: /Action.webSocket) {
       WebSocket()

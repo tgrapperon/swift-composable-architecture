@@ -24,19 +24,65 @@ where Reader.State == State, Reader.Action == Action {
 
   @inlinable
   public func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
-    self.reader(ReducerProxy(state: state, action: action)).reduce(into: &state, action: action)
+    let proxy = ReducerProxy(state: state, action: action)
+    return self.reader(proxy).reduce(into: &state, action: action)
   }
 }
 
-// Example of a ReducerProxy (unused)
+enum LocalReducerProxy {
+  @TaskLocal static var _proxy: Any? = nil
+  static func proxy<State, Action>() -> ReducerProxy<State, Action>? {
+    proxy(of:ReducerProxy<State, Action>.self)
+  }
+  static func proxy<T>(of: T.Type) -> T? {
+    self._proxy as? T
+  }
+}
+
 public struct ReducerProxy<State, Action> {
-  public let state: State
-  public let action: Action
+  public let _state: State
+  public let _action: Action
+  
+  public var state: State {
+    LocalReducerProxy.proxy(of: Self.self)?._state ?? self._state
+  }
+  public var action: Action {
+    LocalReducerProxy.proxy(of: Self.self)?._action ?? self._action
+  }
+  
+  public func run(_ build: @escaping () -> EffectTask<Action>) -> AlwaysReducer<State, Action> {
+    return AlwaysReducer(build)
+  }
+  
+  @_disfavoredOverload
+  public func run(_ build: @escaping () -> Void) -> AlwaysReducer<State, Action> {
+    AlwaysReducer {
+      build()
+      return .none
+    }
+  }
+  
   @Dependency(\.self) public var dependencies
 
   @usableFromInline
   init(state: State, action: Action) {
-    self.state = state
-    self.action = action
+    self._state = state
+    self._action = action
   }
 }
+
+public struct AlwaysReducer<State, Action>: ReducerProtocol {
+  public let effect: () -> EffectTask<Action>
+  @usableFromInline
+  init(_ effect: @escaping () -> EffectTask<Action>) {
+    self.effect = effect
+  }
+  public func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
+    let proxy = ReducerProxy(state: state, action: action)
+    return LocalReducerProxy.$_proxy.withValue(proxy) {
+      self.effect()
+    }
+  }
+}
+
+

@@ -10,7 +10,7 @@ struct CaseStudiesApp: App {
           initialState: Root.State(),
           reducer: Root()
             .signpost()
-            ._printChanges()
+//            ._printChanges()
         )
       )
     }

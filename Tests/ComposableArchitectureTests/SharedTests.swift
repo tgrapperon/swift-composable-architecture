@@ -990,6 +990,22 @@ final class SharedTests: XCTestCase {
       ]
     )
   }
+
+  @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+  func testConcurrentPublisherAccess() async {
+    let sharedCount = Shared<Int>(0)
+    await withTaskGroup(of: Void.self) { group in
+      for _ in 0..<250 {
+        group.addTask {
+          for await _ in sharedCount.publisher.values {}
+        }
+      }
+      group.addTask {
+        try? await Task.sleep(nanoseconds: 200 * NSEC_PER_MSEC)
+      }
+      await group.next()
+    }
+  }
 }
 
 @Reducer
